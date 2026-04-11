@@ -5,6 +5,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const PEXELS_KEY = process.env.PEXELS_KEY;
+console.log("PEXELS_KEY present:", !!PEXELS_KEY, "AIRTABLE_KEY present:", !!AIRTABLE_KEY);
 
 async function getClient(clientId) {
   const res = await fetch(

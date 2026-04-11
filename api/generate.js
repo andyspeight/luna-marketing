@@ -4,6 +4,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
+const PEXELS_KEY = process.env.PEXELS_KEY;
 
 async function getClient(clientId) {
   const res = await fetch(
@@ -12,6 +13,46 @@ async function getClient(clientId) {
   );
   if (!res.ok) throw new Error("Failed to fetch client: " + res.statusText);
   return res.json();
+}
+
+// FCDO check for a destination
+async function checkFCDO(country) {
+  if (!country || country === "General") return { safe: true, level: "none" };
+  try {
+    const slug = country.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const url = `https://www.gov.uk/foreign-travel-advice/${slug}`;
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return { safe: true, level: "not_found" };
+    const data = await response.json();
+    const content = JSON.stringify(data).toLowerCase();
+    if (content.includes("advise against all travel")) {
+      return { safe: false, level: "against_all_travel", reason: "FCDO advises against all travel to " + country };
+    }
+    if (content.includes("advise against all but essential travel")) {
+      return { safe: false, level: "against_all_but_essential", reason: "FCDO advises against all but essential travel to " + country };
+    }
+    return { safe: true, level: "no_warning" };
+  } catch (err) {
+    // On error, default to safe (don't block due to fetch failure)
+    return { safe: true, level: "check_failed", reason: err.message };
+  }
+}
+
+// Pexels image search
+async function searchImage(query, orientation) {
+  if (!PEXELS_KEY) return null;
+  try {
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation || "landscape"}&per_page=1&size=large`;
+    const res = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.photos && data.photos.length > 0) {
+      return data.photos[0].src.large2x || data.photos[0].src.large;
+    }
+    return null;
+  } catch (err) {
+    return null;
+  }
 }
 
 function buildSystemPrompt(client) {
@@ -108,32 +149,57 @@ function getNextMonday() {
   });
 }
 
-async function queuePosts(posts, clientId) {
-  const records = posts.map((post) => ({
-    fields: {
-      "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
-      Client: [clientId],
-      "Content Type": post.content_type,
-      "Caption - Facebook": post.caption_facebook,
-      "Caption - Instagram": post.caption_instagram,
-      "Caption - LinkedIn": post.caption_linkedin || "",
-      Hashtags: [
-        ...(post.hashtags_facebook || []),
-        ...(post.hashtags_instagram || []),
-      ]
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .join(", "),
-      "CTA URL": post.cta_url_facebook || "",
-      Destination: post.destination || "",
-      "Scheduled Time": post.suggested_time || "09:00",
-      Status: "Queued",
-      "Generated Week": getWeekString(),
-    },
-  }));
+function getWeekString() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now - start;
+  const week = Math.ceil(((diff / 86400000 + start.getDay() + 1) / 7));
+  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
 
-  // Push one at a time to avoid payload limits
+async function queuePosts(posts, clientId) {
   const created = [];
-  for (const record of records) {
+  for (const post of posts) {
+    // Build image search query with destination for relevance
+    const tags = post.image_tags || [];
+    const dest = post.destination || "";
+    let imageQuery;
+    if (dest && dest !== "General") {
+      imageQuery = tags.length > 0 ? dest + " " + tags[0] : dest + " travel holiday";
+    } else {
+      imageQuery = tags.length > 0 ? tags[0] + " travel holiday" : "travel holiday beach";
+    }
+
+    // Fetch image from Pexels
+    const imageUrl = await searchImage(imageQuery, post.image_orientation || "landscape");
+
+    // Check FCDO advisory
+    const fcdo = await checkFCDO(post.destination);
+
+    const status = fcdo.safe ? "Queued" : "Suppressed";
+    const suppressionReason = fcdo.safe ? "" : fcdo.reason || "FCDO advisory";
+
+    const record = {
+      fields: {
+        "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
+        "Client": [clientId],
+        "Content Type": post.content_type,
+        "Caption - Facebook": post.caption_facebook,
+        "Caption - Instagram": post.caption_instagram,
+        "Caption - LinkedIn": post.caption_linkedin || "",
+        "Hashtags": [...(post.hashtags_facebook || []), ...(post.hashtags_instagram || [])]
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", "),
+        "CTA URL": post.cta_url_facebook || "",
+        "Destination": post.destination || "",
+        "Scheduled Time": post.suggested_time || "09:00",
+        "Status": status,
+        "Suppression Reason": suppressionReason,
+        "Generated Week": getWeekString(),
+        "Image URL": imageUrl || "",
+      },
+    };
+
     const res = await fetch(
       `https://api.airtable.com/v0/${AIRTABLE_BASE}/tblbhyiuULvedva0K`,
       {
@@ -147,24 +213,18 @@ async function queuePosts(posts, clientId) {
     );
     if (res.ok) {
       const data = await res.json();
-      created.push(data.records[0]);
+      created.push({
+        ...data.records[0],
+        _imageUrl: imageUrl,
+        _fcdoStatus: fcdo.level,
+        _suppressed: !fcdo.safe,
+      });
     }
   }
   return created;
 }
 
-function getWeekString() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = now - start;
-  const week = Math.ceil(
-    ((diff / 86400000 + start.getDay() + 1) / 7)
-  );
-  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
 module.exports = async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -212,16 +272,19 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 5. Queue posts to Airtable (unless dry run)
+    // 5. Queue posts to Airtable with images and FCDO checks (unless dry run)
     let queued = [];
+    let suppressed = 0;
     if (!dryRun) {
       queued = await queuePosts(posts, clientId);
+      suppressed = queued.filter((q) => q._suppressed).length;
     }
 
     return res.status(200).json({
       success: true,
       posts,
       queued: queued.length,
+      suppressed,
       client: clientRecord.fields["Business Name"],
       week: getWeekString(),
     });

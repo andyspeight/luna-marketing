@@ -25,16 +25,25 @@
         .status.success { display: block; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #6EE7B7; }
         .results { margin-top: 20px; display: none; }
         .results.visible { display: block; }
-        .post-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px; margin-bottom: 12px; }
+        .post-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+        .post-image-row { display: flex; gap: 6px; padding: 14px 14px 0 14px; overflow-x: auto; }
+        .post-image-row img { width: 120px; height: 80px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; flex-shrink: 0; }
+        .post-image-row img:hover { border-color: #00B4B6; }
+        .post-image-row img.selected { border-color: #00D4D6; box-shadow: 0 0 12px rgba(0,212,214,0.3); }
+        .post-hero { width: 100%; height: 280px; object-fit: cover; display: block; }
+        .post-body { padding: 18px; }
         .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .post-type { padding: 3px 10px; border-radius: 6px; font-size: 11px; background: rgba(0,180,182,0.1); border: 1px solid rgba(0,180,182,0.25); color: #00B4B6; }
         .post-day { font-size: 12px; color: #94A3B8; }
         .post-caption { font-size: 14px; line-height: 1.7; color: #CBD5E1; white-space: pre-wrap; margin-bottom: 12px; }
         .post-meta { font-size: 11px; color: #94A3B8; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; }
+        .post-hashtags { color: #00B4B6; margin-top: 4px; }
         .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
         .tab { padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #94A3B8; cursor: pointer; font-size: 12px; }
         .tab.active { border-color: rgba(0,180,182,0.4); background: rgba(0,180,182,0.12); color: #00D4D6; }
         .raw-json { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; color: #94A3B8; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; margin-top: 12px; display: none; }
+        .image-loading { padding: 14px; font-size: 12px; color: #94A3B8; text-align: center; }
+        .photographer { font-size: 10px; color: #94A3B8; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -71,6 +80,8 @@
 
     <script>
         let postsData = null;
+        let postImages = {};
+        let selectedImages = {};
         let currentPlatform = 'facebook';
 
         async function generate() {
@@ -88,8 +99,10 @@
             btn.disabled = true;
             btn.textContent = 'Generating posts... (this takes 15-30 seconds)';
             status.className = 'status info';
-            status.textContent = 'Calling Claude API via your Vercel endpoint. Reading client profile from Airtable, generating content, please wait...';
+            status.textContent = 'Calling Claude API via your Vercel endpoint. Reading client profile, generating content...';
             document.getElementById('results').classList.remove('visible');
+            postImages = {};
+            selectedImages = {};
 
             try {
                 const response = await fetch('/api/generate', {
@@ -107,9 +120,9 @@
                 postsData = data;
 
                 status.className = 'status success';
-                let msg = 'Success! Generated ' + data.posts.length + ' posts for ' + data.client + ' (Week ' + data.week + ').';
+                let msg = 'Generated ' + data.posts.length + ' posts for ' + data.client + '. Now fetching images from Pexels...';
                 if (dryRun) {
-                    msg += ' Dry run mode — posts were NOT written to Airtable.';
+                    msg += ' (Dry run — posts not written to Airtable)';
                 } else {
                     msg += ' ' + data.queued + ' posts queued in Airtable.';
                 }
@@ -119,6 +132,11 @@
                 document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
                 document.getElementById('results').classList.add('visible');
 
+                // Fetch images for each post
+                for (let i = 0; i < data.posts.length; i++) {
+                    fetchImagesForPost(i, data.posts[i]);
+                }
+
             } catch (err) {
                 status.className = 'status error';
                 status.textContent = 'Error: ' + err.message;
@@ -126,6 +144,37 @@
                 btn.disabled = false;
                 btn.textContent = 'Generate This Week\'s Posts';
             }
+        }
+
+        async function fetchImagesForPost(index, post) {
+            const tags = post.image_tags || [];
+            const query = tags.length > 0 ? tags[0] : (post.destination + ' travel');
+            const orientation = post.image_orientation || 'landscape';
+
+            try {
+                const response = await fetch('/api/images?q=' + encodeURIComponent(query) + '&orientation=' + orientation + '&per_page=5');
+                const data = await response.json();
+
+                if (data.images && data.images.length > 0) {
+                    postImages[index] = data.images;
+                    selectedImages[index] = 0;
+                    renderPosts(currentPlatform);
+
+                    // Update status
+                    const status = document.getElementById('status');
+                    const fetchedCount = Object.keys(postImages).length;
+                    if (fetchedCount === postsData.posts.length) {
+                        status.textContent = status.textContent.replace('Now fetching images from Pexels...', 'Images loaded from Pexels.');
+                    }
+                }
+            } catch (err) {
+                console.error('Image fetch error for post ' + index + ':', err);
+            }
+        }
+
+        function selectImage(postIndex, imageIndex) {
+            selectedImages[postIndex] = imageIndex;
+            renderPosts(currentPlatform);
         }
 
         function switchTab(platform, el) {
@@ -148,24 +197,51 @@
             const container = document.getElementById('postsContainer');
             container.innerHTML = '';
 
-            postsData.posts.forEach(post => {
+            postsData.posts.forEach((post, i) => {
                 const caption = post['caption_' + platform] || post.caption_facebook || '';
                 const hashtags = post['hashtags_' + platform] || post.hashtags_facebook || [];
                 const words = caption.split(/\s+/).filter(Boolean).length;
+                const images = postImages[i] || null;
+                const selIdx = selectedImages[i] || 0;
 
                 const card = document.createElement('div');
                 card.className = 'post-card';
-                card.innerHTML = `
-                    <div class="post-header">
-                        <span class="post-type">${post.content_type || ''}</span>
-                        <span class="post-day">${post.destination || ''} · ${post.suggested_day || ''} ${post.suggested_time || ''}</span>
-                    </div>
-                    <div class="post-caption">${caption}</div>
-                    <div class="post-meta">
-                        ${words} words · ${hashtags.length} hashtags · ${hashtags.join(' ')}<br>
-                        Image tags: ${(post.image_tags || []).join(' | ')}
-                    </div>
-                `;
+
+                let heroHtml = '';
+                let imageRowHtml = '';
+                let photographerHtml = '';
+
+                if (images && images.length > 0) {
+                    const heroImg = images[selIdx];
+                    heroHtml = '<img class="post-hero" src="' + heroImg.src.medium + '" alt="' + (heroImg.description || post.destination) + '">';
+                    photographerHtml = '<div class="photographer">Photo by ' + heroImg.photographer + ' via Pexels</div>';
+
+                    if (images.length > 1) {
+                        imageRowHtml = '<div class="post-image-row">';
+                        images.forEach((img, j) => {
+                            imageRowHtml += '<img src="' + img.src.thumbnail + '" alt="Option ' + (j+1) + '" class="' + (j === selIdx ? 'selected' : '') + '" onclick="selectImage(' + i + ',' + j + ')">';
+                        });
+                        imageRowHtml += '</div>';
+                    }
+                } else if (images === null) {
+                    heroHtml = '<div class="image-loading">Loading images...</div>';
+                }
+
+                card.innerHTML = heroHtml + imageRowHtml +
+                    '<div class="post-body">' +
+                        '<div class="post-header">' +
+                            '<span class="post-type">' + (post.content_type || '') + '</span>' +
+                            '<span class="post-day">' + (post.destination || '') + ' · ' + (post.suggested_day || '') + ' ' + (post.suggested_time || '') + '</span>' +
+                        '</div>' +
+                        '<div class="post-caption">' + caption + '</div>' +
+                        '<div class="post-hashtags">' + hashtags.join(' ') + '</div>' +
+                        '<div class="post-meta">' +
+                            words + ' words · ' + hashtags.length + ' hashtags<br>' +
+                            'Image tags: ' + (post.image_tags || []).join(' | ') +
+                            photographerHtml +
+                        '</div>' +
+                    '</div>';
+
                 container.appendChild(card);
             });
         }

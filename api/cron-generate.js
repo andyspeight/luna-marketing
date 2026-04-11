@@ -196,6 +196,12 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
+// Only run on Sundays (day 0) to avoid daily generation on Hobby plan
+  const today = new Date().getDay();
+  if (today !== 0) {
+    return res.status(200).json({ skipped: true, message: "Not Sunday. Skipping generation.", day: today });
+  }
+  
   // Security: verify cron secret (Vercel sends this automatically)
   const authHeader = req.headers.authorization;
   if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {

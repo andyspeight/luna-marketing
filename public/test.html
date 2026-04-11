@@ -148,7 +148,16 @@
 
         async function fetchImagesForPost(index, post) {
             const tags = post.image_tags || [];
-            const query = tags.length > 0 ? tags[0] : (post.destination + ' travel');
+            const dest = post.destination || '';
+
+            // Always include the destination in the search to keep images on topic
+            var query;
+            if (dest && dest !== 'General') {
+                query = tags.length > 0 ? dest + ' ' + tags[0] : dest + ' travel holiday';
+            } else {
+                query = tags.length > 0 ? tags[0] + ' travel holiday' : 'travel holiday beach';
+            }
+
             const orientation = post.image_orientation || 'landscape';
 
             try {
@@ -178,7 +187,7 @@
         }
 
         function switchTab(platform, el) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
             el.classList.add('active');
             currentPlatform = platform;
 
@@ -194,31 +203,31 @@
 
         function renderPosts(platform) {
             if (!postsData || !postsData.posts) return;
-            const container = document.getElementById('postsContainer');
+            var container = document.getElementById('postsContainer');
             container.innerHTML = '';
 
-            postsData.posts.forEach((post, i) => {
-                const caption = post['caption_' + platform] || post.caption_facebook || '';
-                const hashtags = post['hashtags_' + platform] || post.hashtags_facebook || [];
-                const words = caption.split(/\s+/).filter(Boolean).length;
-                const images = postImages[i] || null;
-                const selIdx = selectedImages[i] || 0;
+            postsData.posts.forEach(function(post, i) {
+                var caption = post['caption_' + platform] || post.caption_facebook || '';
+                var hashtags = post['hashtags_' + platform] || post.hashtags_facebook || [];
+                var words = caption.split(/\s+/).filter(Boolean).length;
+                var images = postImages[i] || null;
+                var selIdx = selectedImages[i] || 0;
 
-                const card = document.createElement('div');
+                var card = document.createElement('div');
                 card.className = 'post-card';
 
-                let heroHtml = '';
-                let imageRowHtml = '';
-                let photographerHtml = '';
+                var heroHtml = '';
+                var imageRowHtml = '';
+                var photographerHtml = '';
 
                 if (images && images.length > 0) {
-                    const heroImg = images[selIdx];
+                    var heroImg = images[selIdx];
                     heroHtml = '<img class="post-hero" src="' + heroImg.src.medium + '" alt="' + (heroImg.description || post.destination) + '">';
                     photographerHtml = '<div class="photographer">Photo by ' + heroImg.photographer + ' via Pexels</div>';
 
                     if (images.length > 1) {
                         imageRowHtml = '<div class="post-image-row">';
-                        images.forEach((img, j) => {
+                        images.forEach(function(img, j) {
                             imageRowHtml += '<img src="' + img.src.thumbnail + '" alt="Option ' + (j+1) + '" class="' + (j === selIdx ? 'selected' : '') + '" onclick="selectImage(' + i + ',' + j + ')">';
                         });
                         imageRowHtml += '</div>';
@@ -231,12 +240,12 @@
                     '<div class="post-body">' +
                         '<div class="post-header">' +
                             '<span class="post-type">' + (post.content_type || '') + '</span>' +
-                            '<span class="post-day">' + (post.destination || '') + ' · ' + (post.suggested_day || '') + ' ' + (post.suggested_time || '') + '</span>' +
+                            '<span class="post-day">' + (post.destination || '') + ' &middot; ' + (post.suggested_day || '') + ' ' + (post.suggested_time || '') + '</span>' +
                         '</div>' +
                         '<div class="post-caption">' + caption + '</div>' +
                         '<div class="post-hashtags">' + hashtags.join(' ') + '</div>' +
                         '<div class="post-meta">' +
-                            words + ' words · ' + hashtags.length + ' hashtags<br>' +
+                            words + ' words &middot; ' + hashtags.length + ' hashtags<br>' +
                             'Image tags: ' + (post.image_tags || []).join(' | ') +
                             photographerHtml +
                         '</div>' +

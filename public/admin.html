@@ -8,13 +8,18 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DM Sans', sans-serif; background: #0B1D3A; color: #F8FAFB; min-height: 100vh; padding: 24px; }
-        .container { max-width: 960px; margin: 0 auto; }
+        .container { max-width: 960px; margin: 0 auto; display: none; }
+        .container.active { display: block; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .header-left { display: flex; align-items: center; gap: 10px; }
         .logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #00B4B6, #009A9C); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
         .header-title { font-size: 18px; font-weight: 700; }
         .header-sub { font-size: 10px; font-family: 'Space Mono', monospace; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
+        .header-right { display: flex; align-items: center; gap: 16px; }
         .header-time { font-size: 12px; font-family: 'Space Mono', monospace; color: #94A3B8; }
+        .header-agent { font-size: 12px; color: #00B4B6; }
+        .logout-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #FCA5A5; font-size: 11px; font-family: 'Space Mono', monospace; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
+        .logout-btn:hover { background: rgba(239,68,68,0.2); }
         .stats-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .stat-card { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px 18px; min-width: 140px; }
         .stat-label { font-size: 10px; font-family: 'Space Mono', monospace; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
@@ -48,186 +53,303 @@
         .loading { text-align: center; padding: 60px; color: #94A3B8; font-size: 14px; }
         .spec-pill { padding: 2px 8px; border-radius: 4px; font-size: 10px; background: rgba(0,180,182,0.08); border: 1px solid rgba(0,180,182,0.2); color: #00B4B6; }
         .specialisms-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0B1D3A; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        #loginOverlay h2 { margin-bottom: 16px; }
-        #loginOverlay input { padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #F8FAFB; font-size: 14px; width: 250px; font-family: 'DM Sans', sans-serif; }
-        #loginOverlay button { margin-left: 8px; padding: 10px 20px; border-radius: 8px; border: none; background: linear-gradient(135deg, #00B4B6, #009A9C); color: #F8FAFB; font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
-        #loginError { color: #FCA5A5; font-size: 12px; margin-top: 10px; display: none; }
+
+        /* Login screen */
+        .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0B1D3A; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .login-screen.hidden { display: none; }
+        .login-box { text-align: center; width: 340px; }
+        .login-logo { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #00B4B6, #009A9C); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; margin: 0 auto 16px; }
+        .login-box h2 { font-size: 20px; margin-bottom: 4px; }
+        .login-box .sub { font-size: 13px; color: #94A3B8; margin-bottom: 24px; }
+        .login-label { display: block; text-align: left; font-size: 12px; color: #94A3B8; margin-bottom: 4px; margin-top: 12px; }
+        .login-input { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #F8FAFB; font-size: 14px; font-family: 'DM Sans', sans-serif; }
+        .login-input:focus { outline: none; border-color: #00B4B6; }
+        .password-wrap { position: relative; width: 100%; }
+        .password-wrap input { width: 100%; padding-right: 44px; }
+        .eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94A3B8; font-size: 18px; padding: 4px; line-height: 1; }
+        .eye-btn:hover { color: #00B4B6; }
+        .login-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; background: linear-gradient(135deg, #00B4B6, #009A9C); color: #F8FAFB; font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 16px; }
+        .login-btn:hover { opacity: 0.9; }
+        .login-error { color: #FCA5A5; font-size: 12px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
-    <div id="loginOverlay">
-        <div style="text-align:center;">
-            <div class="logo" style="margin:0 auto 16px;width:48px;height:48px;font-size:24px;border-radius:12px;">L</div>
-            <h2>Luna Marketing Admin</h2>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+    <div class="login-box">
+        <div class="login-logo">L</div>
+        <h2>Luna Marketing</h2>
+        <div class="sub">Admin Dashboard</div>
+
+        <label class="login-label" for="loginCompany">Company</label>
+        <input type="text" class="login-input" id="loginCompany" placeholder="e.g. Travelgenix">
+
+        <label class="login-label" for="loginName">Your name</label>
+        <input type="text" class="login-input" id="loginName" placeholder="e.g. Andy">
+
+        <label class="login-label" for="loginPass">Password</label>
+        <div class="password-wrap">
+            <input type="password" class="login-input" id="loginPass" placeholder="Enter password">
+            <button type="button" class="eye-btn" id="eyeBtn" onclick="togglePassword()">&#128065;</button>
+        </div>
+
+        <button class="login-btn" id="loginBtn">Sign In</button>
+        <div class="login-error" id="loginError">Incorrect password</div>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="container" id="dashboard">
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">L</div>
             <div>
-                <input type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkLogin()">
-                <button onclick="checkLogin()">Login</button>
+                <div class="header-title">Luna Marketing</div>
+                <div class="header-sub">Admin Dashboard</div>
             </div>
-            <div id="loginError">Incorrect password</div>
+        </div>
+        <div class="header-right">
+            <div>
+                <div class="header-time" id="timestamp"></div>
+                <div class="header-agent" id="agentLabel"></div>
+            </div>
+            <button class="logout-btn" onclick="doLogout()">Logout</button>
         </div>
     </div>
 
-    <div class="container">
-        <div class="header">
-            <div class="header-left">
-                <div class="logo">L</div>
-                <div>
-                    <div class="header-title">Luna Marketing</div>
-                    <div class="header-sub">Admin Dashboard</div>
-                </div>
-            </div>
-            <div class="header-time" id="timestamp"></div>
-        </div>
-
-        <div class="stats-row" id="statsRow">
-            <div class="stat-card"><div class="stat-label">Loading...</div><div class="stat-value">-</div></div>
-        </div>
-
-        <div id="alerts"></div>
-
-        <div id="clientList">
-            <div class="loading">Loading clients from Airtable...</div>
-        </div>
+    <div class="stats-row" id="statsRow">
+        <div class="stat-card"><div class="stat-label">Loading...</div><div class="stat-value">-</div></div>
     </div>
 
-    <script>
-        function checkLogin() {
-            var p = document.getElementById('loginPass').value;
-            if (p === 'travelgenix2026') {
-                document.getElementById('loginOverlay').style.display = 'none';
-            } else {
-                document.getElementById('loginError').style.display = 'block';
-            }
+    <div id="alerts"></div>
+
+    <div id="clientList">
+        <div class="loading">Loading clients from Airtable...</div>
+    </div>
+</div>
+
+<script>
+    var PASSWORD = 'travelgenix2026';
+    var SESSION_KEY = 'luna_marketing_session';
+    var MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
+    var agentName = '';
+    var companyName = '';
+
+    // ─── PASSWORD TOGGLE ───
+    function togglePassword() {
+        var input = document.getElementById('loginPass');
+        var btn = document.getElementById('eyeBtn');
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.innerHTML = '&#128064;';
+        } else {
+            input.type = 'password';
+            btn.innerHTML = '&#128065;';
+        }
+    }
+
+    // ─── LOGIN ───
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('loginPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('loginCompany').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('loginName').focus(); });
+    document.getElementById('loginName').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+
+    function doLogin() {
+        var pass = document.getElementById('loginPass').value;
+        var name = document.getElementById('loginName').value.trim();
+        var company = document.getElementById('loginCompany').value.trim();
+
+        if (!company) {
+            document.getElementById('loginError').textContent = 'Please enter your company name';
+            document.getElementById('loginError').style.display = 'block';
+            return;
+        }
+        if (!name) {
+            document.getElementById('loginError').textContent = 'Please enter your name';
+            document.getElementById('loginError').style.display = 'block';
+            return;
+        }
+        if (pass !== PASSWORD) {
+            document.getElementById('loginError').textContent = 'Incorrect password';
+            document.getElementById('loginError').style.display = 'block';
+            return;
         }
 
-        var dashboardData = null;
+        agentName = name;
+        companyName = company;
 
-        async function loadDashboard() {
-            document.getElementById('timestamp').textContent = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        // Save session
+        try {
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+                loginAt: Date.now(),
+                agentName: name,
+                companyName: company
+            }));
+        } catch(e) {}
 
-            try {
-                var res = await fetch('/api/clients');
-                var data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Failed to load');
-                dashboardData = data;
-                renderStats(data.totals);
-                renderAlerts(data.clients);
-                renderClients(data.clients);
-            } catch (err) {
-                document.getElementById('clientList').innerHTML = '<div class="loading" style="color: #FCA5A5;">Error loading dashboard: ' + err.message + '</div>';
-            }
-        }
+        showDashboard();
+    }
 
-        function renderStats(t) {
-            document.getElementById('statsRow').innerHTML =
-                statCard('Active Clients', t.active, t.total_clients + ' total') +
-                statCard('Total Posts', t.total_posts, t.total_queued + ' queued') +
-                statCard('Published', t.total_published, '') +
-                statCard('Suppressed', t.total_suppressed, 'by FCDO gate');
-        }
+    function doLogout() {
+        try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('dashboard').classList.remove('active');
+        document.getElementById('loginPass').value = '';
+        document.getElementById('loginPass').type = 'password';
+        document.getElementById('eyeBtn').innerHTML = '&#128065;';
+        document.getElementById('loginError').style.display = 'none';
+    }
 
-        function statCard(label, value, sub) {
-            return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
-        }
-
-        function renderAlerts(clients) {
-            var html = '';
-            var errors = clients.filter(function(c) { return c.status === 'Error'; });
-            var suppressed = clients.reduce(function(sum, c) { return sum + (c.stats.suppressed || 0); }, 0);
-
-            if (errors.length > 0) {
-                html += '<div class="alert alert-error"><span style="font-size:18px">&#9888;</span> <strong>' + errors.length + ' client' + (errors.length > 1 ? 's' : '') + '</strong> with errors requiring attention</div>';
-            }
-            if (suppressed > 0) {
-                html += '<div class="alert alert-warning"><span style="font-size:18px">&#128737;</span> <strong>' + suppressed + ' post' + (suppressed > 1 ? 's' : '') + '</strong> suppressed by FCDO safety gate</div>';
-            }
-            document.getElementById('alerts').innerHTML = html;
-        }
-
-        function renderClients(clients) {
-            var html = '';
-            clients.forEach(function(c) {
-                var statusClass = c.status === 'Active' ? 'pill-active' : c.status === 'Paused' ? 'pill-paused' : c.status === 'Error' ? 'pill-error' : 'pill-onboarding';
-
-                html += '<div class="client-card" id="card-' + c.id + '" onclick="toggleClient(\'' + c.id + '\')">';
-                html += '<div class="client-row">';
-                html += '<div style="display:flex;align-items:center;gap:10px">';
-                html += '<span class="client-name">' + (c.trading_name || c.business_name) + '</span>';
-                html += '<span class="pill ' + statusClass + '">' + c.status + '</span>';
-                html += '<span class="pill pill-package">' + c.package + '</span>';
-                html += '</div>';
-                html += '<div class="client-meta">';
-                html += '<span>' + c.stats.total_posts + ' posts</span>';
-                html += '<span>' + c.stats.total_reach + ' reach</span>';
-                html += '<span>' + c.stats.total_clicks + ' clicks</span>';
-                html += '</div>';
-                html += '</div>';
-
-                html += '<div class="client-detail">';
-                html += '<div class="detail-row"><span class="detail-label">Website</span> <a href="' + c.website + '" target="_blank" style="color:#00B4B6">' + c.website + '</a></div>';
-                html += '<div class="detail-row"><span class="detail-label">Destinations</span> <span>' + (c.destinations || 'Not set') + '</span></div>';
-                html += '<div class="detail-row"><span class="detail-label">Voice</span> <span>' + (c.tone || 'Not set') + '</span></div>';
-                html += '<div class="detail-row"><span class="detail-label">Frequency</span> <span>' + c.posting_frequency + ' posts/week</span></div>';
-                html += '<div class="detail-row"><span class="detail-label">Connected</span> <span>' + (c.fb_connected ? 'FB ' : '') + (c.ig_connected ? 'IG ' : '') + (c.li_connected ? 'LI' : '') + (!c.fb_connected && !c.ig_connected && !c.li_connected ? 'None' : '') + '</span></div>';
-                html += '<div class="detail-row"><span class="detail-label">Posts</span> <span>' + c.stats.queued + ' queued, ' + c.stats.published + ' published, ' + c.stats.suppressed + ' suppressed</span></div>';
-
-                if (c.specialisms && c.specialisms.length > 0) {
-                    html += '<div class="detail-row"><span class="detail-label">Specialisms</span><div class="specialisms-row">';
-                    c.specialisms.forEach(function(s) {
-                        html += '<span class="spec-pill">' + s + '</span>';
-                    });
-                    html += '</div></div>';
-                }
-
-                html += '<button class="generate-btn" id="btn-' + c.id + '" onclick="event.stopPropagation(); generateForClient(\'' + c.id + '\', \'' + (c.trading_name || c.business_name) + '\')">Generate Posts for ' + (c.trading_name || c.business_name) + '</button>';
-                html += '<div class="generate-status" id="status-' + c.id + '"></div>';
-
-                html += '</div>';
-                html += '</div>';
-            });
-
-            document.getElementById('clientList').innerHTML = html;
-        }
-
-        function toggleClient(id) {
-            var card = document.getElementById('card-' + id);
-            card.classList.toggle('expanded');
-        }
-
-        async function generateForClient(clientId, name) {
-            var btn = document.getElementById('btn-' + clientId);
-            var status = document.getElementById('status-' + clientId);
-
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
-            status.className = 'generate-status';
-            status.style.display = 'none';
-
-            try {
-                var res = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId: clientId, dryRun: false })
-                });
-                var data = await res.json();
-
-                if (!res.ok) throw new Error(data.error || 'Generation failed');
-
-                status.className = 'generate-status show success';
-                status.textContent = 'Generated ' + data.posts.length + ' posts for ' + name + '. ' + data.queued + ' queued.' + (data.suppressed > 0 ? ' ' + data.suppressed + ' suppressed by FCDO.' : '');
-
-                setTimeout(loadDashboard, 2000);
-            } catch (err) {
-                status.className = 'generate-status show error';
-                status.textContent = 'Error: ' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Generate Posts for ' + name;
-            }
-        }
-
+    function showDashboard() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.add('active');
+        document.getElementById('agentLabel').textContent = agentName + ' @ ' + companyName;
         loadDashboard();
-    </script>
+    }
+
+    // ─── SESSION RESTORE ───
+    try {
+        var saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved) {
+            var session = JSON.parse(saved);
+            var elapsed = Date.now() - (session.loginAt || 0);
+            if (elapsed < MAX_AGE && session.agentName && session.companyName) {
+                agentName = session.agentName;
+                companyName = session.companyName;
+                showDashboard();
+            } else {
+                sessionStorage.removeItem(SESSION_KEY);
+            }
+        }
+    } catch(e) {}
+
+    // ─── DASHBOARD ───
+    var dashboardData = null;
+
+    async function loadDashboard() {
+        document.getElementById('timestamp').textContent = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        try {
+            var res = await fetch('/api/clients');
+            var data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to load');
+            dashboardData = data;
+            renderStats(data.totals);
+            renderAlerts(data.clients);
+            renderClients(data.clients);
+        } catch (err) {
+            document.getElementById('clientList').innerHTML = '<div class="loading" style="color: #FCA5A5;">Error loading dashboard: ' + err.message + '</div>';
+        }
+    }
+
+    function renderStats(t) {
+        document.getElementById('statsRow').innerHTML =
+            statCard('Active Clients', t.active, t.total_clients + ' total') +
+            statCard('Total Posts', t.total_posts, t.total_queued + ' queued') +
+            statCard('Published', t.total_published, '') +
+            statCard('Suppressed', t.total_suppressed, 'by FCDO gate');
+    }
+
+    function statCard(label, value, sub) {
+        return '<div class="stat-card"><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div>' + (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
+    }
+
+    function renderAlerts(clients) {
+        var html = '';
+        var errors = clients.filter(function(c) { return c.status === 'Error'; });
+        var suppressed = clients.reduce(function(sum, c) { return sum + (c.stats.suppressed || 0); }, 0);
+
+        if (errors.length > 0) {
+            html += '<div class="alert alert-error"><span style="font-size:18px">&#9888;</span> <strong>' + errors.length + ' client' + (errors.length > 1 ? 's' : '') + '</strong> with errors requiring attention</div>';
+        }
+        if (suppressed > 0) {
+            html += '<div class="alert alert-warning"><span style="font-size:18px">&#128737;</span> <strong>' + suppressed + ' post' + (suppressed > 1 ? 's' : '') + '</strong> suppressed by FCDO safety gate</div>';
+        }
+        document.getElementById('alerts').innerHTML = html;
+    }
+
+    function renderClients(clients) {
+        var html = '';
+        clients.forEach(function(c) {
+            var statusClass = c.status === 'Active' ? 'pill-active' : c.status === 'Paused' ? 'pill-paused' : c.status === 'Error' ? 'pill-error' : 'pill-onboarding';
+
+            html += '<div class="client-card" id="card-' + c.id + '" onclick="toggleClient(\'' + c.id + '\')">';
+            html += '<div class="client-row">';
+            html += '<div style="display:flex;align-items:center;gap:10px">';
+            html += '<span class="client-name">' + (c.trading_name || c.business_name) + '</span>';
+            html += '<span class="pill ' + statusClass + '">' + c.status + '</span>';
+            html += '<span class="pill pill-package">' + c.package + '</span>';
+            html += '</div>';
+            html += '<div class="client-meta">';
+            html += '<span>' + c.stats.total_posts + ' posts</span>';
+            html += '<span>' + c.stats.total_reach + ' reach</span>';
+            html += '<span>' + c.stats.total_clicks + ' clicks</span>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="client-detail">';
+            html += '<div class="detail-row"><span class="detail-label">Website</span> <a href="' + c.website + '" target="_blank" style="color:#00B4B6">' + c.website + '</a></div>';
+            html += '<div class="detail-row"><span class="detail-label">Destinations</span> <span>' + (c.destinations || 'Not set') + '</span></div>';
+            html += '<div class="detail-row"><span class="detail-label">Voice</span> <span>' + (c.tone || 'Not set') + '</span></div>';
+            html += '<div class="detail-row"><span class="detail-label">Frequency</span> <span>' + c.posting_frequency + ' posts/week</span></div>';
+            html += '<div class="detail-row"><span class="detail-label">Connected</span> <span>' + (c.fb_connected ? 'FB ' : '') + (c.ig_connected ? 'IG ' : '') + (c.li_connected ? 'LI' : '') + (!c.fb_connected && !c.ig_connected && !c.li_connected ? 'None' : '') + '</span></div>';
+            html += '<div class="detail-row"><span class="detail-label">Posts</span> <span>' + c.stats.queued + ' queued, ' + c.stats.published + ' published, ' + c.stats.suppressed + ' suppressed</span></div>';
+
+            if (c.specialisms && c.specialisms.length > 0) {
+                html += '<div class="detail-row"><span class="detail-label">Specialisms</span><div class="specialisms-row">';
+                c.specialisms.forEach(function(s) {
+                    html += '<span class="spec-pill">' + s + '</span>';
+                });
+                html += '</div></div>';
+            }
+
+            html += '<button class="generate-btn" id="btn-' + c.id + '" onclick="event.stopPropagation(); generateForClient(\'' + c.id + '\', \'' + (c.trading_name || c.business_name) + '\')">Generate Posts for ' + (c.trading_name || c.business_name) + '</button>';
+            html += '<div class="generate-status" id="status-' + c.id + '"></div>';
+
+            html += '</div>';
+            html += '</div>';
+        });
+
+        document.getElementById('clientList').innerHTML = html;
+    }
+
+    function toggleClient(id) {
+        var card = document.getElementById('card-' + id);
+        card.classList.toggle('expanded');
+    }
+
+    async function generateForClient(clientId, name) {
+        var btn = document.getElementById('btn-' + clientId);
+        var status = document.getElementById('status-' + clientId);
+
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        status.className = 'generate-status';
+        status.style.display = 'none';
+
+        try {
+            var res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: clientId, dryRun: false })
+            });
+            var data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || 'Generation failed');
+
+            status.className = 'generate-status show success';
+            status.textContent = 'Generated ' + data.posts.length + ' posts for ' + name + '. ' + data.queued + ' queued.' + (data.suppressed > 0 ? ' ' + data.suppressed + ' suppressed by FCDO.' : '');
+
+            setTimeout(loadDashboard, 2000);
+        } catch (err) {
+            status.className = 'generate-status show error';
+            status.textContent = 'Error: ' + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Generate Posts for ' + name;
+        }
+    }
+</script>
 </body>
 </html>

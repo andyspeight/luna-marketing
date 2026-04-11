@@ -2,38 +2,41 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const QUEUE_TABLE = "tblbhyiuULvedva0K";
 
-// List queued posts, optionally filtered by client
-async function listPosts(status, clientId) {
-  let formula = "";
-  if (status && clientId) {
-    formula = `&filterByFormula=AND({Status}='${status}',RECORD_ID()!='')`;
-  } else if (status) {
-    formula = `&filterByFormula={Status}='${status}'`;
+async function listPosts(status) {
+  var formula = "";
+  if (status) {
+    formula = "&filterByFormula={Status}='" + status + "'";
   }
-
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}?sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc${formula}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${AIRTABLE_KEY}` },
+  var url =
+    "https://api.airtable.com/v0/" +
+    AIRTABLE_BASE +
+    "/" +
+    QUEUE_TABLE +
+    "?sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc" +
+    formula;
+  var res = await fetch(url, {
+    headers: { Authorization: "Bearer " + AIRTABLE_KEY },
   });
   if (!res.ok) throw new Error("Failed to fetch posts: " + res.statusText);
-  const data = await res.json();
+  var data = await res.json();
   return data.records || [];
 }
 
-// Update a post's status
-async function updatePostStatus(recordId, newStatus, reason) {
-  const fields = { Status: newStatus };
-  if (reason) fields["Suppression Reason"] = reason;
-
-  const res = await fetch(
-    `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}/${recordId}`,
+async function updatePost(recordId, fields) {
+  var res = await fetch(
+    "https://api.airtable.com/v0/" +
+      AIRTABLE_BASE +
+      "/" +
+      QUEUE_TABLE +
+      "/" +
+      recordId,
     {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${AIRTABLE_KEY}`,
+        Authorization: "Bearer " + AIRTABLE_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ fields, typecast: true }),
+      body: JSON.stringify({ fields: fields, typecast: true }),
     }
   );
   if (!res.ok) throw new Error("Failed to update post: " + res.statusText);
@@ -49,11 +52,10 @@ module.exports = async function handler(req, res) {
   try {
     // GET: list posts
     if (req.method === "GET") {
-      const status = req.query.status || "Queued";
-      const clientId = req.query.clientId || null;
-      const records = await listPosts(status, clientId);
+      var status = req.query.status || "Queued";
+      var records = await listPosts(status);
 
-      const posts = records.map(function (r) {
+      var posts = records.map(function (r) {
         var f = r.fields;
         var statusVal = f.Status;
         var statusName =
@@ -63,7 +65,6 @@ module.exports = async function handler(req, res) {
           typeof contentType === "object"
             ? contentType.name
             : contentType || "";
-        var clientLinks = f.Client || [];
 
         return {
           id: r.id,
@@ -81,25 +82,40 @@ module.exports = async function handler(req, res) {
           status: statusName,
           suppression_reason: f["Suppression Reason"] || "",
           generated_week: f["Generated Week"] || "",
-          client_id: clientLinks[0] || "",
+          client_id: (f.Client || [])[0] || "",
         };
       });
 
-      return res.status(200).json({ success: true, posts, count: posts.length });
+      return res.status(200).json({ success: true, posts: posts, count: posts.length });
     }
 
-    // PATCH: approve or reject a post
+    // PATCH: approve, reject, suppress, or update image
     if (req.method === "PATCH") {
       var body = req.body || {};
       var recordId = body.recordId;
       var action = body.action;
-      var reason = body.reason || "";
 
       if (!recordId)
         return res.status(400).json({ error: "recordId is required" });
+
+      // Update image action
+      if (action === "update_image") {
+        var imageUrl = body.imageUrl;
+        if (!imageUrl)
+          return res.status(400).json({ error: "imageUrl is required" });
+        await updatePost(recordId, { "Image URL": imageUrl });
+        return res.status(200).json({
+          success: true,
+          action: "update_image",
+          recordId: recordId,
+          imageUrl: imageUrl,
+        });
+      }
+
+      // Status actions
       if (!action || !["approve", "reject", "suppress"].includes(action))
         return res.status(400).json({
-          error: "action must be approve, reject, or suppress",
+          error: "action must be approve, reject, suppress, or update_image",
         });
 
       var newStatus = "Queued";
@@ -107,7 +123,10 @@ module.exports = async function handler(req, res) {
       if (action === "reject") newStatus = "Replaced";
       if (action === "suppress") newStatus = "Suppressed";
 
-      var updated = await updatePostStatus(recordId, newStatus, reason);
+      var fields = { Status: newStatus };
+      if (body.reason) fields["Suppression Reason"] = body.reason;
+
+      await updatePost(recordId, fields);
 
       return res.status(200).json({
         success: true,

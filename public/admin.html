@@ -11,7 +11,7 @@
         .container { max-width: 960px; margin: 0 auto; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .header-left { display: flex; align-items: center; gap: 10px; }
-        .logo { width: 32; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #00B4B6, #009A9C); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; width: 32px; }
+        .logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #00B4B6, #009A9C); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
         .header-title { font-size: 18px; font-weight: 700; }
         .header-sub { font-size: 10px; font-family: 'Space Mono', monospace; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
         .header-time { font-size: 12px; font-family: 'Space Mono', monospace; color: #94A3B8; }
@@ -23,9 +23,6 @@
         .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
         .alert-error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #FCA5A5; }
         .alert-warning { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); color: #FDE68A; }
-        .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
-        .tab { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #94A3B8; cursor: pointer; font-size: 13px; font-weight: 500; }
-        .tab.active { border-color: rgba(0,180,182,0.4); background: rgba(0,180,182,0.12); color: #00D4D6; }
         .client-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px 18px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
         .client-card:hover { border-color: rgba(255,255,255,0.15); }
         .client-card.expanded { border-color: rgba(0,180,182,0.3); border-left: 3px solid #00B4B6; }
@@ -49,11 +46,28 @@
         .generate-status.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #6EE7B7; }
         .generate-status.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #FCA5A5; }
         .loading { text-align: center; padding: 60px; color: #94A3B8; font-size: 14px; }
-        .specialisms-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         .spec-pill { padding: 2px 8px; border-radius: 4px; font-size: 10px; background: rgba(0,180,182,0.08); border: 1px solid rgba(0,180,182,0.2); color: #00B4B6; }
+        .specialisms-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0B1D3A; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        #loginOverlay h2 { margin-bottom: 16px; }
+        #loginOverlay input { padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #F8FAFB; font-size: 14px; width: 250px; font-family: 'DM Sans', sans-serif; }
+        #loginOverlay button { margin-left: 8px; padding: 10px 20px; border-radius: 8px; border: none; background: linear-gradient(135deg, #00B4B6, #009A9C); color: #F8FAFB; font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        #loginError { color: #FCA5A5; font-size: 12px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
+    <div id="loginOverlay">
+        <div style="text-align:center;">
+            <div class="logo" style="margin:0 auto 16px;width:48px;height:48px;font-size:24px;border-radius:12px;">L</div>
+            <h2>Luna Marketing Admin</h2>
+            <div>
+                <input type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkLogin()">
+                <button onclick="checkLogin()">Login</button>
+            </div>
+            <div id="loginError">Incorrect password</div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <div class="header-left">
@@ -78,14 +92,23 @@
     </div>
 
     <script>
-        let dashboardData = null;
+        function checkLogin() {
+            var p = document.getElementById('loginPass').value;
+            if (p === 'travelgenix2026') {
+                document.getElementById('loginOverlay').style.display = 'none';
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        var dashboardData = null;
 
         async function loadDashboard() {
             document.getElementById('timestamp').textContent = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
             try {
-                const res = await fetch('/api/clients');
-                const data = await res.json();
+                var res = await fetch('/api/clients');
+                var data = await res.json();
                 if (!data.success) throw new Error(data.error || 'Failed to load');
                 dashboardData = data;
                 renderStats(data.totals);
@@ -141,7 +164,6 @@
                 html += '</div>';
                 html += '</div>';
 
-                // Detail section
                 html += '<div class="client-detail">';
                 html += '<div class="detail-row"><span class="detail-label">Website</span> <a href="' + c.website + '" target="_blank" style="color:#00B4B6">' + c.website + '</a></div>';
                 html += '<div class="detail-row"><span class="detail-label">Destinations</span> <span>' + (c.destinations || 'Not set') + '</span></div>';
@@ -158,7 +180,6 @@
                     html += '</div></div>';
                 }
 
-                // Generate button
                 html += '<button class="generate-btn" id="btn-' + c.id + '" onclick="event.stopPropagation(); generateForClient(\'' + c.id + '\', \'' + (c.trading_name || c.business_name) + '\')">Generate Posts for ' + (c.trading_name || c.business_name) + '</button>';
                 html += '<div class="generate-status" id="status-' + c.id + '"></div>';
 
@@ -196,7 +217,6 @@
                 status.className = 'generate-status show success';
                 status.textContent = 'Generated ' + data.posts.length + ' posts for ' + name + '. ' + data.queued + ' queued.' + (data.suppressed > 0 ? ' ' + data.suppressed + ' suppressed by FCDO.' : '');
 
-                // Refresh dashboard after a moment
                 setTimeout(loadDashboard, 2000);
             } catch (err) {
                 status.className = 'generate-status show error';

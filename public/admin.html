@@ -254,6 +254,10 @@ body {
 .post-img.ratio-fb { aspect-ratio: 1.91 / 1; }
 .post-img.ratio-ig { aspect-ratio: 1 / 1; }
 .post-img.ratio-li { aspect-ratio: 1.91 / 1; }
+.post-img.ratio-tw { aspect-ratio: 16 / 9; }
+.post-img.ratio-pin { aspect-ratio: 2 / 3; }
+.post-img.ratio-tt { aspect-ratio: 9 / 16; }
+.post-img.ratio-gbp { aspect-ratio: 1.91 / 1; }
 .post-no-img {
   width: 100%; display: flex; align-items: center; justify-content: center;
   background: var(--surface); color: var(--text-dim); font-size: 12px;
@@ -261,6 +265,10 @@ body {
 .post-no-img.ratio-fb { aspect-ratio: 1.91 / 1; }
 .post-no-img.ratio-ig { aspect-ratio: 1 / 1; }
 .post-no-img.ratio-li { aspect-ratio: 1.91 / 1; }
+.post-no-img.ratio-tw { aspect-ratio: 16 / 9; }
+.post-no-img.ratio-pin { aspect-ratio: 2 / 3; }
+.post-no-img.ratio-tt { aspect-ratio: 9 / 16; }
+.post-no-img.ratio-gbp { aspect-ratio: 1.91 / 1; }
 
 .post-type-badge {
   position: absolute; top: 8px; left: 8px;
@@ -539,6 +547,10 @@ body {
 .cal-platform-fb { background: #1877F2; }
 .cal-platform-ig { background: linear-gradient(135deg, #833AB4, #E1306C); }
 .cal-platform-li { background: #0A66C2; }
+.cal-platform-tw { background: #000000; }
+.cal-platform-pin { background: #E60023; }
+.cal-platform-tt { background: #000000; background: linear-gradient(135deg, #25F4EE, #FE2C55); }
+.cal-platform-gbp { background: #4285F4; }
 .cal-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .cal-status-queued { background: var(--blue); }
 .cal-status-approved { background: var(--green); }
@@ -699,7 +711,7 @@ var state = {
   calWeekOffset: 0
 };
 
-var RATIOS = { facebook: 'ratio-fb', instagram: 'ratio-ig', linkedin: 'ratio-li' };
+var RATIOS = { facebook: 'ratio-fb', instagram: 'ratio-ig', linkedin: 'ratio-li', twitter: 'ratio-tw', pinterest: 'ratio-pin', tiktok: 'ratio-tt', gbp: 'ratio-gbp' };
 var TYPE_COLORS = {
   'Destination Inspiration': '#00B4B6', 'Offer Highlight': '#F5A623',
   'Travel Tips': '#8B5CF6', 'Social Proof': '#EC4899',
@@ -923,7 +935,7 @@ function renderReviewQueue() {
 
   // Store captions for platform switching
   window._captions = {};
-  posts.forEach(function(p) { window._captions[p.id] = { facebook: p.caption_facebook, instagram: p.caption_instagram, linkedin: p.caption_linkedin }; });
+  posts.forEach(function(p) { window._captions[p.id] = { facebook: p.caption_facebook, instagram: p.caption_instagram, linkedin: p.caption_linkedin, twitter: p.caption_twitter, pinterest: p.caption_pinterest, tiktok: p.caption_tiktok, gbp: p.caption_gbp }; });
 
   var allSel = posts.every(function(p) { return state.selected[p.id]; });
   var someSel = Object.values(state.selected).some(function(v) { return v; });
@@ -933,9 +945,9 @@ function renderReviewQueue() {
   // Toolbar
   h += '<div class="queue-toolbar">';
   h += '<div class="queue-toolbar-left">';
-  ['facebook','instagram','linkedin'].forEach(function(p) {
-    var lbl = p === 'instagram' ? 'Instagram (1:1)' : p.charAt(0).toUpperCase() + p.slice(1) + ' (1.91:1)';
-    h += '<button class="post-plat-tab' + (state.platform === p ? ' active' : '') + '" onclick="Luna.setPlatform(\'' + p + '\')">' + lbl + '</button>';
+  ['facebook','instagram','linkedin','twitter','pinterest','tiktok','gbp'].forEach(function(p) {
+    var labels = { facebook:'FB (1.91:1)', instagram:'IG (1:1)', linkedin:'LI (1.91:1)', twitter:'X (16:9)', pinterest:'Pin (2:3)', tiktok:'TikTok (9:16)', gbp:'GBP (1.91:1)' };
+    h += '<button class="post-plat-tab' + (state.platform === p ? ' active' : '') + '" onclick="Luna.setPlatform(\'' + p + '\')">' + labels[p] + '</button>';
   });
   h += '</div>';
   h += '<div class="queue-toolbar-right">';
@@ -958,7 +970,8 @@ function renderReviewQueue() {
   posts.forEach(function(p) {
     var cap = window._captions[p.id][state.platform] || p.caption_facebook || '';
     var words = cap.split(/\s+/).filter(Boolean).length;
-    var maxW = state.platform === 'instagram' ? 150 : state.platform === 'linkedin' ? 250 : 200;
+    var maxWords = { facebook: 200, instagram: 150, linkedin: 250, twitter: 50, pinterest: 80, tiktok: 30, gbp: 300 };
+    var maxW = maxWords[state.platform] || 200;
     var ok = words >= 50 && words <= maxW;
     var pos = p.image_position || '50% 50%';
     var ratio = RATIOS[state.platform];
@@ -1240,8 +1253,11 @@ function renderCalendar() {
       h += '<div class="cal-post-foot">';
       h += '<span class="cal-platform-icon cal-platform-fb" title="Facebook">f</span>';
       h += '<span class="cal-platform-icon cal-platform-ig" title="Instagram">ig</span>';
+      h += '<span class="cal-platform-icon cal-platform-tw" title="Twitter/X">x</span>';
+      h += '<span class="cal-platform-icon cal-platform-pin" title="Pinterest">P</span>';
+      h += '<span class="cal-platform-icon cal-platform-tt" title="TikTok">tt</span>';
+      h += '<span class="cal-platform-icon cal-platform-gbp" title="Google Business">G</span>';
       h += '<span class="cal-status-dot ' + sc + '" title="' + sl + '"></span>';
-      h += '<span style="font-size:8px;color:var(--text-dim);font-family:var(--mono)">' + sl + '</span>';
       h += '</div></div>';
     });
 
@@ -1257,8 +1273,12 @@ function renderCalendar() {
   h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span>';
   h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span>';
   h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
-  h += '<span style="margin-left:auto" class="cal-legend-item"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> Facebook</span>';
-  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> Instagram</span>';
+  h += '<span style="margin-left:auto" class="cal-legend-item"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> FB</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> IG</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tw" style="width:12px;height:12px;font-size:7px">x</span> X</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-pin" style="width:12px;height:12px;font-size:7px">P</span> Pin</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tt" style="width:12px;height:12px;font-size:7px">tt</span> TT</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-gbp" style="width:12px;height:12px;font-size:7px">G</span> GBP</span>';
   h += '</div>';
 
   $('view-calendar').innerHTML = h;

@@ -600,6 +600,65 @@ body {
   .cal-now-time { width: 40px; padding-right: 4px; font-size: 8px; }
 }
 
+/* ── ONBOARDING SCANNER ── */
+.scan-panel {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow); display: none;
+}
+.scan-panel.open { display: block; animation: fadeIn 0.3s ease; }
+.scan-url-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.scan-url-input {
+  flex: 1; padding: 12px 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border); background: var(--input-bg);
+  color: var(--text); font-size: 15px; font-family: var(--font);
+}
+.scan-url-input:focus { outline: none; border-color: var(--teal); }
+.scan-btn {
+  padding: 12px 24px; border-radius: var(--radius-sm); border: none;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+  color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: var(--font);
+  white-space: nowrap;
+}
+.scan-btn:disabled { opacity: 0.5; cursor: wait; }
+.scan-progress { font-size: 13px; color: var(--teal); margin-bottom: 16px; display: none; }
+.scan-progress.show { display: flex; align-items: center; gap: 8px; }
+.scan-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.scan-results { display: none; }
+.scan-results.show { display: block; }
+.scan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+@media (max-width: 640px) { .scan-grid { grid-template-columns: 1fr; } }
+.scan-field { }
+.scan-field label { display: block; font-size: 11px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.scan-field input, .scan-field textarea {
+  width: 100%; padding: 8px 12px; border-radius: var(--radius-xs);
+  border: 1px solid var(--input-border); background: var(--input-bg);
+  color: var(--text); font-size: 13px; font-family: var(--font);
+}
+.scan-field input:focus, .scan-field textarea:focus { outline: none; border-color: var(--teal); }
+.scan-field textarea { min-height: 60px; resize: vertical; }
+.scan-colour-preview { display: flex; align-items: center; gap: 6px; }
+.scan-colour-preview .colour-swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0; }
+.scan-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.scan-tag {
+  padding: 4px 10px; border-radius: var(--radius-xs); font-size: 11px;
+  background: rgba(0,180,182,0.08); border: 1px solid rgba(0,180,182,0.2); color: var(--teal);
+}
+.scan-confidence {
+  display: inline-block; padding: 4px 10px; border-radius: var(--radius-xs);
+  font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+}
+.scan-confidence-high { background: rgba(16,185,129,0.1); color: var(--green); }
+.scan-confidence-medium { background: rgba(245,158,11,0.1); color: var(--amber); }
+.scan-confidence-low { background: rgba(239,68,68,0.1); color: var(--red); }
+.scan-save-row { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.add-client-btn {
+  padding: 8px 18px; border-radius: var(--radius-sm); border: 1px solid rgba(0,180,182,0.3);
+  background: rgba(0,180,182,0.08); color: var(--teal); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font); transition: all var(--transition);
+}
+.add-client-btn:hover { background: rgba(0,180,182,0.15); border-color: var(--teal); }
+
 /* ── LOGIN SCREEN ── */
 .login-screen {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -892,7 +951,16 @@ function renderDashboardView(data) {
 function renderClients(clients) {
   var el = $('view-dashboard');
   var h = el.innerHTML;
-  h += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:10px">All clients</div>';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;color:var(--text-dim)">All clients</div><button class="add-client-btn" onclick="Luna.toggleScan()">+ Add Client</button></div>';
+
+  // Scan panel
+  h += '<div class="scan-panel" id="scanPanel">';
+  h += '<div style="font-size:16px;font-weight:600;margin-bottom:4px">Add a New Client</div>';
+  h += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Enter their website URL and Luna will scan it to build their brand profile automatically.</div>';
+  h += '<div class="scan-url-row"><input class="scan-url-input" id="scanUrl" placeholder="e.g. www.sunshineholidays.co.uk" onkeydown="if(event.key===\'Enter\')Luna.scanWebsite()"><button class="scan-btn" id="scanBtn" onclick="Luna.scanWebsite()">Scan Website</button></div>';
+  h += '<div class="scan-progress" id="scanProgress"><div class="scan-spinner"></div><span id="scanProgressText">Fetching website...</span></div>';
+  h += '<div class="scan-results" id="scanResults"></div>';
+  h += '</div>';
   clients.forEach(function(c) {
     var sc = c.status === 'Active' ? 'pill-green' : c.status === 'Paused' ? 'pill-amber' : c.status === 'Error' ? 'pill-red' : 'pill-purple';
     var esc = (c.trading_name || c.business_name).replace(/'/g, "\\'");
@@ -1330,6 +1398,73 @@ function renderCalendar() {
 /* ── HELPERS ── */
 function escHTML(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+function renderScanResults(p, url) {
+  var results = $('scanResults');
+  var confCls = (p.confidence || '').toLowerCase() === 'high' ? 'scan-confidence-high' : (p.confidence || '').toLowerCase() === 'medium' ? 'scan-confidence-medium' : 'scan-confidence-low';
+  var h = '';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:15px;font-weight:600">Scan Results</div><span class="scan-confidence ' + confCls + '">' + (p.confidence || 'Unknown') + ' confidence</span></div>';
+
+  h += '<div class="scan-grid">';
+  h += scanField('Business Name', 'scan-business', p.business_name);
+  h += scanField('Trading Name', 'scan-trading', p.trading_name);
+  h += scanField('Phone', 'scan-phone', p.phone);
+  h += scanField('Email', 'scan-email', p.email);
+  h += scanField('Primary Colour', 'scan-primary', p.primary_colour, true);
+  h += scanField('Secondary Colour', 'scan-secondary', p.secondary_colour, true);
+  h += '</div>';
+
+  h += '<div class="scan-field" style="margin-bottom:12px"><label>Tone Keywords</label><input id="scan-tone" value="' + escHTML(p.tone_keywords || '') + '"></div>';
+  h += '<div class="scan-field" style="margin-bottom:12px"><label>Destinations</label><textarea id="scan-destinations">' + escHTML(p.destinations || '') + '</textarea></div>';
+  h += '<div class="scan-field" style="margin-bottom:12px"><label>Example Brand Phrases</label><textarea id="scan-phrases">' + escHTML(p.example_phrases || '') + '</textarea></div>';
+
+  // Specialisms as tags
+  if (p.specialisms && p.specialisms.length > 0) {
+    h += '<div class="scan-field" style="margin-bottom:12px"><label>Holiday Types</label><div class="scan-tags">';
+    p.specialisms.forEach(function(s) { h += '<span class="scan-tag">' + escHTML(s) + '</span>'; });
+    h += '</div></div>';
+  }
+
+  // Social links found
+  var socials = [];
+  if (p.social_facebook) socials.push('Facebook: ' + p.social_facebook);
+  if (p.social_instagram) socials.push('Instagram: ' + p.social_instagram);
+  if (p.social_twitter) socials.push('Twitter/X: ' + p.social_twitter);
+  if (p.social_pinterest) socials.push('Pinterest: ' + p.social_pinterest);
+  if (p.social_tiktok) socials.push('TikTok: ' + p.social_tiktok);
+  if (p.social_linkedin) socials.push('LinkedIn: ' + p.social_linkedin);
+  if (socials.length > 0) {
+    h += '<div class="scan-field" style="margin-bottom:12px"><label>Social Accounts Found</label>';
+    socials.forEach(function(s) { h += '<div style="font-size:12px;color:var(--text-body);margin-bottom:2px">' + escHTML(s) + '</div>'; });
+    h += '</div>';
+  }
+
+  // Voice settings detected
+  h += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">';
+  h += '<div class="scan-tag">' + (p.formality || 'Balanced') + '</div>';
+  h += '<div class="scan-tag">Emoji: ' + (p.emoji_usage || 'Light') + '</div>';
+  h += '<div class="scan-tag">' + (p.sentence_style || 'Short and punchy') + '</div>';
+  h += '<div class="scan-tag">CTA: ' + (p.cta_style || 'Question-based') + '</div>';
+  h += '</div>';
+
+  h += '<div class="scan-save-row">';
+  h += '<button class="btn btn-primary" id="scanSaveBtn" onclick="Luna.saveScannedClient()">Save Client to Luna</button>';
+  h += '<span style="font-size:12px;color:var(--text-dim)">Review the details above and edit anything that needs adjusting before saving.</span>';
+  h += '</div>';
+
+  results.innerHTML = h;
+  results.classList.add('show');
+}
+
+function scanField(label, id, value, isColour) {
+  var h = '<div class="scan-field"><label>' + label + '</label>';
+  if (isColour && value) {
+    h += '<div class="scan-colour-preview"><div class="colour-swatch" style="background:' + escHTML(value) + '"></div><input id="' + id + '" value="' + escHTML(value || '') + '" style="font-family:var(--mono);font-size:12px"></div>';
+  } else {
+    h += '<input id="' + id + '" value="' + escHTML(value || '') + '">';
+  }
+  return h + '</div>';
+}
+
 /* ── PUBLIC API (exposed to onclick handlers) ── */
 window.Luna = {
   setPlatform: function(p) { state.platform = p; renderReviewQueue(); },
@@ -1457,6 +1592,94 @@ window.Luna = {
       loadReviewQueue();
     } catch(e) { fb.style.background = 'rgba(239,68,68,0.1)'; fb.style.border = '1px solid rgba(239,68,68,0.25)'; fb.style.color = '#FCA5A5'; fb.textContent = 'Error: ' + e.message; }
     finally { btn.disabled = false; btn.textContent = 'Generate Post'; }
+  },
+
+  // Website scanner
+  toggleScan: function() {
+    var panel = $('scanPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+      var inp = $('scanUrl');
+      if (inp) inp.focus();
+    }
+  },
+
+  scanWebsite: async function() {
+    var url = $('scanUrl').value.trim();
+    if (!url) return;
+    var btn = $('scanBtn');
+    var progress = $('scanProgress');
+    var progressText = $('scanProgressText');
+    var results = $('scanResults');
+    btn.disabled = true;
+    progress.classList.add('show');
+    results.classList.remove('show');
+    results.innerHTML = '';
+
+    // Progress animation
+    var steps = ['Fetching website...', 'Reading page content...', 'Analysing brand voice...', 'Extracting destinations...', 'Building profile...'];
+    var stepIdx = 0;
+    var stepTimer = setInterval(function() {
+      stepIdx++;
+      if (stepIdx < steps.length) progressText.textContent = steps[stepIdx];
+    }, 3000);
+
+    try {
+      var res = await fetch('/api/scan-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, save: false })
+      });
+      var data = await res.json();
+      clearInterval(stepTimer);
+      if (!res.ok) throw new Error(data.error);
+      progress.classList.remove('show');
+      window._scannedProfile = data.profile;
+      window._scannedUrl = url;
+      renderScanResults(data.profile, url);
+    } catch(err) {
+      clearInterval(stepTimer);
+      progress.classList.remove('show');
+      results.classList.add('show');
+      results.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius-xs);color:#FCA5A5;font-size:13px">Error: ' + err.message + '</div>';
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  saveScannedClient: async function() {
+    var profile = window._scannedProfile;
+    var url = window._scannedUrl;
+    if (!profile || !url) return;
+
+    // Read any edits from the form
+    var el = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
+    profile.business_name = el('scan-business');
+    profile.trading_name = el('scan-trading');
+    profile.phone = el('scan-phone');
+    profile.destinations = el('scan-destinations');
+    profile.tone_keywords = el('scan-tone');
+    profile.primary_colour = el('scan-primary');
+    profile.secondary_colour = el('scan-secondary');
+    profile.example_phrases = el('scan-phrases');
+    profile.email = el('scan-email');
+
+    var saveBtn = document.getElementById('scanSaveBtn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+    try {
+      var res = await fetch('/api/scan-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, save: true, profile: profile })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (saveBtn) { saveBtn.textContent = 'Client saved'; saveBtn.style.background = 'var(--green)'; }
+      setTimeout(function() { $('scanPanel').classList.remove('open'); loadDashboard(); }, 1500);
+    } catch(err) {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Error: ' + err.message; }
+    }
   },
 
   // Calendar navigation

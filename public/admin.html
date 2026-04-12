@@ -141,7 +141,7 @@ body {
 /* ── TABS ── */
 .tabs { display: flex; gap: 4px; margin-bottom: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tab {
-  padding: 8px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  padding: 8px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
   cursor: pointer; white-space: nowrap; position: relative; transition: all var(--transition);
   font-family: var(--font);
@@ -149,9 +149,11 @@ body {
 .tab:hover { border-color: var(--border-hover); color: var(--text); }
 .tab.active { border-color: rgba(0,180,182,0.4); background: rgba(0,180,182,0.1); color: var(--teal-glow); }
 .tab-badge {
-  position: absolute; top: -5px; right: -5px;
-  background: var(--red); color: #fff; font-size: 10px; font-weight: 700;
-  padding: 1px 5px; border-radius: 8px; font-family: var(--mono);
+  position: absolute; top: -6px; right: -8px;
+  background: var(--red); color: #fff; font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: 10px; font-family: var(--mono);
+  min-width: 20px; text-align: center; line-height: 1.2;
+  box-shadow: 0 1px 4px rgba(239,68,68,0.35);
 }
 
 /* ── PILLS ── */
@@ -425,21 +427,92 @@ body {
   border-radius: var(--radius); overflow: hidden;
 }
 
-/* ── CALENDAR ── */
-.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px; }
-@media (max-width: 700px) { .cal-week { grid-template-columns: repeat(3, 1fr); } }
-.cal-day {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px; min-height: 120px;
+/* ── CALENDAR (Apple Calendar inspired) ── */
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.cal-nav { display: flex; align-items: center; gap: 8px; }
+.cal-nav-btn {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: all var(--transition);
+  font-family: var(--font);
 }
-.cal-day-name { font-size: 11px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-.cal-day.has-post { border-color: rgba(0,180,182,0.25); }
-.cal-post-mini {
+.cal-nav-btn:hover { border-color: var(--teal); color: var(--teal); }
+.cal-today-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 12px;
+  font-family: var(--mono); transition: all var(--transition);
+}
+.cal-today-btn:hover { border-color: var(--teal); color: var(--teal); }
+.cal-period { font-size: 17px; font-weight: 600; }
+
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+  background: var(--border); border-radius: var(--radius); overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.cal-day-header {
+  padding: 10px; text-align: center; font-size: 11px; font-family: var(--mono);
+  color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;
+  background: var(--surface);
+}
+.cal-cell {
+  background: var(--card); min-height: 140px; padding: 8px; position: relative;
+  transition: background var(--transition);
+}
+.cal-cell:hover { background: var(--surface-hover); }
+.cal-cell.today { box-shadow: inset 0 2px 0 var(--teal); }
+.cal-cell.other-month { opacity: 0.4; }
+.cal-cell.drop-target { box-shadow: inset 0 0 0 2px var(--teal); }
+.cal-date {
+  font-size: 13px; font-weight: 500; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.cal-date-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; }
+.cal-cell.today .cal-date-num { background: var(--teal); color: #fff; font-weight: 700; }
+
+.cal-post {
   padding: 6px 8px; border-radius: var(--radius-xs); margin-bottom: 4px;
-  background: rgba(0,180,182,0.06); border-left: 3px solid var(--teal);
-  font-size: 11px; color: var(--text-body);
+  border-left: 3px solid var(--teal); background: rgba(0,180,182,0.05);
+  cursor: grab; transition: all 0.15s; position: relative; font-size: 11px;
 }
-.cal-post-mini-type { font-size: 9px; font-family: var(--mono); color: var(--teal); text-transform: uppercase; }
+.cal-post:hover { background: rgba(0,180,182,0.1); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.cal-post:active { cursor: grabbing; opacity: 0.7; }
+.cal-post.dragging { opacity: 0.4; }
+.cal-post-time { font-family: var(--mono); color: var(--text-dim); font-size: 10px; }
+.cal-post-dest { font-weight: 500; color: var(--text); margin: 2px 0; line-height: 1.3; }
+.cal-post-foot { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.cal-platform-icon {
+  width: 14px; height: 14px; border-radius: 3px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff;
+}
+.cal-platform-fb { background: #1877F2; }
+.cal-platform-ig { background: linear-gradient(135deg, #833AB4, #E1306C); }
+.cal-platform-li { background: #0A66C2; }
+.cal-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cal-status-queued { background: var(--blue); }
+.cal-status-approved { background: var(--green); }
+.cal-status-rejected { background: var(--red); }
+.cal-status-suppressed { background: var(--amber); }
+
+/* Calendar hover popup */
+.cal-popup {
+  position: fixed; z-index: 100; width: 320px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35); overflow: hidden;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+}
+.cal-popup.visible { opacity: 1; }
+.cal-popup-img { width: 100%; aspect-ratio: 1.91/1; object-fit: cover; display: block; }
+.cal-popup-body { padding: 12px; }
+.cal-popup-caption { font-size: 12px; line-height: 1.5; color: var(--text-body); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.cal-popup-meta { font-size: 10px; font-family: var(--mono); color: var(--text-dim); margin-top: 6px; display: flex; justify-content: space-between; }
+
+@media (max-width: 700px) {
+  .cal-grid { grid-template-columns: repeat(2, 1fr); }
+  .cal-day-header:nth-child(n+3) { display: none; }
+  .cal-cell { min-height: 100px; }
+  .cal-popup { width: 260px; }
+}
 
 /* ── LOGIN SCREEN ── */
 .login-screen {
@@ -538,6 +611,14 @@ body {
 </div>
 
 <!-- ═══════════════ JAVASCRIPT ═══════════════ -->
+<!-- Calendar popup (positioned by JS) -->
+<div class="cal-popup" id="calPopup">
+  <img class="cal-popup-img" id="calPopupImg" src="" alt="">
+  <div class="cal-popup-body">
+    <div class="cal-popup-caption" id="calPopupCaption"></div>
+    <div class="cal-popup-meta"><span id="calPopupType"></span><span id="calPopupStatus"></span></div>
+  </div>
+</div>
 <script>
 /* ================================================================
    LUNA MARKETING — ADMIN DASHBOARD
@@ -555,7 +636,8 @@ var MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
 var state = {
   agent: '', company: '', theme: 'dark',
   view: 'dashboard', platform: 'facebook',
-  clients: [], posts: [], selected: {}
+  clients: [], posts: [], selected: {},
+  calWeekOffset: 0
 };
 
 var RATIOS = { facebook: 'ratio-fb', instagram: 'ratio-ig', linkedin: 'ratio-li' };
@@ -960,24 +1042,126 @@ function renderCreate() {
 }
 
 /* ── CALENDAR ── */
+function getWeekDates(offset) {
+  var now = new Date();
+  var day = now.getDay();
+  var mondayOffset = day === 0 ? -6 : 1 - day;
+  var monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset + (offset * 7));
+  var dates = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+function fmtDate(d) {
+  var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate() + ' ' + m[d.getMonth()];
+}
+
+function isToday(d) {
+  var n = new Date();
+  return d.getDate() === n.getDate() && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+}
+
+function matchPostToDay(post, dayIdx) {
+  var days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+  var title = (post.title || '').toLowerCase();
+  return title.includes(days[dayIdx]);
+}
+
+function statusClass(s) {
+  s = (s || '').toLowerCase();
+  if (s === 'approved') return 'cal-status-approved';
+  if (s === 'replaced') return 'cal-status-rejected';
+  if (s === 'suppressed') return 'cal-status-suppressed';
+  return 'cal-status-queued';
+}
+
+function statusLabel(s) {
+  s = (s || '').toLowerCase();
+  if (s === 'approved') return 'Approved';
+  if (s === 'replaced') return 'Rejected';
+  if (s === 'suppressed') return 'Suppressed';
+  return 'Queued';
+}
+
 function renderCalendar() {
-  var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var dates = getWeekDates(state.calWeekOffset);
+  var dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   var posts = state.posts;
 
-  var h = '<div style="font-size:13px;color:var(--text-dim);margin-bottom:4px">This week\'s scheduled posts</div>';
-  h += '<div class="cal-week">';
-  days.forEach(function(day) {
-    var dayPosts = posts.filter(function(p) { return (p.title || '').includes(day) || (p.scheduled_time && (p.title || '').toLowerCase().includes(day.toLowerCase())); });
-    h += '<div class="cal-day' + (dayPosts.length ? ' has-post' : '') + '">';
-    h += '<div class="cal-day-name">' + day + '</div>';
-    if (dayPosts.length) {
-      dayPosts.forEach(function(p) {
-        h += '<div class="cal-post-mini"><div class="cal-post-mini-type">' + (p.content_type || '') + '</div>' + (p.destination || '') + '</div>';
-      });
-    }
-    h += '</div>';
-  });
+  var startLbl = fmtDate(dates[0]);
+  var endLbl = fmtDate(dates[6]);
+  var yrLbl = dates[0].getFullYear();
+
+  var h = '';
+
+  // Header
+  h += '<div class="cal-header">';
+  h += '<div class="cal-nav">';
+  h += '<button class="cal-nav-btn" onclick="Luna.calPrev()" title="Previous week">&#8249;</button>';
+  h += '<button class="cal-today-btn" onclick="Luna.calToday()">Today</button>';
+  h += '<button class="cal-nav-btn" onclick="Luna.calNext()" title="Next week">&#8250;</button>';
   h += '</div>';
+  h += '<div class="cal-period">' + startLbl + ' — ' + endLbl + ' ' + yrLbl + '</div>';
+  h += '<div style="font-size:11px;color:var(--text-dim);font-family:var(--mono)">' + (state.calWeekOffset === 0 ? 'This week' : (state.calWeekOffset > 0 ? '+' + state.calWeekOffset + ' week' + (state.calWeekOffset > 1 ? 's' : '') : state.calWeekOffset + ' week' + (state.calWeekOffset < -1 ? 's' : ''))) + '</div>';
+  h += '</div>';
+
+  // Grid
+  h += '<div class="cal-grid">';
+
+  // Day headers
+  for (var di = 0; di < 7; di++) {
+    h += '<div class="cal-day-header">' + dayNames[di] + ' <span style="opacity:0.5">' + fmtDate(dates[di]) + '</span></div>';
+  }
+
+  // Day cells
+  for (var ci = 0; ci < 7; ci++) {
+    var today = isToday(dates[ci]);
+    var dayPosts = posts.filter(function(p) { return matchPostToDay(p, ci); });
+
+    h += '<div class="cal-cell' + (today ? ' today' : '') + '" data-day="' + ci + '" ondragover="event.preventDefault();this.classList.add(\'drop-target\')" ondragleave="this.classList.remove(\'drop-target\')" ondrop="Luna.calDrop(event,' + ci + ')">';
+    h += '<div class="cal-date"><span class="cal-date-num">' + dates[ci].getDate() + '</span></div>';
+
+    dayPosts.forEach(function(p) {
+      var sc = statusClass(p.status);
+      var sl = statusLabel(p.status);
+      var tc = TYPE_COLORS[p.content_type] || '#94A3B8';
+
+      h += '<div class="cal-post" draggable="true" data-pid="' + p.id + '" style="border-left-color:' + tc + '"';
+      h += ' ondragstart="Luna.calDragStart(event,\'' + p.id + '\')"';
+      h += ' onmouseenter="Luna.calShowPopup(event,\'' + p.id + '\')"';
+      h += ' onmousemove="Luna.calMovePopup(event)"';
+      h += ' onmouseleave="Luna.calHidePopup()">';
+      h += '<div class="cal-post-time">' + (p.scheduled_time || '09:00') + '</div>';
+      h += '<div class="cal-post-dest">' + escHTML(p.destination || 'General') + '</div>';
+      h += '<div class="cal-post-foot">';
+      h += '<span class="cal-platform-icon cal-platform-fb" title="Facebook">f</span>';
+      h += '<span class="cal-platform-icon cal-platform-ig" title="Instagram">ig</span>';
+      h += '<span class="cal-status-dot ' + sc + '" title="' + sl + '"></span>';
+      h += '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono)">' + sl + '</span>';
+      h += '</div></div>';
+    });
+
+    h += '</div>';
+  }
+
+  h += '</div>';
+
+  // Legend
+  h += '<div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim)">';
+  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-queued"></span> Queued</span>';
+  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-approved"></span> Approved</span>';
+  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span>';
+  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
+  h += '<span style="margin-left:auto;display:flex;align-items:center;gap:4px"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> Facebook</span>';
+  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> Instagram</span>';
+  h += '</div>';
+
   $('view-calendar').innerHTML = h;
 }
 
@@ -1111,6 +1295,75 @@ window.Luna = {
       loadReviewQueue();
     } catch(e) { fb.style.background = 'rgba(239,68,68,0.1)'; fb.style.border = '1px solid rgba(239,68,68,0.25)'; fb.style.color = '#FCA5A5'; fb.textContent = 'Error: ' + e.message; }
     finally { btn.disabled = false; btn.textContent = 'Generate Post'; }
+  },
+
+  // Calendar navigation
+  calPrev: function() {
+    if (state.calWeekOffset > -4) { state.calWeekOffset--; renderCalendar(); }
+  },
+  calNext: function() {
+    if (state.calWeekOffset < 4) { state.calWeekOffset++; renderCalendar(); }
+  },
+  calToday: function() {
+    state.calWeekOffset = 0; renderCalendar();
+  },
+
+  // Calendar drag and drop
+  calDragStart: function(evt, pid) {
+    evt.dataTransfer.setData('text/plain', pid);
+    evt.dataTransfer.effectAllowed = 'move';
+    setTimeout(function() { evt.target.classList.add('dragging'); }, 0);
+  },
+  calDrop: function(evt, dayIdx) {
+    evt.preventDefault();
+    var cell = evt.currentTarget;
+    cell.classList.remove('drop-target');
+    var pid = evt.dataTransfer.getData('text/plain');
+    if (!pid) return;
+    // Find the post and update its day in the title (visual only for now)
+    var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    var post = state.posts.find(function(p) { return p.id === pid; });
+    if (post) {
+      // Update the title to reflect new day
+      var oldTitle = post.title || '';
+      var newTitle = oldTitle;
+      days.forEach(function(d) { newTitle = newTitle.replace(new RegExp(d, 'i'), days[dayIdx]); });
+      post.title = newTitle;
+      renderCalendar();
+    }
+  },
+
+  // Calendar hover popup
+  calShowPopup: function(evt, pid) {
+    var post = state.posts.find(function(p) { return p.id === pid; });
+    if (!post) return;
+    var popup = $('calPopup');
+    var img = $('calPopupImg');
+    var cap = $('calPopupCaption');
+    var typ = $('calPopupType');
+    var sta = $('calPopupStatus');
+    if (post.image_url) { img.src = post.image_url; img.style.display = 'block'; }
+    else { img.style.display = 'none'; }
+    cap.textContent = post.caption_facebook || post.caption_instagram || '';
+    typ.textContent = post.content_type || '';
+    sta.textContent = statusLabel(post.status);
+    popup.classList.add('visible');
+    Luna.calMovePopup(evt);
+  },
+  calMovePopup: function(evt) {
+    var popup = $('calPopup');
+    var x = evt.clientX + 16;
+    var y = evt.clientY + 12;
+    // Keep popup within viewport
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    if (x + 330 > w) x = evt.clientX - 336;
+    if (y + 300 > h) y = h - 310;
+    popup.style.left = x + 'px';
+    popup.style.top = y + 'px';
+  },
+  calHidePopup: function() {
+    $('calPopup').classList.remove('visible');
   }
 };
 

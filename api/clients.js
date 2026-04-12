@@ -61,6 +61,10 @@ module.exports = async function handler(req, res) {
       if (body.ctaStyle) fields["CTA Style"] = body.ctaStyle;
       if (body.status) fields["Status"] = body.status;
       if (body.package) fields["Package"] = body.package;
+      if (body.primaryColour) fields["Primary Colour"] = body.primaryColour;
+      if (body.secondaryColour) fields["Secondary Colour"] = body.secondaryColour;
+      if (body.destinations) fields["Destinations"] = body.destinations;
+      if (body.specialisms) fields["Specialisms"] = body.specialisms.split ? body.specialisms.split(", ") : body.specialisms;
 
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: "No valid fields to update" });
 

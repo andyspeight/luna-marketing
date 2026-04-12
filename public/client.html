@@ -193,8 +193,9 @@ var PLATFORMS=[
 
 function renderPosts(){
   var posts=state.posts;
-  if(!posts.length){$('view-posts').innerHTML='<div class="card"><div style="text-align:center;padding:20px;color:var(--text-dim)">No posts waiting for review. '+(state.profile.auto_publish?'Auto Publish is on.':'New posts appear here when generated.')+'</div></div>';return}
-  var h='';
+  var genBar='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><button class="btn btn-primary" id="clientGenBtn" onclick="C.generatePosts(this)">Generate Posts</button><span id="genFeedback" style="font-size:12px;color:var(--text-dim)"></span></div>';
+  if(!posts.length){$('view-posts').innerHTML=genBar+'<div class="card"><div style="text-align:center;padding:20px;color:var(--text-dim)">No posts waiting for review. '+(state.profile.auto_publish?'Auto Publish is on.':'New posts appear here when generated.')+'</div></div>';return}
+  var h=genBar;
   posts.forEach(function(p){
     h+='<div class="post-card" id="cp-'+p.id+'">';
 
@@ -425,6 +426,21 @@ window.C={
   },
   // Auto publish
   setAuto:function(val){state.profile.auto_publish=val;save({autoPublish:val});flash('auto-saved');renderStats()},
+  // Generate posts
+  generatePosts:async function(btn){
+    var fb=$('genFeedback');
+    btn.disabled=true;btn.textContent='Generating...';
+    fb.style.color='var(--text-dim)';fb.textContent='This may take 30-60 seconds...';
+    try{
+      var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});
+      var d=await r.json();
+      if(!r.ok)throw new Error(d.error||'Generation failed');
+      var count=d.posts?d.posts.length:0;
+      fb.style.color='var(--green)';fb.textContent=count+' post'+(count!==1?'s':'')+' generated';
+      await loadPosts();
+    }catch(e){fb.style.color='var(--red)';fb.textContent='Error: '+e.message}
+    finally{btn.disabled=false;btn.textContent='Generate Posts'}
+  },
   // Platform tab switching
   showPlat:function(btn,panelId){
     var card=btn.closest('.post-card');

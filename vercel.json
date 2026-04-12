@@ -8,6 +8,14 @@
     "api/cron-generate.js": {
       "maxDuration": 300,
       "memory": 256
+    },
+    "api/prompt-post.js": {
+      "maxDuration": 30,
+      "memory": 256
+    },
+    "api/scan-website.js": {
+      "maxDuration": 45,
+      "memory": 256
     }
   },
   "crons": [

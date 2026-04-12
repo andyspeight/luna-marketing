@@ -198,7 +198,16 @@ function repairJSON(str) {
 /* ══════════════════════════════════════════════
    5. SAVE CLIENT TO AIRTABLE
    ══════════════════════════════════════════════ */
+function generateAccessCode(tradingName) {
+  // Format: TRAVEL-XXX-NNNN where XXX = 3-letter abbreviation, NNNN = random 4 digits
+  var name = (tradingName || "CLIENT").toUpperCase().replace(/[^A-Z]/g, "");
+  var abbr = name.substring(0, 3).padEnd(3, "X");
+  var num = String(Math.floor(1000 + Math.random() * 9000));
+  return "TRAVEL-" + abbr + "-" + num;
+}
+
 async function createClient(profile, websiteUrl) {
+  var accessCode = generateAccessCode(profile.trading_name || profile.business_name);
   var fields = {
     "Business Name": profile.business_name || "",
     "Trading Name": profile.trading_name || "",
@@ -219,6 +228,7 @@ async function createClient(profile, websiteUrl) {
     "Posting Frequency": 3,
     "Posting Days": "Mon,Wed,Fri",
     "Monthly Report Email": profile.email || "",
+    "Access Code": accessCode,
   };
   if (profile.specialisms && profile.specialisms.length > 0) fields["Specialisms"] = profile.specialisms;
   var res = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali", {
@@ -227,7 +237,9 @@ async function createClient(profile, websiteUrl) {
     body: JSON.stringify({ records: [{ fields: fields }], typecast: true }),
   });
   if (!res.ok) throw new Error("Airtable: " + res.status);
-  return (await res.json()).records[0];
+  var record = (await res.json()).records[0];
+  record._accessCode = accessCode; // pass back for the response
+  return record;
 }
 
 /* ══════════════════════════════════════════════
@@ -274,7 +286,8 @@ module.exports = async function handler(req, res) {
       success: true, profile: profile,
       raw_colours: colours, raw_socials: socials,
       logo_url: images.logoUrl, og_image_url: images.ogImageUrl,
-      saved: !!saved, client_id: saved ? saved.id : null, url: url,
+      saved: !!saved, client_id: saved ? saved.id : null,
+      access_code: saved ? saved._accessCode : null, url: url,
     });
   } catch (err) {
     console.error("Scan error:", err);

@@ -1151,9 +1151,19 @@ function renderSettings() {
   h += '<div style="display:flex;flex-direction:column;gap:16px">';
 
   // Brand Colours
+  var pc = c.primary_colour || '#1E3A5F';
+  var sc2 = c.secondary_colour || '#F5A623';
   h += '<div class="settings-card"><div class="settings-title">Brand Colours</div>';
-  h += '<div class="colour-row"><div class="colour-item"><div class="input-label">Primary</div><div class="colour-preview"><div class="colour-swatch" style="background:' + (c.primary_colour || '#1E3A5F') + '"></div><input class="input" value="' + (c.primary_colour || '#1E3A5F') + '" style="font-family:var(--mono);font-size:12px"></div></div>';
-  h += '<div class="colour-item"><div class="input-label">Secondary</div><div class="colour-preview"><div class="colour-swatch" style="background:' + (c.secondary_colour || '#F5A623') + '"></div><input class="input" value="' + (c.secondary_colour || '#F5A623') + '" style="font-family:var(--mono);font-size:12px"></div></div></div>';
+  h += '<div class="colour-row"><div class="colour-item"><div class="input-label">Primary</div><div style="display:flex;align-items:center;gap:8px">';
+  h += '<input type="color" value="' + pc + '" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0" onchange="this.nextElementSibling.style.background=this.value;this.nextElementSibling.nextElementSibling.value=this.value">';
+  h += '<div class="colour-swatch" style="background:' + pc + '"></div>';
+  h += '<input class="input" value="' + pc + '" style="font-family:var(--mono);font-size:12px">';
+  h += '</div></div>';
+  h += '<div class="colour-item"><div class="input-label">Secondary</div><div style="display:flex;align-items:center;gap:8px">';
+  h += '<input type="color" value="' + sc2 + '" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0" onchange="this.nextElementSibling.style.background=this.value;this.nextElementSibling.nextElementSibling.value=this.value">';
+  h += '<div class="colour-swatch" style="background:' + sc2 + '"></div>';
+  h += '<input class="input" value="' + sc2 + '" style="font-family:var(--mono);font-size:12px">';
+  h += '</div></div></div>';
   h += '</div>';
 
   // Holiday Types
@@ -1409,22 +1419,46 @@ function renderScanResults(p, url, rawColours) {
   h += scanField('Trading Name', 'scan-trading', p.trading_name);
   h += scanField('Phone', 'scan-phone', p.phone);
   h += scanField('Email', 'scan-email', p.email);
+  h += '</div>';
+
+  // Brand colours section with visual reference
+  h += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px">';
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:11px;font-family:var(--mono);color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin:0">Brand Colours</label></div>';
+
+  // Logo + website link as reference
+  if (p.logo_url) {
+    h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:10px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border)">';
+    h += '<img src="' + escHTML(p.logo_url) + '" style="max-height:48px;max-width:160px;object-fit:contain" onerror="this.style.display=\'none\'">';
+    h += '<div style="font-size:12px;color:var(--text-dim)">Use the colour pickers below to match the brand colours from the client\'s website and logo.</div>';
+    h += '</div>';
+  } else {
+    h += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px">Use the colour pickers to set the client\'s brand colours. Click a swatch to open the browser colour picker, or type a hex code directly.</div>';
+  }
+
+  // Open website button
+  h += '<div style="margin-bottom:14px"><a href="' + escHTML(url) + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-xs);border:1px solid var(--border);background:var(--surface);color:var(--teal);font-size:12px;text-decoration:none;font-family:var(--font);cursor:pointer">Open website in new tab to check colours &#8599;</a></div>';
+
+  // Colour pickers
+  h += '<div class="scan-grid">';
   h += scanField('Primary Colour', 'scan-primary', p.primary_colour, true);
   h += scanField('Secondary Colour', 'scan-secondary', p.secondary_colour, true);
   h += '</div>';
 
-  // Raw colour swatches
+  // Raw colour swatches (clickable to set primary or secondary)
   if (rawColours && rawColours.length > 0) {
-    h += '<div class="scan-field" style="margin-bottom:14px"><label>All Colours Detected</label>';
-    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    h += '<div style="margin-top:10px"><div style="font-size:10px;color:var(--text-dim);margin-bottom:6px">Colours detected in CSS (click to apply):</div>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
     rawColours.forEach(function(c) {
-      h += '<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);cursor:pointer" onclick="document.getElementById(\'scan-primary\').value=\'' + escHTML(c.value) + '\';this.parentElement.parentElement.querySelector(\'.colour-swatch\')&&(this.parentElement.parentElement.querySelector(\'.colour-swatch\').style.background=\'' + escHTML(c.value) + '\')" title="Click to set as primary colour">';
-      h += '<div style="width:16px;height:16px;border-radius:3px;background:' + escHTML(c.value) + ';border:1px solid var(--border)"></div>';
-      h += '<span style="font-size:10px;font-family:var(--mono);color:var(--text-dim)">' + escHTML(c.value) + '</span>';
+      var safeVal = escHTML(c.value);
+      h += '<div style="display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-size:9px" title="Click: set primary. Shift+click: set secondary."';
+      h += ' onclick="var v=\'' + safeVal + '\';if(event.shiftKey){document.getElementById(\'scan-secondary\').value=v;document.getElementById(\'scan-secondary-picker\').value=v;document.getElementById(\'scan-secondary-swatch\').style.background=v}else{document.getElementById(\'scan-primary\').value=v;document.getElementById(\'scan-primary-picker\').value=v;document.getElementById(\'scan-primary-swatch\').style.background=v}">';
+      h += '<div style="width:14px;height:14px;border-radius:3px;background:' + safeVal + ';border:1px solid var(--border)"></div>';
+      h += '<span style="font-family:var(--mono);color:var(--text-dim)">' + safeVal + '</span>';
       h += '</div>';
     });
     h += '</div></div>';
   }
+  h += '</div>';
 
   h += '<div class="scan-field" style="margin-bottom:12px"><label>Tone Keywords</label><input id="scan-tone" value="' + escHTML(p.tone_keywords || '') + '"></div>';
   h += '<div class="scan-field" style="margin-bottom:12px"><label>Destinations</label><textarea id="scan-destinations">' + escHTML(p.destinations || '') + '</textarea></div>';
@@ -1486,10 +1520,15 @@ function renderScanResults(p, url, rawColours) {
 
 function scanField(label, id, value, isColour) {
   var h = '<div class="scan-field"><label>' + label + '</label>';
-  if (isColour && value) {
-    h += '<div class="scan-colour-preview"><div class="colour-swatch" style="background:' + escHTML(value) + '"></div><input id="' + id + '" value="' + escHTML(value || '') + '" style="font-family:var(--mono);font-size:12px"></div>';
+  if (isColour) {
+    var col = escHTML(value || '#333333');
+    h += '<div style="display:flex;align-items:center;gap:8px">';
+    h += '<input type="color" id="' + id + '-picker" value="' + col + '" style="width:44px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0" onchange="document.getElementById(\'' + id + '\').value=this.value;document.getElementById(\'' + id + '-swatch\').style.background=this.value">';
+    h += '<div id="' + id + '-swatch" style="width:36px;height:36px;border-radius:6px;border:2px solid var(--border);background:' + col + ';flex-shrink:0"></div>';
+    h += '<input id="' + id + '" value="' + col + '" style="font-family:var(--mono);font-size:12px;flex:1;padding:8px 10px;border-radius:var(--radius-xs);border:1px solid var(--input-border);background:var(--input-bg);color:var(--text)" onchange="document.getElementById(\'' + id + '-picker\').value=this.value;document.getElementById(\'' + id + '-swatch\').style.background=this.value">';
+    h += '</div>';
   } else {
-    h += '<input id="' + id + '" value="' + escHTML(value || '') + '">';
+    h += '<input id="' + id + '" value="' + escHTML(value || '') + '" style="width:100%;padding:8px 10px;border-radius:var(--radius-xs);border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:13px">';
   }
   return h + '</div>';
 }

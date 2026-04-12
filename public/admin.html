@@ -320,13 +320,28 @@ body {
 
 /* Post body */
 .post-body { padding: 14px; }
-.post-platform-tabs { display: flex; gap: 3px; margin-bottom: 8px; }
+.post-platform-tabs { display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
 .post-plat-tab {
-  padding: 3px 9px; border-radius: 4px; font-size: 10px; font-family: var(--mono);
-  border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
-  cursor: pointer; transition: all var(--transition);
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--text-dim);
+  cursor: pointer; transition: all var(--transition); font-family: var(--font);
+  display: flex; align-items: center; gap: 5px;
 }
-.post-plat-tab.active { border-color: rgba(0,180,182,0.3); color: var(--teal-glow); background: rgba(0,180,182,0.08); }
+.post-plat-tab .plat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.post-plat-tab:hover { border-color: var(--border-hover); color: var(--text); }
+/* Platform-specific active states */
+.post-plat-tab.active-fb { border-color: #1877F2; background: rgba(24,119,242,0.1); color: #1877F2; }
+.post-plat-tab.active-ig { border-color: #E1306C; background: rgba(225,48,108,0.1); color: #E1306C; }
+.post-plat-tab.active-li { border-color: #0A66C2; background: rgba(10,102,194,0.1); color: #0A66C2; }
+.post-plat-tab.active-tw { border-color: #000; background: rgba(0,0,0,0.08); color: var(--text); }
+[data-theme="dark"] .post-plat-tab.active-tw { border-color: #fff; background: rgba(255,255,255,0.08); color: #fff; }
+.post-plat-tab.active-pin { border-color: #E60023; background: rgba(230,0,35,0.1); color: #E60023; }
+.post-plat-tab.active-tt { border-color: #FE2C55; background: rgba(254,44,85,0.08); color: #FE2C55; }
+.post-plat-tab.active-gbp { border-color: #4285F4; background: rgba(66,133,244,0.1); color: #4285F4; }
+
+/* TikTok video preview */
+.post-video { width: 100%; display: block; border-radius: 0; }
+.post-video.ratio-tt { aspect-ratio: 9 / 16; max-height: 400px; object-fit: cover; }
 
 .post-caption { font-size: 13px; line-height: 1.65; color: var(--text-body); white-space: pre-wrap; margin-bottom: 8px; }
 .post-hashtags { font-size: 11px; color: var(--teal); margin-bottom: 8px; word-break: break-all; }
@@ -946,8 +961,20 @@ function renderReviewQueue() {
   h += '<div class="queue-toolbar">';
   h += '<div class="queue-toolbar-left">';
   ['facebook','instagram','linkedin','twitter','pinterest','tiktok','gbp'].forEach(function(p) {
-    var labels = { facebook:'FB (1.91:1)', instagram:'IG (1:1)', linkedin:'LI (1.91:1)', twitter:'X (16:9)', pinterest:'Pin (2:3)', tiktok:'TikTok (9:16)', gbp:'GBP (1.91:1)' };
-    h += '<button class="post-plat-tab' + (state.platform === p ? ' active' : '') + '" onclick="Luna.setPlatform(\'' + p + '\')">' + labels[p] + '</button>';
+    var cfg = {
+      facebook:  { label:'Facebook',  ratio:'1.91:1', dot:'#1877F2', cls:'fb' },
+      instagram: { label:'Instagram', ratio:'1:1',    dot:'#E1306C', cls:'ig' },
+      linkedin:  { label:'LinkedIn',  ratio:'1.91:1', dot:'#0A66C2', cls:'li' },
+      twitter:   { label:'X',         ratio:'16:9',   dot:'#000',    cls:'tw' },
+      pinterest: { label:'Pinterest', ratio:'2:3',    dot:'#E60023', cls:'pin' },
+      tiktok:    { label:'TikTok',    ratio:'9:16',   dot:'#FE2C55', cls:'tt' },
+      gbp:       { label:'Google',    ratio:'1.91:1', dot:'#4285F4', cls:'gbp' }
+    }[p];
+    var isActive = state.platform === p;
+    h += '<button class="post-plat-tab' + (isActive ? ' active-' + cfg.cls : '') + '" onclick="Luna.setPlatform(\'' + p + '\')">';
+    h += '<span class="plat-dot" style="background:' + cfg.dot + '"></span>';
+    h += cfg.label + ' <span style="opacity:0.5;font-weight:400;font-size:10px">' + cfg.ratio + '</span>';
+    h += '</button>';
   });
   h += '</div>';
   h += '<div class="queue-toolbar-right">';
@@ -985,18 +1012,26 @@ function renderReviewQueue() {
     h += '<div class="post-chrome"><div class="post-chrome-left"><div class="post-avatar">' + initial + '</div><div><div class="post-chrome-name">Client</div><div class="post-chrome-dest">' + (p.destination || '') + '</div></div></div>';
     h += '<input type="checkbox"' + (isSel ? ' checked' : '') + ' onchange="Luna.toggleSel(\'' + p.id + '\',this.checked)" style="accent-color:var(--teal);width:15px;height:15px"></div>';
 
-    // Image
+    // Image / Video
     h += '<div class="post-img-wrap" id="iw-' + p.id + '">';
-    if (p.image_url) {
+    var isTikTok = state.platform === 'tiktok';
+    var isPinterest = state.platform === 'pinterest';
+    if (isTikTok && p.video_url) {
+      // TikTok: show video player
+      h += '<video class="post-video ratio-tt" id="hi-' + p.id + '" src="' + p.video_url + '" muted loop playsinline onmouseenter="this.play()" onmouseleave="this.pause()" poster="' + (p.image_url || '') + '"></video>';
+    } else if (isPinterest && p.pinterest_image_url) {
+      // Pinterest: show portrait image
+      h += '<img class="post-img ' + ratio + '" id="hi-' + p.id + '" src="' + p.pinterest_image_url + '" style="object-position:' + pos + '" onclick="Luna.reposition(event,\'' + p.id + '\')" alt="">';
+    } else if (p.image_url) {
       h += '<img class="post-img ' + ratio + '" id="hi-' + p.id + '" src="' + p.image_url + '" style="object-position:' + pos + '" onclick="Luna.reposition(event,\'' + p.id + '\')" alt="">';
       var parts = pos.split(/\s+/); var px = parseFloat(parts[0]) || 50; var py = parseFloat(parts[1]) || 50;
       h += '<div class="focal-dot" id="fd-' + p.id + '" style="left:' + px + '%;top:' + py + '%"></div>';
     } else {
-      h += '<div class="post-no-img ' + ratio + '" id="hi-' + p.id + '">No image</div>';
+      h += '<div class="post-no-img ' + ratio + '" id="hi-' + p.id + '">No ' + (isTikTok ? 'video' : 'image') + '</div>';
     }
     h += '<div class="post-type-badge"><span class="pill pill-teal" style="background:' + typeCol + '18;border-color:' + typeCol + '40;color:' + typeCol + '">' + (p.content_type || '') + '</span></div>';
-    h += '<span class="post-img-hint">Click to set focal point</span>';
-    h += '<button class="change-img-btn" onclick="event.stopPropagation();Luna.togglePicker(\'' + p.id + '\')">Change Image</button>';
+    if (!isTikTok) h += '<span class="post-img-hint">Click to set focal point</span>';
+    h += '<button class="change-img-btn" onclick="event.stopPropagation();Luna.togglePicker(\'' + p.id + '\')">' + (isTikTok ? 'Change Video' : 'Change Image') + '</button>';
     h += '</div>';
 
     // Image picker

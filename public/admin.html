@@ -139,12 +139,12 @@ body {
 .alert-amber { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); color: #FDE68A; }
 
 /* ── TABS ── */
-.tabs { display: flex; gap: 4px; margin-bottom: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; padding: 8px 10px 4px 0; overflow: visible; -webkit-overflow-scrolling: touch; }
 .tab {
-  padding: 8px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  padding: 8px 22px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
   cursor: pointer; white-space: nowrap; position: relative; transition: all var(--transition);
-  font-family: var(--font);
+  font-family: var(--font); overflow: visible;
 }
 .tab:hover { border-color: var(--border-hover); color: var(--text); }
 .tab.active { border-color: rgba(0,180,182,0.4); background: rgba(0,180,182,0.1); color: var(--teal-glow); }
@@ -427,68 +427,110 @@ body {
   border-radius: var(--radius); overflow: hidden;
 }
 
-/* ── CALENDAR (Apple Calendar inspired) ── */
-.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.cal-nav { display: flex; align-items: center; gap: 8px; }
+/* ── CALENDAR (Apple Calendar time-axis layout) ── */
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.cal-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+.cal-title-month { color: var(--text); }
+.cal-title-year { color: var(--text-dim); font-weight: 400; }
+.cal-nav { display: flex; align-items: center; gap: 6px; }
 .cal-nav-btn {
-  width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 16px;
+  width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 18px;
   display: flex; align-items: center; justify-content: center; transition: all var(--transition);
-  font-family: var(--font);
+  font-family: var(--font); line-height: 1;
 }
-.cal-nav-btn:hover { border-color: var(--teal); color: var(--teal); }
+.cal-nav-btn:hover { border-color: var(--teal); color: var(--teal); background: rgba(0,180,182,0.06); }
 .cal-today-btn {
-  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  padding: 5px 16px; border-radius: 16px; border: 1px solid var(--border);
   background: var(--surface); color: var(--text-dim); cursor: pointer; font-size: 12px;
-  font-family: var(--mono); transition: all var(--transition);
+  font-family: var(--font); font-weight: 500; transition: all var(--transition);
 }
 .cal-today-btn:hover { border-color: var(--teal); color: var(--teal); }
-.cal-period { font-size: 17px; font-weight: 600; }
 
-.cal-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
-  background: var(--border); border-radius: var(--radius); overflow: hidden;
-  box-shadow: var(--shadow);
+/* Day column headers */
+.cal-day-bar {
+  display: grid; grid-template-columns: 56px repeat(7, 1fr); gap: 0;
+  border-bottom: 1px solid var(--border); margin-bottom: 0;
 }
-.cal-day-header {
-  padding: 10px; text-align: center; font-size: 11px; font-family: var(--mono);
-  color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;
-  background: var(--surface);
+.cal-day-bar-gutter { width: 56px; }
+.cal-day-hdr {
+  text-align: center; padding: 10px 4px 12px;
 }
-.cal-cell {
-  background: var(--card); min-height: 140px; padding: 8px; position: relative;
-  transition: background var(--transition);
+.cal-day-hdr-name { font-size: 11px; font-family: var(--mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.cal-day-hdr-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; font-size: 18px; font-weight: 600;
+  margin-top: 4px; color: var(--text); transition: all var(--transition);
 }
-.cal-cell:hover { background: var(--surface-hover); }
-.cal-cell.today { box-shadow: inset 0 2px 0 var(--teal); }
-.cal-cell.other-month { opacity: 0.4; }
-.cal-cell.drop-target { box-shadow: inset 0 0 0 2px var(--teal); }
-.cal-date {
-  font-size: 13px; font-weight: 500; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 6px;
-}
-.cal-date-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; }
-.cal-cell.today .cal-date-num { background: var(--teal); color: #fff; font-weight: 700; }
+.cal-day-hdr.today .cal-day-hdr-name { color: var(--red); font-weight: 700; }
+.cal-day-hdr.today .cal-day-hdr-num { background: var(--red); color: #fff; }
 
+/* Time grid body */
+.cal-body-scroll { overflow-y: auto; max-height: 560px; position: relative; }
+.cal-body {
+  display: grid; grid-template-columns: 56px repeat(7, 1fr); gap: 0;
+  position: relative; min-height: 100%;
+}
+
+/* Time gutter (left labels) */
+.cal-time-label {
+  height: 60px; padding-right: 10px; text-align: right; position: relative;
+  font-size: 11px; font-family: var(--mono); color: var(--text-dim); line-height: 1;
+}
+.cal-time-label span { position: relative; top: -6px; }
+
+/* Day columns */
+.cal-col {
+  border-left: 1px solid var(--border); position: relative; min-height: 60px;
+}
+.cal-col.today { background: rgba(0,180,182,0.02); }
+
+/* Hour grid lines */
+.cal-hour-line {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: var(--border); pointer-events: none;
+}
+
+/* Drop target highlight */
+.cal-col.drop-target { background: rgba(0,180,182,0.06); }
+
+/* Current time indicator (red line like Apple) */
+.cal-now {
+  position: absolute; left: 56px; right: 0; height: 2px;
+  background: var(--red); z-index: 10; pointer-events: none;
+}
+.cal-now::before {
+  content: ''; position: absolute; left: -4px; top: -4px;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--red);
+}
+.cal-now-time {
+  position: absolute; left: 0; top: -7px; width: 56px;
+  font-size: 10px; font-family: var(--mono); color: var(--red); font-weight: 700;
+  text-align: right; padding-right: 10px;
+}
+
+/* Posts on the time grid */
 .cal-post {
-  padding: 6px 8px; border-radius: var(--radius-xs); margin-bottom: 4px;
-  border-left: 3px solid var(--teal); background: rgba(0,180,182,0.05);
-  cursor: grab; transition: all 0.15s; position: relative; font-size: 11px;
+  position: absolute; left: 2px; right: 2px;
+  border-radius: 5px; border-left: 3px solid var(--teal);
+  background: rgba(0,180,182,0.08); padding: 5px 7px;
+  cursor: grab; transition: box-shadow 0.15s, transform 0.15s;
+  overflow: hidden; z-index: 5; font-size: 11px;
+  min-height: 26px;
 }
-.cal-post:hover { background: rgba(0,180,182,0.1); transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-.cal-post:active { cursor: grabbing; opacity: 0.7; }
-.cal-post.dragging { opacity: 0.4; }
-.cal-post-time { font-family: var(--mono); color: var(--text-dim); font-size: 10px; }
-.cal-post-dest { font-weight: 500; color: var(--text); margin: 2px 0; line-height: 1.3; }
-.cal-post-foot { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.cal-post:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.2); transform: scale(1.01); z-index: 8; }
+.cal-post:active { cursor: grabbing; opacity: 0.8; }
+.cal-post-time { font-family: var(--mono); color: var(--text-dim); font-size: 9px; line-height: 1; }
+.cal-post-dest { font-weight: 600; color: var(--text); line-height: 1.3; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-post-foot { display: flex; align-items: center; gap: 4px; }
 .cal-platform-icon {
-  width: 14px; height: 14px; border-radius: 3px; display: inline-flex;
-  align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff;
+  width: 13px; height: 13px; border-radius: 3px; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff;
 }
 .cal-platform-fb { background: #1877F2; }
 .cal-platform-ig { background: linear-gradient(135deg, #833AB4, #E1306C); }
 .cal-platform-li { background: #0A66C2; }
-.cal-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cal-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .cal-status-queued { background: var(--blue); }
 .cal-status-approved { background: var(--green); }
 .cal-status-rejected { background: var(--red); }
@@ -496,9 +538,9 @@ body {
 
 /* Calendar hover popup */
 .cal-popup {
-  position: fixed; z-index: 100; width: 320px;
+  position: fixed; z-index: 200; width: 320px;
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.35); overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4); overflow: hidden;
   pointer-events: none; opacity: 0; transition: opacity 0.15s;
 }
 .cal-popup.visible { opacity: 1; }
@@ -507,11 +549,19 @@ body {
 .cal-popup-caption { font-size: 12px; line-height: 1.5; color: var(--text-body); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .cal-popup-meta { font-size: 10px; font-family: var(--mono); color: var(--text-dim); margin-top: 6px; display: flex; justify-content: space-between; }
 
+/* Calendar legend */
+.cal-legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text-dim); }
+.cal-legend-item { display: flex; align-items: center; gap: 4px; }
+
 @media (max-width: 700px) {
-  .cal-grid { grid-template-columns: repeat(2, 1fr); }
-  .cal-day-header:nth-child(n+3) { display: none; }
-  .cal-cell { min-height: 100px; }
-  .cal-popup { width: 260px; }
+  .cal-body-scroll { max-height: 400px; }
+  .cal-day-bar { grid-template-columns: 40px repeat(7, 1fr); }
+  .cal-body { grid-template-columns: 40px repeat(7, 1fr); }
+  .cal-time-label { padding-right: 4px; font-size: 9px; }
+  .cal-day-hdr-num { width: 28px; height: 28px; font-size: 14px; }
+  .cal-popup { width: 240px; }
+  .cal-now { left: 40px; }
+  .cal-now-time { width: 40px; padding-right: 4px; font-size: 8px; }
 }
 
 /* ── LOGIN SCREEN ── */
@@ -1042,6 +1092,11 @@ function renderCreate() {
 }
 
 /* ── CALENDAR ── */
+var CAL_START_HOUR = 6;
+var CAL_END_HOUR = 22;
+var CAL_HOUR_PX = 60;
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 function getWeekDates(offset) {
   var now = new Date();
   var day = now.getDay();
@@ -1049,17 +1104,8 @@ function getWeekDates(offset) {
   var monday = new Date(now);
   monday.setDate(now.getDate() + mondayOffset + (offset * 7));
   var dates = [];
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    dates.push(d);
-  }
+  for (var i = 0; i < 7; i++) { var d = new Date(monday); d.setDate(monday.getDate() + i); dates.push(d); }
   return dates;
-}
-
-function fmtDate(d) {
-  var m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return d.getDate() + ' ' + m[d.getMonth()];
 }
 
 function isToday(d) {
@@ -1069,8 +1115,7 @@ function isToday(d) {
 
 function matchPostToDay(post, dayIdx) {
   var days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
-  var title = (post.title || '').toLowerCase();
-  return title.includes(days[dayIdx]);
+  return (post.title || '').toLowerCase().includes(days[dayIdx]);
 }
 
 function statusClass(s) {
@@ -1089,80 +1134,133 @@ function statusLabel(s) {
   return 'Queued';
 }
 
+function parseTime(t) {
+  var parts = (t || '09:00').split(':');
+  return { h: parseInt(parts[0]) || 9, m: parseInt(parts[1]) || 0 };
+}
+
+function timeToTop(h, m) {
+  return ((h - CAL_START_HOUR) + m / 60) * CAL_HOUR_PX;
+}
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
 function renderCalendar() {
   var dates = getWeekDates(state.calWeekOffset);
   var dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   var posts = state.posts;
+  var totalHours = CAL_END_HOUR - CAL_START_HOUR;
+  var gridHeight = totalHours * CAL_HOUR_PX;
 
-  var startLbl = fmtDate(dates[0]);
-  var endLbl = fmtDate(dates[6]);
-  var yrLbl = dates[0].getFullYear();
+  // Month/year title (Apple style)
+  var monthLabel = MONTHS[dates[0].getMonth()];
+  var yearLabel = dates[0].getFullYear();
+  if (dates[0].getMonth() !== dates[6].getMonth()) {
+    monthLabel = MONTHS[dates[0].getMonth()] + ' / ' + MONTHS[dates[6].getMonth()];
+  }
 
   var h = '';
 
-  // Header
+  // Header row: title left, nav right
   h += '<div class="cal-header">';
+  h += '<div class="cal-title"><span class="cal-title-month">' + monthLabel + '</span> <span class="cal-title-year">' + yearLabel + '</span></div>';
   h += '<div class="cal-nav">';
-  h += '<button class="cal-nav-btn" onclick="Luna.calPrev()" title="Previous week">&#8249;</button>';
+  h += '<button class="cal-nav-btn" onclick="Luna.calPrev()">&#8249;</button>';
   h += '<button class="cal-today-btn" onclick="Luna.calToday()">Today</button>';
-  h += '<button class="cal-nav-btn" onclick="Luna.calNext()" title="Next week">&#8250;</button>';
-  h += '</div>';
-  h += '<div class="cal-period">' + startLbl + ' — ' + endLbl + ' ' + yrLbl + '</div>';
-  h += '<div style="font-size:11px;color:var(--text-dim);font-family:var(--mono)">' + (state.calWeekOffset === 0 ? 'This week' : (state.calWeekOffset > 0 ? '+' + state.calWeekOffset + ' week' + (state.calWeekOffset > 1 ? 's' : '') : state.calWeekOffset + ' week' + (state.calWeekOffset < -1 ? 's' : ''))) + '</div>';
-  h += '</div>';
+  h += '<button class="cal-nav-btn" onclick="Luna.calNext()">&#8250;</button>';
+  h += '</div></div>';
 
-  // Grid
-  h += '<div class="cal-grid">';
-
-  // Day headers
+  // Day column headers
+  h += '<div class="cal-day-bar"><div class="cal-day-bar-gutter"></div>';
   for (var di = 0; di < 7; di++) {
-    h += '<div class="cal-day-header">' + dayNames[di] + ' <span style="opacity:0.5">' + fmtDate(dates[di]) + '</span></div>';
+    var td = isToday(dates[di]);
+    h += '<div class="cal-day-hdr' + (td ? ' today' : '') + '">';
+    h += '<div class="cal-day-hdr-name">' + dayNames[di] + '</div>';
+    h += '<div class="cal-day-hdr-num">' + dates[di].getDate() + '</div>';
+    h += '</div>';
+  }
+  h += '</div>';
+
+  // Scrollable time body
+  h += '<div class="cal-body-scroll" id="calScroll">';
+
+  // Now indicator (only show for current week)
+  if (state.calWeekOffset === 0) {
+    var now = new Date();
+    var nowH = now.getHours();
+    var nowM = now.getMinutes();
+    if (nowH >= CAL_START_HOUR && nowH < CAL_END_HOUR) {
+      var nowTop = timeToTop(nowH, nowM);
+      h += '<div class="cal-now" style="top:' + nowTop + 'px"><span class="cal-now-time">' + pad2(nowH) + ':' + pad2(nowM) + '</span></div>';
+    }
   }
 
-  // Day cells
+  h += '<div class="cal-body" style="height:' + gridHeight + 'px">';
+
+  // Time gutter + hour lines
+  for (var hr = CAL_START_HOUR; hr < CAL_END_HOUR; hr++) {
+    var top = (hr - CAL_START_HOUR) * CAL_HOUR_PX;
+    h += '<div class="cal-time-label" style="position:absolute;top:' + top + 'px;left:0;width:56px;height:' + CAL_HOUR_PX + 'px"><span>' + pad2(hr) + ':00</span></div>';
+    h += '<div class="cal-hour-line" style="top:' + top + 'px;left:56px"></div>';
+  }
+
+  // Day columns
   for (var ci = 0; ci < 7; ci++) {
-    var today = isToday(dates[ci]);
+    var isT = isToday(dates[ci]);
+    var colLeft = 'calc(56px + ' + ci + ' * ((100% - 56px) / 7))';
+    var colWidth = 'calc((100% - 56px) / 7)';
+
+    h += '<div class="cal-col' + (isT ? ' today' : '') + '" style="position:absolute;top:0;left:' + colLeft + ';width:' + colWidth + ';height:' + gridHeight + 'px;border-left:1px solid var(--border)" data-day="' + ci + '" ondragover="event.preventDefault();this.classList.add(\'drop-target\')" ondragleave="this.classList.remove(\'drop-target\')" ondrop="Luna.calDrop(event,' + ci + ')">';
+
+    // Posts for this day
     var dayPosts = posts.filter(function(p) { return matchPostToDay(p, ci); });
-
-    h += '<div class="cal-cell' + (today ? ' today' : '') + '" data-day="' + ci + '" ondragover="event.preventDefault();this.classList.add(\'drop-target\')" ondragleave="this.classList.remove(\'drop-target\')" ondrop="Luna.calDrop(event,' + ci + ')">';
-    h += '<div class="cal-date"><span class="cal-date-num">' + dates[ci].getDate() + '</span></div>';
-
     dayPosts.forEach(function(p) {
+      var time = parseTime(p.scheduled_time);
+      var pTop = timeToTop(time.h, time.m);
       var sc = statusClass(p.status);
       var sl = statusLabel(p.status);
       var tc = TYPE_COLORS[p.content_type] || '#94A3B8';
 
-      h += '<div class="cal-post" draggable="true" data-pid="' + p.id + '" style="border-left-color:' + tc + '"';
+      h += '<div class="cal-post" draggable="true" data-pid="' + p.id + '" style="top:' + pTop + 'px;border-left-color:' + tc + ';height:50px"';
       h += ' ondragstart="Luna.calDragStart(event,\'' + p.id + '\')"';
       h += ' onmouseenter="Luna.calShowPopup(event,\'' + p.id + '\')"';
       h += ' onmousemove="Luna.calMovePopup(event)"';
       h += ' onmouseleave="Luna.calHidePopup()">';
-      h += '<div class="cal-post-time">' + (p.scheduled_time || '09:00') + '</div>';
+      h += '<div class="cal-post-time">' + pad2(time.h) + ':' + pad2(time.m) + '</div>';
       h += '<div class="cal-post-dest">' + escHTML(p.destination || 'General') + '</div>';
       h += '<div class="cal-post-foot">';
       h += '<span class="cal-platform-icon cal-platform-fb" title="Facebook">f</span>';
       h += '<span class="cal-platform-icon cal-platform-ig" title="Instagram">ig</span>';
       h += '<span class="cal-status-dot ' + sc + '" title="' + sl + '"></span>';
-      h += '<span style="font-size:9px;color:var(--text-dim);font-family:var(--mono)">' + sl + '</span>';
+      h += '<span style="font-size:8px;color:var(--text-dim);font-family:var(--mono)">' + sl + '</span>';
       h += '</div></div>';
     });
 
     h += '</div>';
   }
 
-  h += '</div>';
+  h += '</div>'; // cal-body
+  h += '</div>'; // cal-body-scroll
 
   // Legend
-  h += '<div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim)">';
-  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-queued"></span> Queued</span>';
-  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-approved"></span> Approved</span>';
-  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span>';
-  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
-  h += '<span style="margin-left:auto;display:flex;align-items:center;gap:4px"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> Facebook</span>';
-  h += '<span style="display:flex;align-items:center;gap:4px"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> Instagram</span>';
+  h += '<div class="cal-legend">';
+  h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-queued"></span> Queued</span>';
+  h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span>';
+  h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span>';
+  h += '<span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
+  h += '<span style="margin-left:auto" class="cal-legend-item"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> Facebook</span>';
+  h += '<span class="cal-legend-item"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> Instagram</span>';
   h += '</div>';
 
   $('view-calendar').innerHTML = h;
+
+  // Auto-scroll to first post or 08:00
+  var scroll = $('calScroll');
+  if (scroll) {
+    var firstPost = posts[0];
+    var scrollTo = firstPost ? timeToTop(parseTime(firstPost.scheduled_time).h, 0) - 20 : timeToTop(8, 0);
+    scroll.scrollTop = Math.max(0, scrollTo);
+  }
 }
 
 /* ── HELPERS ── */

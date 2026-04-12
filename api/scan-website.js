@@ -4,13 +4,13 @@ const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 
+/* ── WEBSITE FETCHER ── */
 async function fetchWebsite(url) {
-  // Normalise URL
   if (!url.startsWith("http")) url = "https://" + url;
   try {
     var res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; LunaMarketing/1.0; +https://luna-marketing.vercel.app)",
+        "User-Agent": "Mozilla/5.0 (compatible; LunaMarketing/1.0)",
         Accept: "text/html",
       },
       redirect: "follow",
@@ -18,59 +18,186 @@ async function fetchWebsite(url) {
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     var html = await res.text();
-    // Strip scripts, styles, and tags to reduce token usage
-    html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
-    html = html.replace(/<style[\s\S]*?<\/style>/gi, "");
-    html = html.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
-    // Keep meta tags, links, and body content
-    var meta = "";
-    var metaMatches = html.match(/<meta[^>]*>/gi);
-    if (metaMatches) meta = metaMatches.join("\n");
-    var linkMatches = html.match(/<link[^>]*>/gi);
-    if (linkMatches) meta += "\n" + linkMatches.slice(0, 20).join("\n");
-    // Extract visible text
-    var text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    // Truncate to reasonable size for Claude
-    if (text.length > 12000) text = text.substring(0, 12000);
-    if (meta.length > 3000) meta = meta.substring(0, 3000);
-    return { url: url, meta: meta, text: text, success: true };
+    return { url: url, html: html, success: true };
   } catch (err) {
-    return { url: url, meta: "", text: "", success: false, error: err.message };
+    return { url: url, html: "", success: false, error: err.message };
   }
 }
 
-async function analyseWithClaude(siteData) {
-  var prompt = "You are analysing a travel agent's website to extract their brand profile for an automated social media tool called Luna Marketing.\n\n" +
+/* ── EXTRACT COLOURS FROM HTML ── */
+function extractColours(html) {
+  var colours = [];
+
+  // 1. Theme-color meta tag
+  var themeMatch = html.match(/<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i);
+  if (themeMatch) colours.push({ source: "meta theme-color", value: themeMatch[1] });
+
+  // 2. msapplication-TileColor
+  var tileMatch = html.match(/<meta[^>]*name=["']msapplication-TileColor["'][^>]*content=["']([^"']+)["']/i);
+  if (tileMatch) colours.push({ source: "meta tile-color", value: tileMatch[1] });
+
+  // 3. Inline style colours on body, header, nav, .header, #header
+  var inlineColours = html.match(/(?:background-color|background|color)\s*:\s*(#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\))/gi);
+  if (inlineColours) {
+    inlineColours.forEach(function (m) {
+      var val = m.replace(/.*:\s*/, "").trim();
+      if (val && !val.includes("transparent") && !val.includes("inherit")) {
+        colours.push({ source: "inline CSS", value: val });
+      }
+    });
+  }
+
+  // 4. CSS custom properties (--primary, --brand, --accent, --main)
+  var cssVars = html.match(/--(?:primary|brand|accent|main|secondary|header|nav)[-\w]*\s*:\s*(#[0-9a-fA-F]{3,8}|rgb[a]?\([^)]+\))/gi);
+  if (cssVars) {
+    cssVars.forEach(function (m) {
+      var parts = m.split(":");
+      var name = parts[0].trim();
+      var val = parts[1].trim();
+      colours.push({ source: "CSS var " + name, value: val });
+    });
+  }
+
+  // 5. Colours in <style> blocks
+  var styleBlocks = html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+  if (styleBlocks) {
+    styleBlocks.forEach(function (block) {
+      var hexes = block.match(/#[0-9a-fA-F]{6}/g);
+      if (hexes) {
+        // Count frequency of each hex
+        var freq = {};
+        hexes.forEach(function (h) {
+          var lower = h.toLowerCase();
+          // Skip common whites, blacks, greys
+          if (["#ffffff", "#000000", "#f5f5f5", "#eeeeee", "#333333", "#666666", "#999999", "#cccccc", "#fafafa", "#f0f0f0", "#e5e5e5", "#d4d4d4", "#737373", "#404040", "#171717", "#0a0a0a"].indexOf(lower) === -1) {
+            freq[lower] = (freq[lower] || 0) + 1;
+          }
+        });
+        // Sort by frequency, take top 5
+        var sorted = Object.entries(freq).sort(function (a, b) { return b[1] - a[1]; });
+        sorted.slice(0, 5).forEach(function (pair) {
+          colours.push({ source: "CSS (used " + pair[1] + "x)", value: pair[0] });
+        });
+      }
+    });
+  }
+
+  return colours;
+}
+
+/* ── EXTRACT SOCIAL MEDIA LINKS ── */
+function extractSocialLinks(html) {
+  var socials = {
+    facebook: null, instagram: null, twitter: null,
+    pinterest: null, tiktok: null, linkedin: null, youtube: null
+  };
+
+  // Find all href values
+  var hrefs = html.match(/href=["']([^"']+)["']/gi);
+  if (!hrefs) return socials;
+
+  hrefs.forEach(function (h) {
+    var url = h.replace(/href=["']/i, "").replace(/["']$/, "").toLowerCase();
+    if (url.includes("facebook.com/") && !url.includes("sharer") && !socials.facebook) socials.facebook = url;
+    if (url.includes("instagram.com/") && !socials.instagram) socials.instagram = url;
+    if ((url.includes("twitter.com/") || url.includes("x.com/")) && !url.includes("intent") && !socials.twitter) socials.twitter = url;
+    if (url.includes("pinterest.com/") && !url.includes("pin/create") && !socials.pinterest) socials.pinterest = url;
+    if (url.includes("tiktok.com/") && !socials.tiktok) socials.tiktok = url;
+    if (url.includes("linkedin.com/") && !socials.linkedin) socials.linkedin = url;
+    if (url.includes("youtube.com/") && !socials.youtube) socials.youtube = url;
+  });
+
+  return socials;
+}
+
+/* ── EXTRACT LOGO ── */
+function extractLogo(html, baseUrl) {
+  // Check og:image first
+  var ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+  if (ogMatch) return ogMatch[1];
+
+  // Check for logo in img tags
+  var logoImgs = html.match(/<img[^>]*(?:class|id|alt)=["'][^"']*logo[^"']*["'][^>]*src=["']([^"']+)["']/gi);
+  if (logoImgs && logoImgs.length > 0) {
+    var srcMatch = logoImgs[0].match(/src=["']([^"']+)["']/i);
+    if (srcMatch) {
+      var src = srcMatch[1];
+      if (src.startsWith("//")) src = "https:" + src;
+      else if (src.startsWith("/")) src = baseUrl + src;
+      return src;
+    }
+  }
+
+  // Check link rel icon / apple-touch-icon
+  var iconMatch = html.match(/<link[^>]*rel=["'](?:apple-touch-icon|icon|shortcut icon)["'][^>]*href=["']([^"']+)["']/i);
+  if (iconMatch) {
+    var href = iconMatch[1];
+    if (href.startsWith("//")) href = "https:" + href;
+    else if (href.startsWith("/")) href = baseUrl + href;
+    return href;
+  }
+
+  return "";
+}
+
+/* ── PREPARE CONTENT FOR CLAUDE ── */
+function prepareContent(html) {
+  // Strip scripts, styles, noscript
+  var cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+  cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
+  cleaned = cleaned.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+
+  // Keep meta tags
+  var meta = "";
+  var metaMatches = html.match(/<meta[^>]*>/gi);
+  if (metaMatches) meta = metaMatches.join("\n");
+
+  // Extract visible text
+  var text = cleaned.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (text.length > 12000) text = text.substring(0, 12000);
+  if (meta.length > 3000) meta = meta.substring(0, 3000);
+
+  return { meta: meta, text: text };
+}
+
+/* ── ANALYSE WITH CLAUDE ── */
+async function analyseWithClaude(siteData, colours, socials, logoUrl) {
+  var content = prepareContent(siteData.html);
+
+  var prompt = "You are analysing a travel agent's website to extract their brand profile.\n\n" +
     "Website URL: " + siteData.url + "\n\n" +
-    "META TAGS:\n" + siteData.meta + "\n\n" +
-    "PAGE CONTENT:\n" + siteData.text + "\n\n" +
-    "Extract the following information from this website. Be specific and accurate. Only include information you can genuinely find or confidently infer from the content.\n\n" +
-    "Return ONLY valid JSON with no markdown fences:\n" +
+    "META TAGS:\n" + content.meta + "\n\n" +
+    "PAGE CONTENT:\n" + content.text + "\n\n" +
+    "PRE-EXTRACTED COLOURS (from CSS/meta tags):\n" + JSON.stringify(colours) + "\n\n" +
+    "PRE-EXTRACTED SOCIAL LINKS:\n" + JSON.stringify(socials) + "\n\n" +
+    "PRE-EXTRACTED LOGO URL: " + (logoUrl || "not found") + "\n\n" +
+    "Extract the following. Use the pre-extracted data where available. Be specific and accurate.\n\n" +
+    "Return ONLY valid JSON:\n" +
     "{\n" +
-    '  "business_name": "The registered or legal business name",\n' +
-    '  "trading_name": "The name they trade under (often different from business name)",\n' +
-    '  "phone": "UK phone number if found",\n' +
-    '  "email": "Email address if found",\n' +
-    '  "destinations": "Comma-separated list of all destinations mentioned (countries and specific resorts/cities)",\n' +
-    '  "specialisms": ["Array of holiday types they specialise in, e.g. Beach, Family, Luxury, Cruise, Ski, City Breaks, Weddings, Touring, Long Haul, Short Haul, Adventure, All Inclusive"],\n' +
-    '  "tone_keywords": "3-5 comma-separated words describing their brand voice (e.g. warm, professional, fun, aspirational, chatty, knowledgeable)",\n' +
-    '  "formality": "One of: Casual, Balanced, Formal",\n' +
-    '  "emoji_usage": "One of: None, Light, Heavy (based on their current social/web content)",\n' +
-    '  "sentence_style": "One of: Short and punchy, Longer and descriptive",\n' +
-    '  "cta_style": "One of: Direct, Soft, Question-based",\n' +
-    '  "primary_colour": "Hex colour code of their primary brand colour (from logo/header/buttons)",\n' +
-    '  "secondary_colour": "Hex colour code of their secondary brand colour",\n' +
-    '  "logo_url": "URL of their logo image if found in meta tags or page",\n' +
-    '  "example_phrases": "3-5 actual phrases from their website that capture their brand voice",\n' +
-    '  "social_facebook": "Facebook page URL if found",\n' +
-    '  "social_instagram": "Instagram URL if found",\n' +
-    '  "social_twitter": "Twitter/X URL if found",\n' +
-    '  "social_pinterest": "Pinterest URL if found",\n' +
-    '  "social_tiktok": "TikTok URL if found",\n' +
-    '  "social_linkedin": "LinkedIn URL if found",\n' +
-    '  "confidence": "High, Medium, or Low - how confident you are in the overall extraction"\n' +
-    "}\n\n" +
-    "If you cannot find a value, use an empty string for strings or an empty array for arrays. Do not guess or fabricate data.";
+    '  "business_name": "Legal business name",\n' +
+    '  "trading_name": "Name they trade under",\n' +
+    '  "phone": "UK phone if found",\n' +
+    '  "email": "Email if found",\n' +
+    '  "destinations": "Comma-separated destinations (countries and resorts)",\n' +
+    '  "specialisms": ["Holiday types e.g. Beach, Family, Luxury, Cruise, Ski, City Breaks, Weddings, Touring, Long Haul, Short Haul, Adventure, All Inclusive"],\n' +
+    '  "tone_keywords": "3-5 words describing voice (e.g. warm, professional, fun)",\n' +
+    '  "formality": "Casual / Balanced / Formal",\n' +
+    '  "emoji_usage": "None / Light / Heavy",\n' +
+    '  "sentence_style": "Short and punchy / Longer and descriptive",\n' +
+    '  "cta_style": "Direct / Soft / Question-based",\n' +
+    '  "primary_colour": "Hex code of their PRIMARY brand colour. Use the pre-extracted colours data. Pick the most prominent non-white non-black colour.",\n' +
+    '  "secondary_colour": "Hex code of their SECONDARY brand colour from the extracted data.",\n' +
+    '  "logo_url": "Use the pre-extracted logo URL if found",\n' +
+    '  "example_phrases": "3-5 actual phrases from their website that show their voice",\n' +
+    '  "social_facebook": "Use pre-extracted value or empty string",\n' +
+    '  "social_instagram": "Use pre-extracted value or empty string",\n' +
+    '  "social_twitter": "Use pre-extracted value or empty string",\n' +
+    '  "social_pinterest": "Use pre-extracted value or empty string",\n' +
+    '  "social_tiktok": "Use pre-extracted value or empty string",\n' +
+    '  "social_linkedin": "Use pre-extracted value or empty string",\n' +
+    '  "social_youtube": "Use pre-extracted value or empty string",\n' +
+    '  "confidence": "High / Medium / Low"\n' +
+    "}\n\nDo not guess or fabricate. Use empty string if not found.";
 
   var response = await claude.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -79,14 +206,12 @@ async function analyseWithClaude(siteData) {
     messages: [{ role: "user", content: prompt }],
   });
 
-  var text = response.content
-    .map(function (c) { return c.type === "text" ? c.text : ""; })
-    .filter(Boolean)
-    .join("");
+  var text = response.content.map(function (c) { return c.type === "text" ? c.text : ""; }).filter(Boolean).join("");
   var cleaned = text.replace(/```json|```/g, "").trim();
   return JSON.parse(cleaned);
 }
 
+/* ── CREATE CLIENT IN AIRTABLE ── */
 async function createClient(profile, websiteUrl) {
   var fields = {
     "Business Name": profile.business_name || "",
@@ -109,23 +234,15 @@ async function createClient(profile, websiteUrl) {
     "Posting Days": "Mon,Wed,Fri",
     "Monthly Report Email": profile.email || "",
   };
-
-  // Add specialisms if found
   if (profile.specialisms && profile.specialisms.length > 0) {
     fields["Specialisms"] = profile.specialisms;
   }
 
-  var res = await fetch(
-    "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali",
-    {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + AIRTABLE_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ records: [{ fields: fields }], typecast: true }),
-    }
-  );
+  var res = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + AIRTABLE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ records: [{ fields: fields }], typecast: true }),
+  });
   if (!res.ok) {
     var errText = await res.text();
     throw new Error("Airtable error: " + res.status + " " + errText);
@@ -134,6 +251,7 @@ async function createClient(profile, websiteUrl) {
   return data.records[0];
 }
 
+/* ── HANDLER ── */
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -145,22 +263,32 @@ module.exports = async function handler(req, res) {
     var body = req.body || {};
     var url = body.url;
     var saveToAirtable = body.save !== false;
-
     if (!url) return res.status(400).json({ error: "url is required" });
 
     // 1. Fetch the website
     var siteData = await fetchWebsite(url);
     if (!siteData.success) {
-      return res.status(400).json({
-        error: "Could not fetch website: " + siteData.error,
-        url: siteData.url,
-      });
+      return res.status(400).json({ error: "Could not fetch website: " + siteData.error, url: siteData.url });
     }
 
-    // 2. Analyse with Claude
-    var profile = await analyseWithClaude(siteData);
+    // 2. Pre-extract structured data from raw HTML
+    var colours = extractColours(siteData.html);
+    var socials = extractSocialLinks(siteData.html);
+    var baseUrl = siteData.url.match(/^https?:\/\/[^/]+/i);
+    var logoUrl = extractLogo(siteData.html, baseUrl ? baseUrl[0] : siteData.url);
 
-    // 3. Optionally save to Airtable
+    // 3. Analyse with Claude (passing pre-extracted data)
+    var profile = await analyseWithClaude(siteData, colours, socials, logoUrl);
+
+    // Merge pre-extracted socials into profile (in case Claude missed them)
+    if (!profile.social_facebook && socials.facebook) profile.social_facebook = socials.facebook;
+    if (!profile.social_instagram && socials.instagram) profile.social_instagram = socials.instagram;
+    if (!profile.social_twitter && socials.twitter) profile.social_twitter = socials.twitter;
+    if (!profile.social_pinterest && socials.pinterest) profile.social_pinterest = socials.pinterest;
+    if (!profile.social_tiktok && socials.tiktok) profile.social_tiktok = socials.tiktok;
+    if (!profile.social_linkedin && socials.linkedin) profile.social_linkedin = socials.linkedin;
+
+    // 4. Optionally save
     var savedRecord = null;
     if (saveToAirtable) {
       savedRecord = await createClient(profile, url);
@@ -169,6 +297,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       profile: profile,
+      raw_colours: colours,
+      raw_socials: socials,
+      logo_url: logoUrl,
       saved: !!savedRecord,
       client_id: savedRecord ? savedRecord.id : null,
       url: url,

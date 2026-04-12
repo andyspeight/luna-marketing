@@ -493,6 +493,15 @@ body {
 
 /* Drop target highlight */
 .cal-col.drop-target { background: rgba(0,180,182,0.06); }
+.cal-drop-time {
+  position: absolute; left: 0; right: 0; height: 2px; background: var(--teal);
+  pointer-events: none; z-index: 15;
+}
+.cal-drop-time::after {
+  content: attr(data-time); position: absolute; left: 4px; top: -8px;
+  font-size: 9px; font-family: var(--mono); color: var(--teal); font-weight: 700;
+  background: var(--card); padding: 0 4px; border-radius: 2px;
+}
 
 /* Current time indicator (red line like Apple) */
 .cal-now {
@@ -1210,7 +1219,7 @@ function renderCalendar() {
     var colLeft = 'calc(56px + ' + ci + ' * ((100% - 56px) / 7))';
     var colWidth = 'calc((100% - 56px) / 7)';
 
-    h += '<div class="cal-col' + (isT ? ' today' : '') + '" style="position:absolute;top:0;left:' + colLeft + ';width:' + colWidth + ';height:' + gridHeight + 'px;border-left:1px solid var(--border)" data-day="' + ci + '" ondragover="event.preventDefault();this.classList.add(\'drop-target\')" ondragleave="this.classList.remove(\'drop-target\')" ondrop="Luna.calDrop(event,' + ci + ')">';
+    h += '<div class="cal-col' + (isT ? ' today' : '') + '" style="position:absolute;top:0;left:' + colLeft + ';width:' + colWidth + ';height:' + gridHeight + 'px;border-left:1px solid var(--border)" data-day="' + ci + '" ondragover="event.preventDefault();Luna.calDragOver(event,this)" ondragleave="Luna.calDragLeave(this)" ondrop="Luna.calDrop(event,' + ci + ')">';
 
     // Posts for this day
     var dayPosts = posts.filter(function(p) { return matchPostToDay(p, ci); });
@@ -1406,6 +1415,36 @@ window.Luna = {
     state.calWeekOffset = 0; renderCalendar();
   },
 
+  calDragOver: function(evt, col) {
+    col.classList.add('drop-target');
+    // Show time indicator line at snap position
+    var yInCol = evt.offsetY;
+    if (evt.target !== col) {
+      // Dropped on a child, calculate relative to column
+      var rect = col.getBoundingClientRect();
+      yInCol = evt.clientY - rect.top;
+    }
+    var totalMin = (yInCol / CAL_HOUR_PX) * 60 + CAL_START_HOUR * 60;
+    totalMin = Math.round(totalMin / 30) * 30;
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    if (h < CAL_START_HOUR) { h = CAL_START_HOUR; m = 0; }
+    if (h >= CAL_END_HOUR) { h = CAL_END_HOUR - 1; m = 0; }
+    var snapY = timeToTop(h, m);
+    var timeLbl = pad2(h) + ':' + pad2(m);
+    // Create or update indicator
+    var ind = col.querySelector('.cal-drop-time');
+    if (!ind) { ind = document.createElement('div'); ind.className = 'cal-drop-time'; col.appendChild(ind); }
+    ind.style.top = snapY + 'px';
+    ind.setAttribute('data-time', timeLbl);
+  },
+
+  calDragLeave: function(col) {
+    col.classList.remove('drop-target');
+    var ind = col.querySelector('.cal-drop-time');
+    if (ind) ind.remove();
+  },
+
   // Calendar drag and drop
   calDragStart: function(evt, pid) {
     evt.dataTransfer.setData('text/plain', pid);
@@ -1414,19 +1453,40 @@ window.Luna = {
   },
   calDrop: function(evt, dayIdx) {
     evt.preventDefault();
-    var cell = evt.currentTarget;
-    cell.classList.remove('drop-target');
+    var col = evt.currentTarget;
+    col.classList.remove('drop-target');
+    // Remove time indicator
+    var ind = col.querySelector('.cal-drop-time');
+    if (ind) ind.remove();
+
     var pid = evt.dataTransfer.getData('text/plain');
     if (!pid) return;
-    // Find the post and update its day in the title (visual only for now)
+
+    // Calculate Y position within column
+    var yInCol = evt.offsetY;
+    if (evt.target !== col) {
+      var rect = col.getBoundingClientRect();
+      yInCol = evt.clientY - rect.top;
+    }
+
+    // Convert Y to time, snap to 30-minute intervals
+    var totalMinutes = (yInCol / CAL_HOUR_PX) * 60 + CAL_START_HOUR * 60;
+    totalMinutes = Math.round(totalMinutes / 30) * 30;
+    var newHour = Math.floor(totalMinutes / 60);
+    var newMin = totalMinutes % 60;
+    if (newHour < CAL_START_HOUR) { newHour = CAL_START_HOUR; newMin = 0; }
+    if (newHour >= CAL_END_HOUR) { newHour = CAL_END_HOUR - 1; newMin = 0; }
+    var newTime = pad2(newHour) + ':' + pad2(newMin);
+
+    // Update the post's day and time
     var days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     var post = state.posts.find(function(p) { return p.id === pid; });
     if (post) {
-      // Update the title to reflect new day
       var oldTitle = post.title || '';
       var newTitle = oldTitle;
       days.forEach(function(d) { newTitle = newTitle.replace(new RegExp(d, 'i'), days[dayIdx]); });
       post.title = newTitle;
+      post.scheduled_time = newTime;
       renderCalendar();
     }
   },

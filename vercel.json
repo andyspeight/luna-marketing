@@ -1,27 +1,20 @@
 {
-  "version": 2,
-  "functions": {
-    "api/generate.js": {
-      "maxDuration": 60,
-      "memory": 256
-    },
-    "api/cron-generate.js": {
-      "maxDuration": 300,
-      "memory": 256
-    },
-    "api/prompt-post.js": {
-      "maxDuration": 30,
-      "memory": 256
-    },
-    "api/scan-website.js": {
-      "maxDuration": 45,
-      "memory": 256
-    }
-  },
   "crons": [
     {
       "path": "/api/cron-generate",
-      "schedule": "0 18 * * 0"
+      "schedule": "0 6 * * 1,3,5"
     }
-  ]
+  ],
+  "functions": {
+    "api/generate.js": { "maxDuration": 120 },
+    "api/cron-generate.js": { "maxDuration": 300 },
+    "api/scan-website.js": { "maxDuration": 60 },
+    "api/prompt-post.js": { "maxDuration": 60 },
+    "api/clients.js": { "maxDuration": 30 },
+    "api/posts.js": { "maxDuration": 30 },
+    "api/client-auth.js": { "maxDuration": 15 },
+    "api/images.js": { "maxDuration": 15 },
+    "api/videos.js": { "maxDuration": 15 },
+    "api/fcdo.js": { "maxDuration": 15 }
+  }
 }

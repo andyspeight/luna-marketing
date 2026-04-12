@@ -59,6 +59,8 @@ module.exports = async function handler(req, res) {
       if (body.formality) fields["Formality"] = body.formality;
       if (body.sentenceStyle) fields["Sentence Style"] = body.sentenceStyle;
       if (body.ctaStyle) fields["CTA Style"] = body.ctaStyle;
+      if (body.status) fields["Status"] = body.status;
+      if (body.package) fields["Package"] = body.package;
 
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: "No valid fields to update" });
 

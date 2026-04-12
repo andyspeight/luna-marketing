@@ -164,51 +164,121 @@ function prepareContent(html) {
 async function analyseWithClaude(siteData, colours, socials, logoUrl) {
   var content = prepareContent(siteData.html);
 
-  var prompt = "You are analysing a travel agent's website to extract their brand profile.\n\n" +
+  var systemMsg = "You are a JSON extraction tool. You MUST return ONLY valid JSON. No markdown fences. No commentary. No text before or after the JSON object. Every string value must have special characters properly escaped: use \\\" for quotes inside strings, \\\\ for backslashes, \\n for newlines. Never use unescaped double quotes inside a JSON string value.";
+
+  var prompt = "Analyse this travel agent website and extract their brand profile.\n\n" +
     "Website URL: " + siteData.url + "\n\n" +
     "META TAGS:\n" + content.meta + "\n\n" +
     "PAGE CONTENT:\n" + content.text + "\n\n" +
     "PRE-EXTRACTED COLOURS (from CSS/meta tags):\n" + JSON.stringify(colours) + "\n\n" +
     "PRE-EXTRACTED SOCIAL LINKS:\n" + JSON.stringify(socials) + "\n\n" +
     "PRE-EXTRACTED LOGO URL: " + (logoUrl || "not found") + "\n\n" +
-    "Extract the following. Use the pre-extracted data where available. Be specific and accurate.\n\n" +
-    "Return ONLY valid JSON:\n" +
+    "Return this exact JSON structure with values filled in:\n" +
     "{\n" +
-    '  "business_name": "Legal business name",\n' +
-    '  "trading_name": "Name they trade under",\n' +
-    '  "phone": "UK phone if found",\n' +
-    '  "email": "Email if found",\n' +
-    '  "destinations": "Comma-separated destinations (countries and resorts)",\n' +
-    '  "specialisms": ["Holiday types e.g. Beach, Family, Luxury, Cruise, Ski, City Breaks, Weddings, Touring, Long Haul, Short Haul, Adventure, All Inclusive"],\n' +
-    '  "tone_keywords": "3-5 words describing voice (e.g. warm, professional, fun)",\n' +
-    '  "formality": "Casual / Balanced / Formal",\n' +
-    '  "emoji_usage": "None / Light / Heavy",\n' +
-    '  "sentence_style": "Short and punchy / Longer and descriptive",\n' +
-    '  "cta_style": "Direct / Soft / Question-based",\n' +
-    '  "primary_colour": "Hex code of their PRIMARY brand colour. Use the pre-extracted colours data. Pick the most prominent non-white non-black colour.",\n' +
-    '  "secondary_colour": "Hex code of their SECONDARY brand colour from the extracted data.",\n' +
-    '  "logo_url": "Use the pre-extracted logo URL if found",\n' +
-    '  "example_phrases": "3-5 actual phrases from their website that show their voice",\n' +
-    '  "social_facebook": "Use pre-extracted value or empty string",\n' +
-    '  "social_instagram": "Use pre-extracted value or empty string",\n' +
-    '  "social_twitter": "Use pre-extracted value or empty string",\n' +
-    '  "social_pinterest": "Use pre-extracted value or empty string",\n' +
-    '  "social_tiktok": "Use pre-extracted value or empty string",\n' +
-    '  "social_linkedin": "Use pre-extracted value or empty string",\n' +
-    '  "social_youtube": "Use pre-extracted value or empty string",\n' +
-    '  "confidence": "High / Medium / Low"\n' +
-    "}\n\nDo not guess or fabricate. Use empty string if not found.";
+    '  "business_name": "",\n' +
+    '  "trading_name": "",\n' +
+    '  "phone": "",\n' +
+    '  "email": "",\n' +
+    '  "destinations": "",\n' +
+    '  "specialisms": [],\n' +
+    '  "tone_keywords": "",\n' +
+    '  "formality": "",\n' +
+    '  "emoji_usage": "",\n' +
+    '  "sentence_style": "",\n' +
+    '  "cta_style": "",\n' +
+    '  "primary_colour": "",\n' +
+    '  "secondary_colour": "",\n' +
+    '  "logo_url": "",\n' +
+    '  "example_phrases": "",\n' +
+    '  "social_facebook": "",\n' +
+    '  "social_instagram": "",\n' +
+    '  "social_twitter": "",\n' +
+    '  "social_pinterest": "",\n' +
+    '  "social_tiktok": "",\n' +
+    '  "social_linkedin": "",\n' +
+    '  "social_youtube": "",\n' +
+    '  "confidence": ""\n' +
+    "}\n\n" +
+    "Rules:\n" +
+    "- destinations: comma-separated list of countries and resorts found on site\n" +
+    "- specialisms: array of strings from this list only: Beach, Family, Luxury, Cruise, Ski, City Breaks, Weddings, Touring, Long Haul, Short Haul, Adventure, All Inclusive\n" +
+    "- tone_keywords: 3-5 comma-separated descriptors\n" +
+    "- formality: exactly one of Casual, Balanced, Formal\n" +
+    "- emoji_usage: exactly one of None, Light, Heavy\n" +
+    "- sentence_style: exactly one of Short and punchy, Longer and descriptive\n" +
+    "- cta_style: exactly one of Direct, Soft, Question-based\n" +
+    "- primary_colour and secondary_colour: hex codes from the pre-extracted colours\n" +
+    "- example_phrases: separate multiple phrases with | pipe character (NOT quotes or colons)\n" +
+    "- social URLs: use the pre-extracted values\n" +
+    "- confidence: exactly one of High, Medium, Low\n" +
+    "- Use empty string if not found. Do not guess.";
 
   var response = await claude.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 2000,
     temperature: 0,
+    system: systemMsg,
     messages: [{ role: "user", content: prompt }],
   });
 
   var text = response.content.map(function (c) { return c.type === "text" ? c.text : ""; }).filter(Boolean).join("");
   var cleaned = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(cleaned);
+
+  // Try to parse, with repair if needed
+  try {
+    return JSON.parse(cleaned);
+  } catch (firstErr) {
+    // Attempt repair: fix common JSON issues
+    var repaired = repairJSON(cleaned);
+    try {
+      return JSON.parse(repaired);
+    } catch (secondErr) {
+      console.error("JSON parse failed after repair. Raw:", cleaned.substring(0, 500));
+      throw new Error("Failed to parse website analysis. Please try again.");
+    }
+  }
+}
+
+/* ── JSON REPAIR ── */
+function repairJSON(str) {
+  // Remove any leading/trailing non-JSON content
+  var start = str.indexOf("{");
+  var end = str.lastIndexOf("}");
+  if (start === -1 || end === -1) return str;
+  str = str.substring(start, end + 1);
+
+  // Fix unescaped quotes inside string values
+  // Strategy: walk through character by character
+  var result = "";
+  var inString = false;
+  var escaped = false;
+  for (var i = 0; i < str.length; i++) {
+    var ch = str[i];
+    if (escaped) { result += ch; escaped = false; continue; }
+    if (ch === "\\") { result += ch; escaped = true; continue; }
+    if (ch === '"') {
+      if (!inString) {
+        inString = true; result += ch;
+      } else {
+        // Check if this quote ends the string or is mid-string
+        // Look ahead: if followed by : , } ] or whitespace+any of those, it ends the string
+        var rest = str.substring(i + 1).trimStart();
+        if (rest[0] === ":" || rest[0] === "," || rest[0] === "}" || rest[0] === "]" || rest.startsWith("\n")) {
+          inString = false; result += ch;
+        } else {
+          // Mid-string quote, escape it
+          result += '\\"';
+        }
+      }
+    } else {
+      result += ch;
+    }
+  }
+
+  // Fix trailing commas before } or ]
+  result = result.replace(/,\s*([}\]])/g, "$1");
+
+  return result;
 }
 
 /* ── CREATE CLIENT IN AIRTABLE ── */
@@ -309,3 +379,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 };
+

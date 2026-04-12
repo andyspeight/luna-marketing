@@ -1797,7 +1797,17 @@ window.Luna = {
       var data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (saveBtn) { saveBtn.textContent = 'Client saved'; saveBtn.style.background = 'var(--green)'; }
-      setTimeout(function() { $('scanPanel').classList.remove('open'); loadDashboard(); }, 1500);
+      // Show access code
+      if (data.access_code) {
+        var codeEl = document.createElement('div');
+        codeEl.style.cssText = 'margin-top:12px;padding:14px;border-radius:var(--radius-sm);background:rgba(0,180,182,0.08);border:1px solid rgba(0,180,182,0.25)';
+        codeEl.innerHTML = '<div style="font-size:11px;font-family:var(--mono);color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Client Portal Credentials</div>' +
+          '<div style="font-size:13px;color:var(--text)"><strong>Email:</strong> ' + (profile.email || 'Not set') + '</div>' +
+          '<div style="font-size:13px;color:var(--text)"><strong>Access Code:</strong> <span style="font-family:var(--mono);background:var(--surface);padding:2px 8px;border-radius:4px;user-select:all">' + data.access_code + '</span></div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:6px">Share these with the client so they can log in at /client.html</div>';
+        saveBtn.parentElement.appendChild(codeEl);
+      }
+      setTimeout(function() { $('scanPanel').classList.remove('open'); loadDashboard(); }, 4000);
     } catch(err) {
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Error: ' + err.message; }
     }

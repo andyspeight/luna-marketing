@@ -1398,7 +1398,7 @@ function renderCalendar() {
 /* ── HELPERS ── */
 function escHTML(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-function renderScanResults(p, url) {
+function renderScanResults(p, url, rawColours) {
   var results = $('scanResults');
   var confCls = (p.confidence || '').toLowerCase() === 'high' ? 'scan-confidence-high' : (p.confidence || '').toLowerCase() === 'medium' ? 'scan-confidence-medium' : 'scan-confidence-low';
   var h = '';
@@ -1413,6 +1413,19 @@ function renderScanResults(p, url) {
   h += scanField('Secondary Colour', 'scan-secondary', p.secondary_colour, true);
   h += '</div>';
 
+  // Raw colour swatches
+  if (rawColours && rawColours.length > 0) {
+    h += '<div class="scan-field" style="margin-bottom:14px"><label>All Colours Detected</label>';
+    h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+    rawColours.forEach(function(c) {
+      h += '<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);cursor:pointer" onclick="document.getElementById(\'scan-primary\').value=\'' + escHTML(c.value) + '\';this.parentElement.parentElement.querySelector(\'.colour-swatch\')&&(this.parentElement.parentElement.querySelector(\'.colour-swatch\').style.background=\'' + escHTML(c.value) + '\')" title="Click to set as primary colour">';
+      h += '<div style="width:16px;height:16px;border-radius:3px;background:' + escHTML(c.value) + ';border:1px solid var(--border)"></div>';
+      h += '<span style="font-size:10px;font-family:var(--mono);color:var(--text-dim)">' + escHTML(c.value) + '</span>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  }
+
   h += '<div class="scan-field" style="margin-bottom:12px"><label>Tone Keywords</label><input id="scan-tone" value="' + escHTML(p.tone_keywords || '') + '"></div>';
   h += '<div class="scan-field" style="margin-bottom:12px"><label>Destinations</label><textarea id="scan-destinations">' + escHTML(p.destinations || '') + '</textarea></div>';
   h += '<div class="scan-field" style="margin-bottom:12px"><label>Example Brand Phrases</label><textarea id="scan-phrases">' + escHTML(p.example_phrases || '') + '</textarea></div>';
@@ -1425,18 +1438,34 @@ function renderScanResults(p, url) {
   }
 
   // Social links found
-  var socials = [];
-  if (p.social_facebook) socials.push('Facebook: ' + p.social_facebook);
-  if (p.social_instagram) socials.push('Instagram: ' + p.social_instagram);
-  if (p.social_twitter) socials.push('Twitter/X: ' + p.social_twitter);
-  if (p.social_pinterest) socials.push('Pinterest: ' + p.social_pinterest);
-  if (p.social_tiktok) socials.push('TikTok: ' + p.social_tiktok);
-  if (p.social_linkedin) socials.push('LinkedIn: ' + p.social_linkedin);
-  if (socials.length > 0) {
-    h += '<div class="scan-field" style="margin-bottom:12px"><label>Social Accounts Found</label>';
-    socials.forEach(function(s) { h += '<div style="font-size:12px;color:var(--text-body);margin-bottom:2px">' + escHTML(s) + '</div>'; });
+  var socialCfg = [
+    { key: 'social_facebook',  label: 'Facebook',  bg: '#1877F2',  icon: 'f' },
+    { key: 'social_instagram', label: 'Instagram', bg: '#E1306C',  icon: 'ig' },
+    { key: 'social_twitter',   label: 'X / Twitter', bg: '#000',   icon: 'x' },
+    { key: 'social_linkedin',  label: 'LinkedIn',  bg: '#0A66C2',  icon: 'in' },
+    { key: 'social_pinterest', label: 'Pinterest', bg: '#E60023',  icon: 'P' },
+    { key: 'social_tiktok',    label: 'TikTok',    bg: '#FE2C55',  icon: 'tt' },
+    { key: 'social_youtube',   label: 'YouTube',   bg: '#FF0000',  icon: 'yt' }
+  ];
+  var hasSocial = socialCfg.some(function(s) { return p[s.key]; });
+  h += '<div class="scan-field" style="margin-bottom:14px"><label>Social Media Accounts</label>';
+  if (hasSocial) {
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">';
+    socialCfg.forEach(function(s) {
+      var url = p[s.key] || '';
+      var found = !!url;
+      h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid ' + (found ? s.bg + '40' : 'var(--border)') + ';background:' + (found ? s.bg + '10' : 'var(--surface)') + '">';
+      h += '<span style="width:20px;height:20px;border-radius:5px;background:' + (found ? s.bg : 'var(--text-dim)') + ';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;opacity:' + (found ? '1' : '0.3') + '">' + s.icon + '</span>';
+      h += '<span style="font-size:12px;color:' + (found ? 'var(--text)' : 'var(--text-dim)') + ';font-weight:' + (found ? '500' : '400') + '">' + s.label + '</span>';
+      if (found) h += '<span style="font-size:10px;color:var(--green)">&#10003;</span>';
+      else h += '<span style="font-size:10px;color:var(--text-dim)">&#8212;</span>';
+      h += '</div>';
+    });
     h += '</div>';
+  } else {
+    h += '<div style="font-size:12px;color:var(--text-dim);margin-top:4px">No social media links found on this website.</div>';
   }
+  h += '</div>';
 
   // Voice settings detected
   h += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">';
@@ -1636,7 +1665,8 @@ window.Luna = {
       progress.classList.remove('show');
       window._scannedProfile = data.profile;
       window._scannedUrl = url;
-      renderScanResults(data.profile, url);
+      window._rawColours = data.raw_colours || [];
+      renderScanResults(data.profile, url, data.raw_colours || []);
     } catch(err) {
       clearInterval(stepTimer);
       progress.classList.remove('show');

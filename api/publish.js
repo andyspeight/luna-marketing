@@ -71,9 +71,7 @@ var PLATFORMS = [
   { network: "instagram", caption: "Caption - Instagram", data: { instagramData: { autoPublish: true } } },
   { network: "linkedin", caption: "Caption - LinkedIn", data: {} },
   { network: "twitter", caption: "Caption - Twitter", data: { twitterData: { type: "POST" } } },
-  { network: "pinterest", caption: "Caption - Pinterest", data: {} },
-  { network: "tiktok", caption: "Caption - TikTok", data: {} },
-  { network: "google", caption: "Caption - GBP", data: {} }
+  { network: "tiktok", caption: "Caption - TikTok", data: {} }
 ];
 
 // Schedule a post to ONE platform on Metricool

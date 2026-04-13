@@ -15,6 +15,7 @@
     "api/client-auth.js": { "maxDuration": 15 },
     "api/images.js": { "maxDuration": 15 },
     "api/videos.js": { "maxDuration": 15 },
-    "api/fcdo.js": { "maxDuration": 15 }
+    "api/fcdo.js": { "maxDuration": 15 },
+    "api/publish.js": { "maxDuration": 120 }
   }
 }

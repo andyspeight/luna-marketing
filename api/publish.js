@@ -45,32 +45,36 @@ function mcHeaders() {
   return { "Content-Type": "application/json", "X-Mc-Auth": METRICOOL_KEY };
 }
 
-// Normalize image — uploads to Metricool servers so URL doesn't expire
+// Normalize image — uploads to Metricool servers, returns static.metricool.com URL
 async function normalizeImage(blogId, imageUrl) {
   if (!imageUrl) return null;
   try {
     var url = MC_BASE + "/actions/normalize/image/url?url=" + encodeURIComponent(imageUrl) +
       "&blogId=" + blogId + "&userId=" + METRICOOL_USER;
-    console.log("Normalizing image:", imageUrl.substring(0, 80));
+    console.log("Uploading image to Metricool:", imageUrl.substring(0, 80));
     var r = await fetch(url, { headers: mcHeaders() });
     var responseText = await r.text();
-    console.log("Normalize response:", r.status, responseText.substring(0, 200));
+    console.log("Normalize response:", r.status, responseText.substring(0, 300));
     if (!r.ok) {
-      console.error("Normalize failed, using original URL");
-      return imageUrl;
+      console.error("Image normalize failed, skipping image");
+      return null;
     }
-    // Response might be JSON or plain URL string
+    // Response could be JSON with a URL, or a plain URL string
+    var metricoolUrl = null;
     try {
       var d = JSON.parse(responseText);
-      return d.url || d.normalizedUrl || d.mediaUrl || imageUrl;
+      if (typeof d === "string") metricoolUrl = d;
+      else metricoolUrl = d.url || d.normalizedUrl || d.mediaUrl || null;
     } catch (e) {
-      // Might be a plain URL string
-      if (responseText.startsWith("http")) return responseText.trim();
-      return imageUrl;
+      if (responseText.trim().startsWith("http")) metricoolUrl = responseText.trim();
     }
+    // Strip any quotes
+    if (metricoolUrl && metricoolUrl.startsWith('"')) metricoolUrl = metricoolUrl.replace(/"/g, '');
+    console.log("Metricool image URL:", metricoolUrl ? metricoolUrl.substring(0, 100) : "null");
+    return metricoolUrl;
   } catch (e) {
-    console.error("Normalize error:", e.message);
-    return imageUrl;
+    console.error("Image upload error:", e.message);
+    return null;
   }
 }
 
@@ -107,13 +111,15 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
     creatorUserId: parseInt(METRICOOL_USER)
   };
 
-  // Add image if available
+  // Add image if available — media must be plain URL string array
   var debugImg = { original: null, normalized: null, added: false };
   if (normalizedImageUrl) {
     debugImg.original = normalizedImageUrl.substring(0, 100);
     debugImg.normalized = normalizedImageUrl.substring(0, 100);
-    // TODO: Metricool media format needs research — media array causes 500
-    // Will add back once correct format is confirmed
+    debugImg.added = true;
+    body.media = [normalizedImageUrl];
+    body.mediaAltText = [null];
+    body.saveExternalMediaFiles = false;
   }
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;

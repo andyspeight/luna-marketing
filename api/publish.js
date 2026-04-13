@@ -51,13 +51,23 @@ async function normalizeImage(blogId, imageUrl) {
   try {
     var url = MC_BASE + "/actions/normalize/image/url?url=" + encodeURIComponent(imageUrl) +
       "&blogId=" + blogId + "&userId=" + METRICOOL_USER;
+    console.log("Normalizing image:", imageUrl.substring(0, 80));
     var r = await fetch(url, { headers: mcHeaders() });
+    var responseText = await r.text();
+    console.log("Normalize response:", r.status, responseText.substring(0, 200));
     if (!r.ok) {
-      console.error("Normalize failed:", r.status, await r.text());
-      return imageUrl; // fallback to original URL
+      console.error("Normalize failed, using original URL");
+      return imageUrl;
     }
-    var d = await r.json();
-    return d.url || d.normalizedUrl || imageUrl;
+    // Response might be JSON or plain URL string
+    try {
+      var d = JSON.parse(responseText);
+      return d.url || d.normalizedUrl || d.mediaUrl || imageUrl;
+    } catch (e) {
+      // Might be a plain URL string
+      if (responseText.startsWith("http")) return responseText.trim();
+      return imageUrl;
+    }
   } catch (e) {
     console.error("Normalize error:", e.message);
     return imageUrl;
@@ -96,6 +106,11 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
     facebookData: { type: "POST" },
     creatorUserId: parseInt(METRICOOL_USER)
   };
+
+  // Add image if available
+  if (normalizedImageUrl) {
+    body.media = [{ url: normalizedImageUrl }];
+  }
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;
   console.log("Metricool request:", url, JSON.stringify(body).substring(0, 500));

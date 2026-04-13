@@ -91,13 +91,14 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 /* ══════════════════════════════════════════
    TABS
    ══════════════════════════════════════════ */
-.tabs { display:flex; gap:var(--space-1); margin-bottom:var(--space-6); overflow-x:auto; padding-bottom:var(--space-1); }
+.tabs { display:flex; gap:var(--space-1); margin-bottom:var(--space-6); overflow-x:auto; overflow-y:visible; padding-bottom:var(--space-1); }
 .tab { height:44px; padding:0 var(--space-5); border-radius:var(--radius-md); font-size:var(--text-sm); font-weight:500; border:1px solid var(--tg-border); background:var(--tg-bg-primary); color:var(--tg-text-tertiary); cursor:pointer; font-family:var(--tg-font-body); transition:all var(--duration-fast); position:relative; display:flex; align-items:center; white-space:nowrap; }
+.tab.has-badge { padding-right:var(--space-10); }
 .tab:hover { border-color:var(--tg-accent); color:var(--tg-text-secondary); }
 .tab:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(0,180,216,0.15); }
 .tab.active { border-color:var(--tg-accent); background:rgba(0,180,216,0.06); color:var(--tg-accent-dark); font-weight:600; }
 [data-theme="dark"] .tab.active { color:var(--tg-accent); }
-.tab-badge { position:absolute; top:-6px; right:-6px; background:var(--tg-error); color:#fff; font-size:var(--text-xs); font-weight:700; padding:2px var(--space-2); border-radius:var(--radius-full); font-family:var(--tg-font-mono); min-width:20px; text-align:center; line-height:1.4; }
+.tab-badge { position:absolute; top:50%; right:var(--space-3); transform:translateY(-50%); background:var(--tg-error); color:#fff; font-size:var(--text-xs); font-weight:700; padding:0 var(--space-2); border-radius:var(--radius-full); font-family:var(--tg-font-mono); min-width:20px; height:20px; line-height:20px; text-align:center; }
 
 /* ══════════════════════════════════════════
    CARDS & SHARED
@@ -385,7 +386,7 @@ var PLATS=[
 
 async function loadPosts(){
   if(!state.profile)return;
-  try{var r=await fetch('/api/posts?status=Queued');var d=await r.json();if(!d.success)throw new Error(d.error);state.posts=d.posts.filter(function(p){return p.client_id===state.profile.id});var r2=await fetch('/api/posts');var d2=await r2.json();state.allPosts=(d2.posts||[]).filter(function(p){return p.client_id===state.profile.id});state.selected={};renderStats();renderPosts();var badge=$('postsTab').querySelector('.tab-badge');if(!badge){badge=document.createElement('span');badge.className='tab-badge';$('postsTab').appendChild(badge)}badge.textContent=state.posts.length;badge.style.display=state.posts.length>0?'inline':'none'}catch(e){$('view-posts').innerHTML='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-error)">'+e.message+'</div>'}
+  try{var r=await fetch('/api/posts?status=Queued');var d=await r.json();if(!d.success)throw new Error(d.error);state.posts=d.posts.filter(function(p){return p.client_id===state.profile.id});var r2=await fetch('/api/posts');var d2=await r2.json();state.allPosts=(d2.posts||[]).filter(function(p){return p.client_id===state.profile.id});state.selected={};renderStats();renderPosts();var badge=$('postsTab').querySelector('.tab-badge');if(!badge){badge=document.createElement('span');badge.className='tab-badge';$('postsTab').appendChild(badge)}badge.textContent=state.posts.length;badge.style.display=state.posts.length>0?'inline':'none';$('postsTab').classList.toggle('has-badge',state.posts.length>0)}catch(e){$('view-posts').innerHTML='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-error)">'+e.message+'</div>'}
 }
 
 function renderStats(){var p=state.profile;$('statsRow').innerHTML='<div class="stat"><div class="stat-label">Queued</div><div class="stat-val">'+state.posts.length+'</div><div class="stat-sub">awaiting review</div></div><div class="stat"><div class="stat-label">Frequency</div><div class="stat-val">'+(p.posting_frequency||3)+'</div><div class="stat-sub">posts/week</div></div><div class="stat"><div class="stat-label">Platforms</div><div class="stat-val">7</div><div class="stat-sub">FB IG LI X Pin TT GBP</div></div><div class="stat"><div class="stat-label">Mode</div><div class="stat-val">'+(p.auto_publish?'Auto':'Review')+'</div><div class="stat-sub">'+(p.auto_publish?'auto-publishing':'manual review')+'</div></div>'}

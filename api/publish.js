@@ -103,12 +103,11 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
     text: fbCap,
     providers: [{ network: "facebook" }],
     autoPublish: true,
-    saveExternalMediaFiles: true,
     facebookData: { type: "POST" },
     creatorUserId: parseInt(METRICOOL_USER)
   };
 
-  // Add image if available — use normalized URL in media array
+  // Add image if available
   var debugImg = { original: null, normalized: null, added: false };
   if (normalizedImageUrl) {
     debugImg.original = normalizedImageUrl.substring(0, 100);

@@ -670,7 +670,8 @@ function renderClients(clients) {
     });
     h += '</div></div>';
 
-    h += '<button class="btn btn-primary" style="margin-top:10px" onclick="event.stopPropagation();Luna.generateFor(\'' + c.id + '\',\'' + esc + '\',this)">Generate Posts</button>';
+    h += '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary" onclick="event.stopPropagation();Luna.generateFor(\'' + c.id + '\',\'' + esc + '\',this)">Generate Posts</button>';
+    h += '<button class="btn" style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--teal)" onclick="event.stopPropagation();Luna.publishClient(\'' + c.id + '\',\'' + esc + '\',this)">Publish Approved</button></div>';
     h += '<div class="post-feedback" id="gen-fb-' + c.id + '"></div>';
     h += '</div></div>';
   });
@@ -746,6 +747,7 @@ function renderReviewQueue() {
   if (someSel) {
     h += '<button class="btn btn-approve" style="padding:5px 12px;font-size:11px" onclick="Luna.bulkAction(\'approve\')">&#10003; Approve ' + selCount + '</button>';
     h += '<button class="btn btn-reject" style="padding:5px 12px;font-size:11px" onclick="Luna.bulkAction(\'reject\')">&#10007; Reject ' + selCount + '</button>';
+    h += '<button class="btn" style="padding:5px 12px;font-size:11px;background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--teal)" onclick="Luna.bulkPublish()">&#9654; Publish ' + selCount + '</button>';
   }
   h += '</div></div>';
 
@@ -1357,6 +1359,36 @@ window.Luna = {
       loadReviewQueue();
     } catch(e) { fb.style.background = 'rgba(239,68,68,0.1)'; fb.style.border = '1px solid rgba(239,68,68,0.25)'; fb.style.color = '#FCA5A5'; fb.textContent = 'Error: ' + e.message; }
     finally { btn.disabled = false; btn.textContent = 'Generate Post'; }
+  },
+
+  // Publishing
+  publishClient: async function(cid, name, btn) {
+    var fb = $('gen-fb-' + cid);
+    btn.disabled = true; btn.textContent = 'Publishing...';
+    if (fb) { fb.className = 'post-feedback show'; fb.style.background = 'rgba(0,180,216,0.08)'; fb.style.border = '1px solid rgba(0,180,216,0.2)'; fb.style.color = 'var(--teal)'; fb.textContent = 'Publishing approved posts to Metricool...'; }
+    try {
+      var res = await fetch('/api/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish_client', clientId: cid }) });
+      var data = await res.json(); if (!res.ok) throw new Error(data.error);
+      if (fb) { fb.style.background = 'rgba(16,185,129,0.1)'; fb.style.border = '1px solid rgba(16,185,129,0.25)'; fb.style.color = '#6EE7B7'; fb.textContent = 'Published ' + data.published + ' post' + (data.published !== 1 ? 's' : '') + ' to Metricool.' + (data.errors && data.errors.length ? ' ' + data.errors.length + ' failed.' : ''); }
+      setTimeout(function() { loadReviewQueue(); }, 2000);
+    } catch(e) { if (fb) { fb.style.background = 'rgba(239,68,68,0.1)'; fb.style.border = '1px solid rgba(239,68,68,0.25)'; fb.style.color = '#FCA5A5'; fb.textContent = 'Error: ' + e.message; } }
+    finally { btn.disabled = false; btn.textContent = 'Publish Approved'; }
+  },
+
+  bulkPublish: async function() {
+    var ids = Object.keys(state.selected || {}).filter(function(k) { return state.selected[k]; });
+    if (!ids.length) { alert('No posts selected'); return; }
+    if (!confirm('Publish ' + ids.length + ' post(s) to Metricool?')) return;
+    var published = 0;
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        var res = await fetch('/api/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish_post', postId: ids[i] }) });
+        var d = await res.json();
+        if (d.success) published++;
+      } catch(e) { console.error('Publish error:', e); }
+    }
+    alert('Published ' + published + '/' + ids.length + ' posts.');
+    loadReviewQueue();
   },
 
   // Colour helpers

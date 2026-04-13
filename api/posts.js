@@ -95,12 +95,26 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: true, action: "update_position", recordId: recordId, imagePosition: body.imagePosition });
       }
 
+      if (action === "update_caption") {
+        var capFields = {};
+        var capMap = { facebook: "Caption - Facebook", instagram: "Caption - Instagram", linkedin: "Caption - LinkedIn", twitter: "Caption - Twitter", pinterest: "Caption - Pinterest", tiktok: "Caption - TikTok", gbp: "Caption - GBP" };
+        Object.keys(capMap).forEach(function(k) { if (body[k] !== undefined) capFields[capMap[k]] = body[k]; });
+        if (Object.keys(capFields).length === 0) return res.status(400).json({ error: "No caption fields provided" });
+        await updatePost(recordId, capFields);
+        return res.status(200).json({ success: true, action: "update_caption", recordId: recordId, updated: Object.keys(capFields) });
+      }
+
       if (!action || !["approve", "reject", "suppress"].includes(action))
-        return res.status(400).json({ error: "action must be approve, reject, suppress, update_image, or update_position" });
+        return res.status(400).json({ error: "action must be approve, reject, suppress, update_image, update_position, or update_caption" });
 
       var newStatus = action === "approve" ? "Queued" : action === "reject" ? "Replaced" : "Suppressed";
       var statusFields = { Status: newStatus };
       if (body.reason) statusFields["Suppression Reason"] = body.reason;
+      // Rejection feedback
+      if (action === "reject") {
+        if (body.rejectionReason) statusFields["Rejection Reason"] = body.rejectionReason;
+        if (body.rejectionNotes) statusFields["Rejection Notes"] = body.rejectionNotes;
+      }
       await updatePost(recordId, statusFields);
       return res.status(200).json({ success: true, action: action, recordId: recordId, newStatus: newStatus });
     }
@@ -111,4 +125,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 };
-

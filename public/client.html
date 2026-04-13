@@ -338,11 +338,12 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
     </div>
   </header>
   <div class="stats" id="statsRow"></div>
-  <nav class="tabs" role="tablist"><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
+  <nav class="tabs" role="tablist"><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
   <main>
     <div id="view-posts" class="fade-in" role="tabpanel"></div>
     <div id="view-create" class="hide" role="tabpanel"></div>
     <div id="view-calendar" class="hide" role="tabpanel"></div>
+    <div id="view-platforms" class="hide" role="tabpanel"></div>
     <div id="view-settings" class="hide" role="tabpanel"></div>
   </main>
 </div>
@@ -371,7 +372,7 @@ function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=nu
 function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;loadPosts()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['posts','create','calendar','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['posts','create','calendar','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms()};
 
 // Data
 var PLATS=[
@@ -469,6 +470,67 @@ function renderCalendar(){
 }
 
 /* ── SETTINGS ── */
+// Platforms
+var PLAT_INFO = [
+  { key: 'Facebook', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>', color: '#1877F2' },
+  { key: 'Instagram', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>', color: '#E4405F' },
+  { key: 'LinkedIn', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>', color: '#0A66C2' },
+  { key: 'X/Twitter', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>', color: '#000' },
+  { key: 'TikTok', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1 0-5.78 2.92 2.92 0 0 1 .88.13v-3.5a6.37 6.37 0 0 0-.88-.07 6.33 6.33 0 0 0 0 12.67 6.33 6.33 0 0 0 6.33-6.33V8.9a8.19 8.19 0 0 0 3.77.92V6.69"/></svg>', color: '#010101' },
+  { key: 'Pinterest', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.15 9.42 7.6 11.18-.1-.94-.2-2.38.04-3.41l1.4-5.93s-.35-.71-.35-1.76c0-1.65.96-2.88 2.15-2.88 1.01 0 1.5.76 1.5 1.67 0 1.02-.65 2.54-.98 3.95-.28 1.18.59 2.14 1.75 2.14 2.1 0 3.71-2.21 3.71-5.41 0-2.83-2.03-4.81-4.93-4.81-3.36 0-5.33 2.52-5.33 5.12 0 1.01.39 2.1.88 2.69.1.12.11.22.08.34l-.33 1.33c-.05.22-.18.27-.41.16-1.54-.72-2.5-2.96-2.5-4.77 0-3.87 2.82-7.43 8.13-7.43 4.27 0 7.59 3.04 7.59 7.11 0 4.24-2.67 7.65-6.39 7.65-1.25 0-2.42-.65-2.82-1.42l-.77 2.93c-.28 1.07-1.03 2.42-1.53 3.24 1.15.36 2.37.55 3.64.55 6.63 0 12-5.37 12-12S18.63 0 12 0"/></svg>', color: '#E60023' },
+  { key: 'Google Business', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>', color: '#4285F4' }
+];
+
+function renderPlatforms() {
+  var el = $('view-platforms');
+  el.innerHTML = '<div style="text-align:center;padding:var(--space-8);color:var(--tg-text-tertiary)">Loading platform connections...</div>';
+
+  fetch('/api/connections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'get_connection_url', clientId: state.profile.id })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (!d.success) { el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error: ' + (d.error || 'Unknown') + '</p>'; return; }
+
+    var connected = d.connectedPlatforms || [];
+    var connUrl = d.connectionUrl;
+
+    var h = '<div style="max-width:640px;margin:0 auto">';
+    h += '<div style="margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Connected Platforms</h2>';
+    h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Connect your social media accounts so Luna can publish content directly to your channels.</p></div>';
+
+    h += '<div style="display:flex;flex-direction:column;gap:var(--space-3)">';
+    PLAT_INFO.forEach(function(p) {
+      var isConn = connected.indexOf(p.key) !== -1;
+      h += '<div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--tg-border);border-radius:var(--radius-lg);background:var(--tg-bg-primary)">';
+      h += '<div style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:' + p.color + ';background:' + p.color + '10;flex-shrink:0">' + p.icon + '</div>';
+      h += '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:var(--text-sm);color:var(--tg-text-primary)">' + p.key + '</div>';
+      if (isConn) {
+        h += '<div style="font-size:var(--text-xs);color:var(--tg-success)">Connected</div>';
+      } else {
+        h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Not connected</div>';
+      }
+      h += '</div>';
+      h += '<div style="width:10px;height:10px;border-radius:50%;background:' + (isConn ? 'var(--tg-success)' : 'var(--tg-text-tertiary)') + ';opacity:' + (isConn ? '1' : '0.3') + '"></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    if (connUrl) {
+      h += '<div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);flex-wrap:wrap">';
+      h += '<a href="' + connUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-weight:600;font-size:var(--text-sm);text-decoration:none;font-family:var(--tg-font-body)">Connect / Manage Platforms</a>';
+      h += '<button onclick="renderPlatforms()" style="height:44px;padding:0 var(--space-5);border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-weight:500;font-size:var(--text-sm);cursor:pointer;font-family:var(--tg-font-body)">Refresh Status</button>';
+      h += '</div>';
+    }
+
+    h += '</div>';
+    el.innerHTML = h;
+
+  }).catch(function(e) {
+    el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error loading platforms: ' + e.message + '</p>';
+  });
+}
+
 function renderSettings(){
   var c=state.profile;if(!c)return;
   var TONES=['warm','chatty','professional','knowledgeable','playful','aspirational','fun','energetic','calm','confident'];

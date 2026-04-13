@@ -108,37 +108,23 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
       dateTime: dateTime,
       timezone: "Europe/London"
     },
-    text: fbCap, // default text — overridden per platform below
+    text: fbCap,
     providers: providers,
     autoPublish: true,
     saveExternalMediaFiles: true,
     shortener: false,
     draft: false,
     media: media,
-    // Per-platform data
     facebookData: {
-      type: "POST",
-      text: fbCap
+      type: "POST"
     },
     instagramData: {
-      autoPublish: true,
-      text: igCap
-    },
-    linkedinData: {
-      text: liCap
-    },
-    twitterData: {
-      text: twCap
+      autoPublish: true
     },
     pinterestData: {
-      text: pinCap,
       title: f["Destination"] || f["Post Title"] || "Travel inspiration"
     },
-    tiktokData: {
-      text: ttCap
-    },
     googleData: {
-      text: gbpCap,
       type: "STANDARD"
     },
     creatorUserId: parseInt(METRICOOL_USER)

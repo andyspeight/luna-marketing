@@ -91,11 +91,11 @@ async function schedulePost(blogId, post, metricoolImageUrl) {
     creatorUserId: parseInt(METRICOOL_USER)
   };
 
-  // Add image — must be a plain URL string array (from Metricool's own format)
+  // Add image — use original URL with saveExternalMediaFiles so Metricool downloads it
   if (metricoolImageUrl) {
     body.media = [metricoolImageUrl];
     body.mediaAltText = [null];
-    body.saveExternalMediaFiles = false;
+    body.saveExternalMediaFiles = true;
   }
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;
@@ -131,12 +131,11 @@ module.exports = async function handler(req, res) {
       var blogId = client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Upload image to Metricool servers
+      // Pass image URL directly — saveExternalMediaFiles tells Metricool to download it
       var imgUrl = post.fields["Image URL"] || "";
-      var imgResult = await uploadImage(blogId, imgUrl);
 
       // Schedule post
-      var mcResult = await schedulePost(blogId, post, imgResult.url);
+      var mcResult = await schedulePost(blogId, post, imgUrl || null);
 
       // Update Airtable status
       await atPatch(QUEUE, postId, { Status: "Published" });
@@ -144,12 +143,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true, postId: postId,
         metricool: mcResult,
-        image: {
-          original: imgUrl ? imgUrl.substring(0, 80) : null,
-          metricoolUrl: imgResult.url ? imgResult.url.substring(0, 100) : null,
-          normalizeResponse: imgResult.raw,
-          addedToPost: !!imgResult.url
-        }
+        imageUrl: imgUrl || null
       });
     }
 
@@ -169,8 +163,8 @@ module.exports = async function handler(req, res) {
       var published = 0, errors = [];
       for (var i = 0; i < clientPosts.length; i++) {
         try {
-          var imgR = await uploadImage(blogId, clientPosts[i].fields["Image URL"] || "");
-          await schedulePost(blogId, clientPosts[i], imgR.url);
+          var postImgUrl = clientPosts[i].fields["Image URL"] || null;
+          await schedulePost(blogId, clientPosts[i], postImgUrl);
           await atPatch(QUEUE, clientPosts[i].id, { Status: "Published" });
           published++;
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });

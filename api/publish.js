@@ -67,22 +67,9 @@ async function normalizeImage(blogId, imageUrl) {
 // Schedule a post on Metricool
 async function schedulePost(blogId, post, normalizedImageUrl) {
   var f = post.fields;
-
-  // Build providers array — all 7 platforms
-  var providers = [];
-  var NETS = ["facebook", "instagram", "linkedin", "twitter", "pinterest", "tiktok", "google"];
-  NETS.forEach(function(n) { providers.push({ network: n }); });
-
-  // Build per-platform caption map
   var fbCap = f["Caption - Facebook"] || "";
-  var igCap = f["Caption - Instagram"] || fbCap;
-  var liCap = f["Caption - LinkedIn"] || fbCap;
-  var twCap = f["Caption - Twitter"] || fbCap;
-  var pinCap = f["Caption - Pinterest"] || fbCap;
-  var ttCap = f["Caption - TikTok"] || fbCap;
-  var gbpCap = f["Caption - GBP"] || fbCap;
 
-  // Schedule time — use post's scheduled date/time or default to tomorrow 10:00
+  // Schedule time
   var schedDate = f["Scheduled Date"];
   var schedTime = f["Scheduled Time"] || "10:00";
   var dateTime;
@@ -97,40 +84,22 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
     dateTime = y + "-" + m + "-" + d + "T" + schedTime + ":00";
   }
 
-  // Build media array
-  var media = [];
-  if (normalizedImageUrl) {
-    media.push({ url: normalizedImageUrl, type: "IMAGE" });
-  }
-
+  // Minimal body — only fields proven in Metricool docs
   var body = {
     publicationDate: {
       dateTime: dateTime,
       timezone: "Europe/London"
     },
     text: fbCap,
-    providers: providers,
+    providers: [{ network: "facebook" }],
     autoPublish: true,
-    saveExternalMediaFiles: true,
-    shortener: false,
-    draft: false,
-    media: media,
-    facebookData: {
-      type: "POST"
-    },
-    instagramData: {
-      autoPublish: true
-    },
-    pinterestData: {
-      title: f["Destination"] || f["Post Title"] || "Travel inspiration"
-    },
-    googleData: {
-      type: "STANDARD"
-    },
+    facebookData: { type: "POST" },
     creatorUserId: parseInt(METRICOOL_USER)
   };
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;
+  console.log("Metricool request:", url, JSON.stringify(body).substring(0, 500));
+
   var r = await fetch(url, {
     method: "POST",
     headers: mcHeaders(),
@@ -138,10 +107,8 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
   });
 
   var responseText = await r.text();
-  if (!r.ok) {
-    console.error("Metricool schedule error:", r.status, responseText);
-    throw new Error("Metricool: " + r.status + " " + responseText.substring(0, 200));
-  }
+  console.log("Metricool response:", r.status, responseText.substring(0, 300));
+  if (!r.ok) throw new Error("Metricool: " + r.status + " " + responseText.substring(0, 200));
 
   var result;
   try { result = JSON.parse(responseText); } catch (e) { result = { raw: responseText }; }

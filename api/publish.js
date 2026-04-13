@@ -65,12 +65,52 @@ async function uploadImage(blogId, imageUrl) {
   }
 }
 
-// Schedule a post on Metricool — Facebook only for now
-async function schedulePost(blogId, post, metricoolImageUrl) {
-  var f = post.fields;
-  var caption = f["Caption - Facebook"] || "";
+// Platform config — maps Airtable caption field to Metricool network + extra data
+var PLATFORMS = [
+  { network: "facebook", caption: "Caption - Facebook", data: { facebookData: { type: "POST" } } },
+  { network: "instagram", caption: "Caption - Instagram", data: { instagramData: { autoPublish: true } } },
+  { network: "linkedin", caption: "Caption - LinkedIn", data: {} },
+  { network: "twitter", caption: "Caption - Twitter", data: { twitterData: { type: "POST" } } },
+  { network: "pinterest", caption: "Caption - Pinterest", data: {} },
+  { network: "tiktok", caption: "Caption - TikTok", data: {} },
+  { network: "google", caption: "Caption - GBP", data: { googleData: { type: "STANDARD" } } }
+];
 
-  // Schedule time — use post date or default to tomorrow 10:00
+// Schedule a post to ONE platform on Metricool
+async function scheduleOne(blogId, dateTime, caption, platform, imageUrl) {
+  var body = {
+    publicationDate: { dateTime: dateTime, timezone: "Europe/London" },
+    text: caption,
+    providers: [{ network: platform.network }],
+    autoPublish: true,
+    creatorUserId: parseInt(METRICOOL_USER)
+  };
+  // Add platform-specific data
+  Object.keys(platform.data).forEach(function(k) { body[k] = platform.data[k]; });
+  // Add image
+  if (imageUrl) {
+    body.media = [imageUrl];
+    body.mediaAltText = [null];
+    body.saveExternalMediaFiles = true;
+  }
+  // Pinterest needs a title
+  if (platform.network === "pinterest") {
+    body.pinterestData = body.pinterestData || {};
+    body.pinterestData.title = caption.substring(0, 100);
+  }
+
+  var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;
+  var r = await fetch(url, { method: "POST", headers: mcH(), body: JSON.stringify(body) });
+  var txt = await r.text();
+  return { network: platform.network, status: r.status, ok: r.ok, response: txt.substring(0, 150) };
+}
+
+// Schedule a post across ALL platforms with per-platform captions
+async function schedulePost(blogId, post, imageUrl) {
+  var f = post.fields;
+  var fbCap = f["Caption - Facebook"] || "";
+
+  // Build dateTime
   var schedDate = f["Scheduled Date"];
   var schedTime = f["Scheduled Time"] || "10:00";
   var dateTime;
@@ -82,27 +122,22 @@ async function schedulePost(blogId, post, metricoolImageUrl) {
     dateTime = tmrw.getFullYear() + "-" + String(tmrw.getMonth() + 1).padStart(2, "0") + "-" + String(tmrw.getDate()).padStart(2, "0") + "T" + schedTime + ":00";
   }
 
-  var body = {
-    publicationDate: { dateTime: dateTime, timezone: "Europe/London" },
-    text: caption,
-    providers: [{ network: "facebook" }],
-    autoPublish: true,
-    facebookData: { type: "POST" },
-    creatorUserId: parseInt(METRICOOL_USER)
-  };
+  var results = [];
+  for (var i = 0; i < PLATFORMS.length; i++) {
+    var plat = PLATFORMS[i];
+    var cap = f[plat.caption] || fbCap; // fallback to Facebook caption
+    if (!cap) continue; // skip if no caption at all
 
-  // Add image — use original URL with saveExternalMediaFiles so Metricool downloads it
-  if (metricoolImageUrl) {
-    body.media = [metricoolImageUrl];
-    body.mediaAltText = [null];
-    body.saveExternalMediaFiles = true;
+    try {
+      var r = await scheduleOne(blogId, dateTime, cap, plat, imageUrl);
+      results.push(r);
+      // Small delay between calls to avoid rate limiting
+      if (i < PLATFORMS.length - 1) await new Promise(function(resolve) { setTimeout(resolve, 500); });
+    } catch (e) {
+      results.push({ network: plat.network, status: 0, ok: false, response: e.message });
+    }
   }
-
-  var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;
-  var r = await fetch(url, { method: "POST", headers: mcH(), body: JSON.stringify(body) });
-  var txt = await r.text();
-  if (!r.ok) throw new Error("Metricool " + r.status + ": " + txt.substring(0, 200));
-  try { return JSON.parse(txt); } catch (e) { return { raw: txt }; }
+  return results;
 }
 
 /* ── Handler ── */
@@ -134,15 +169,18 @@ module.exports = async function handler(req, res) {
       // Pass image URL directly — saveExternalMediaFiles tells Metricool to download it
       var imgUrl = post.fields["Image URL"] || "";
 
-      // Schedule post
-      var mcResult = await schedulePost(blogId, post, imgUrl || null);
+      // Schedule across all 7 platforms
+      var results = await schedulePost(blogId, post, imgUrl || null);
+      var succeeded = results.filter(function(r) { return r.ok; });
+      var failed = results.filter(function(r) { return !r.ok; });
 
       // Update Airtable status
       await atPatch(QUEUE, postId, { Status: "Published" });
 
       return res.status(200).json({
         success: true, postId: postId,
-        metricool: mcResult,
+        platforms: { total: results.length, succeeded: succeeded.length, failed: failed.length },
+        results: results,
         imageUrl: imgUrl || null
       });
     }

@@ -100,10 +100,21 @@ async function scheduleOne(blogId, dateTime, caption, platform, imageUrl) {
   return { network: platform.network, status: r.status, ok: r.ok, response: txt.substring(0, 150) };
 }
 
-// Schedule a post across ALL platforms with per-platform captions
-async function schedulePost(blogId, post, imageUrl) {
+// Map Airtable platform names to Metricool network names
+var PLATFORM_MAP = {
+  "Facebook": "facebook", "Instagram": "instagram", "LinkedIn": "linkedin",
+  "X/Twitter": "twitter", "TikTok": "tiktok", "Pinterest": "pinterest", "Google Business": "google"
+};
+
+// Schedule a post across connected platforms with per-platform captions
+async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
   var f = post.fields;
   var fbCap = f["Caption - Facebook"] || "";
+
+  // Filter PLATFORMS to only those the client has connected
+  var activePlatforms = PLATFORMS.filter(function(p) {
+    return connectedPlatforms.indexOf(p.network) !== -1;
+  });
 
   // Build dateTime
   var schedDate = f["Scheduled Date"];
@@ -118,16 +129,15 @@ async function schedulePost(blogId, post, imageUrl) {
   }
 
   var results = [];
-  for (var i = 0; i < PLATFORMS.length; i++) {
-    var plat = PLATFORMS[i];
-    var cap = f[plat.caption] || fbCap; // fallback to Facebook caption
-    if (!cap) continue; // skip if no caption at all
+  for (var i = 0; i < activePlatforms.length; i++) {
+    var plat = activePlatforms[i];
+    var cap = f[plat.caption] || fbCap;
+    if (!cap) continue;
 
     try {
       var r = await scheduleOne(blogId, dateTime, cap, plat, imageUrl);
       results.push(r);
-      // Small delay between calls to avoid rate limiting
-      if (i < PLATFORMS.length - 1) await new Promise(function(resolve) { setTimeout(resolve, 500); });
+      if (i < activePlatforms.length - 1) await new Promise(function(resolve) { setTimeout(resolve, 500); });
     } catch (e) {
       results.push({ network: plat.network, status: 0, ok: false, response: e.message });
     }
@@ -161,11 +171,16 @@ module.exports = async function handler(req, res) {
       var blogId = client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
+      // Get connected platforms and convert to Metricool network names
+      var connRaw = client.fields["Connected Platforms"] || [];
+      var connNetworks = connRaw.map(function(p) { return PLATFORM_MAP[typeof p === "string" ? p : p.name]; }).filter(Boolean);
+      if (!connNetworks.length) return res.status(400).json({ error: "Client has no Connected Platforms set in Airtable" });
+
       // Pass image URL directly — saveExternalMediaFiles tells Metricool to download it
       var imgUrl = post.fields["Image URL"] || "";
 
-      // Schedule across all 7 platforms
-      var results = await schedulePost(blogId, post, imgUrl || null);
+      // Schedule across connected platforms only
+      var results = await schedulePost(blogId, post, imgUrl || null, connNetworks);
       var succeeded = results.filter(function(r) { return r.ok; });
       var failed = results.filter(function(r) { return !r.ok; });
 
@@ -189,6 +204,10 @@ module.exports = async function handler(req, res) {
       var blogId = client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
+      var connRaw2 = client.fields["Connected Platforms"] || [];
+      var connNetworks2 = connRaw2.map(function(p) { return PLATFORM_MAP[typeof p === "string" ? p : p.name]; }).filter(Boolean);
+      if (!connNetworks2.length) return res.status(400).json({ error: "Client has no Connected Platforms" });
+
       var allPosts = await atList(QUEUE, "AND({Status}='Queued',RECORD_ID()!='')");
       var clientPosts = allPosts.filter(function(p) { return (p.fields.Client || [])[0] === clientId; });
       if (!clientPosts.length) return res.status(200).json({ success: true, published: 0, message: "No approved posts" });
@@ -197,7 +216,7 @@ module.exports = async function handler(req, res) {
       for (var i = 0; i < clientPosts.length; i++) {
         try {
           var postImgUrl = clientPosts[i].fields["Image URL"] || null;
-          await schedulePost(blogId, clientPosts[i], postImgUrl);
+          await schedulePost(blogId, clientPosts[i], postImgUrl, connNetworks2);
           await atPatch(QUEUE, clientPosts[i].id, { Status: "Published" });
           published++;
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });

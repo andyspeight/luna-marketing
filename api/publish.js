@@ -103,12 +103,17 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
     text: fbCap,
     providers: [{ network: "facebook" }],
     autoPublish: true,
+    saveExternalMediaFiles: true,
     facebookData: { type: "POST" },
     creatorUserId: parseInt(METRICOOL_USER)
   };
 
-  // Add image if available
+  // Add image if available — use normalized URL in media array
+  var debugImg = { original: null, normalized: null, added: false };
   if (normalizedImageUrl) {
+    debugImg.original = normalizedImageUrl.substring(0, 100);
+    debugImg.normalized = normalizedImageUrl.substring(0, 100);
+    debugImg.added = true;
     body.media = [{ url: normalizedImageUrl }];
   }
 
@@ -127,7 +132,7 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
 
   var result;
   try { result = JSON.parse(responseText); } catch (e) { result = { raw: responseText }; }
-  return result;
+  return { metricool: result, imageDebug: debugImg };
 }
 
 /* ── Main handler ── */
@@ -177,7 +182,10 @@ module.exports = async function handler(req, res) {
 
       return res.status(200).json({
         success: true, action: "publish_post", postId: postId,
-        metricool: result
+        metricool: result.metricool,
+        imageDebug: result.imageDebug,
+        originalImageUrl: imgUrl ? imgUrl.substring(0, 80) : null,
+        normalizedImageUrl: normalizedImg ? normalizedImg.substring(0, 80) : null
       });
     }
 

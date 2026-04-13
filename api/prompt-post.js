@@ -14,25 +14,10 @@ async function getClient(clientId) {
 async function searchImage(query, orientation) {
   if (!PEXELS_KEY) return null;
   try {
-    var res = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&orientation=" + (orientation || "landscape") + "&per_page=3&size=large", { headers: { Authorization: PEXELS_KEY } });
+    var res = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&orientation=" + (orientation || "landscape") + "&per_page=1&size=large", { headers: { Authorization: PEXELS_KEY } });
     if (!res.ok) return null;
     var data = await res.json();
-    if (!data.photos || data.photos.length === 0) return null;
-    var idx = Math.floor(Math.random() * Math.min(data.photos.length, 3));
-    return data.photos[idx].src.large2x || data.photos[idx].src.large;
-  } catch (e) { return null; }
-}
-
-async function searchVideo(query) {
-  if (!PEXELS_KEY) return null;
-  try {
-    var res = await fetch("https://api.pexels.com/videos/search?query=" + encodeURIComponent(query) + "&orientation=portrait&per_page=3&size=medium", { headers: { Authorization: PEXELS_KEY } });
-    if (!res.ok) return null;
-    var data = await res.json();
-    if (!data.videos || data.videos.length === 0) return null;
-    var vid = data.videos[Math.floor(Math.random() * Math.min(data.videos.length, 3))];
-    var files = vid.video_files.filter(function(f) { return f.quality === "hd" || f.quality === "sd"; }).sort(function(a, b) { return (b.height || 0) - (a.height || 0); });
-    return files.length > 0 ? files[0].link : null;
+    return data.photos && data.photos.length > 0 ? (data.photos[0].src.large2x || data.photos[0].src.large) : null;
   } catch (e) { return null; }
 }
 
@@ -64,25 +49,13 @@ module.exports = async function handler(req, res) {
     var saveToQueue = body.saveToQueue !== false;
 
     if (!clientId) return res.status(400).json({ error: "clientId is required" });
-    if (!prompt) return res.status(400).json({ error: "prompt is required" });
+    if (!prompt) return res.status(400).json({ error: "prompt is required. Describe what kind of post you want." });
 
     var clientRecord = await getClient(clientId);
     var f = clientRecord.fields;
     var autoPublish = !!f["Auto Publish"];
 
-    var systemPrompt = "You are Luna, the automated social media content engine for travel agents. Generate exactly ONE social media post for 7 platforms simultaneously: Facebook, Instagram, LinkedIn, Twitter/X, Pinterest, TikTok and Google Business Profile.\n\n" +
-      "Client:\nBusiness: " + (f["Business Name"] || "") + "\nTrading: " + (f["Trading Name"] || "") + "\nWebsite: " + (f["Website URL"] || "") + "\nTone: " + (f["Tone Keywords"] || "warm, professional") + "\nEmoji: " + (f["Emoji Usage"] || "Light") + "\nFormality: " + (f["Formality"] || "Balanced") + "\nSentence: " + (f["Sentence Style"] || "Short and punchy") + "\nCTA: " + (f["CTA Style"] || "Question-based") + "\n\n" +
-      "Rules:\n- UK English. No em dashes. No Oxford comma.\n- Banned: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, delve, nestled, embark, tapestry, picture this, there's something for everyone, adventure awaits, escape the ordinary, hidden gem, bucket list, sun-kissed\n- No political/religious/controversial content. No pricing unless provided. No competitors.\n- Every post needs a CTA.\n- Be specific to the destination.\n\n" +
-      "Platform specs:\n" +
-      "- Facebook: 50-200 words, 3-5 hashtags\n" +
-      "- Instagram: 50-150 words, 5-15 hashtags\n" +
-      "- LinkedIn: 50-250 words, 3-5 hashtags (professional tone)\n" +
-      "- Twitter/X: max 270 chars (leave room for link), 2-3 hashtags\n" +
-      "- Pinterest: 50-100 words, descriptive and searchable, 5-10 hashtags\n" +
-      "- TikTok: 30-100 words, casual and energetic, 3-5 trending hashtags\n" +
-      "- Google Business: 50-150 words, local/direct, no hashtags, include a CTA\n\n" +
-      "CTA link: " + (f["Website URL"] || "") + "/destinations/destination-slug?utm_source=social&utm_medium=PLATFORM&utm_campaign=luna_marketing\n\n" +
-      "Return ONLY valid JSON:\n{content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), image_tags (array of 3), suggested_day, suggested_time}";
+    var systemPrompt = "You are Luna, the automated social media content engine for travel agents. Generate exactly ONE social media post based on the user's request below.\n\nYou are writing on behalf of this travel agent:\nBusiness: " + (f["Business Name"] || "") + "\nTrading Name: " + (f["Trading Name"] || "") + "\nWebsite: " + (f["Website URL"] || "") + "\nTone: " + (f["Tone Keywords"] || "warm, professional") + "\nEmoji: " + (f["Emoji Usage"] || "Light") + "\nFormality: " + (f["Formality"] || "Balanced") + "\nSentence style: " + (f["Sentence Style"] || "Short and punchy") + "\nCTA style: " + (f["CTA Style"] || "Question-based") + "\n\nRules:\n- UK English only. No em dashes. No Oxford comma.\n- Never use: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, delve, nestled, embark, tapestry, picture this, there's something for everyone, the world is waiting, adventure awaits, escape the ordinary, hidden gem, bucket list, sun-kissed\n- No political, religious, or controversial content.\n- No pricing unless the user provides specific prices in their prompt.\n- No competitor mentions.\n- Every post must include a call-to-action.\n- Facebook caption: 50-200 words. Instagram: 50-150 words. LinkedIn: 50-250 words. Twitter/X: 200 chars max, punchy. Pinterest: 300 chars max, SEO-rich. TikTok: 100 words max, casual hook-first. GBP: 100 words max, local SEO.\n- Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.\n- Be specific to the destination. Reference actual places, beaches, dishes, experiences.\n\nCTA link format: " + (f["Website URL"] || "") + "/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing\n\nReturn ONLY valid JSON with no markdown fences. One object with these fields:\ncontent_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3 specific search terms), image_orientation, suggested_day, suggested_time";
 
     var response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -99,13 +72,11 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: "Failed to parse response", raw: cleaned.substring(0, 500) });
     }
 
-    // Images: landscape for FB/IG/LI/X/GBP, portrait for Pinterest
+    // Get image
     var tags = post.image_tags || [];
     var dest = post.destination || "";
     var imageQuery = dest && dest !== "General" ? (tags.length > 0 ? dest + " " + tags[0] : dest + " travel") : (tags.length > 0 ? tags[0] + " travel" : "travel holiday");
-    var imageUrl = await searchImage(imageQuery, "landscape");
-    var pinterestImageUrl = await searchImage(imageQuery, "portrait");
-    var videoUrl = await searchVideo(imageQuery);
+    var imageUrl = await searchImage(imageQuery, post.image_orientation || "landscape");
 
     // FCDO check
     var fcdo = await checkFCDO(post.destination);
@@ -134,9 +105,7 @@ module.exports = async function handler(req, res) {
           "Suppression Reason": fcdo.safe ? "" : (fcdo.reason || ""),
           "Generated Week": "PROMPT",
           "Image URL": imageUrl || "",
-          "Image Position": "50% 50%",
-          "Pinterest Image URL": pinterestImageUrl || "",
-          "Video URL": videoUrl || ""
+          "Image Position": "50% 50%"
         }
       };
       var aRes = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblbhyiuULvedva0K", {
@@ -148,9 +117,15 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(200).json({
-      success: true, post: post, image_url: imageUrl, pinterest_image_url: pinterestImageUrl, video_url: videoUrl,
-      fcdo_safe: fcdo.safe, status: status, saved: !!savedRecord, record_id: savedRecord ? savedRecord.id : null,
-      client: f["Business Name"], prompt: prompt
+      success: true,
+      post: post,
+      image_url: imageUrl,
+      fcdo_safe: fcdo.safe,
+      status: status,
+      saved: !!savedRecord,
+      record_id: savedRecord ? savedRecord.id : null,
+      client: f["Business Name"],
+      prompt: prompt
     });
   } catch (err) {
     console.error("Prompt post error:", err);

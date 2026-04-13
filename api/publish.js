@@ -112,8 +112,8 @@ async function schedulePost(blogId, post, normalizedImageUrl) {
   if (normalizedImageUrl) {
     debugImg.original = normalizedImageUrl.substring(0, 100);
     debugImg.normalized = normalizedImageUrl.substring(0, 100);
-    debugImg.added = true;
-    body.media = [{ url: normalizedImageUrl }];
+    // TODO: Metricool media format needs research — media array causes 500
+    // Will add back once correct format is confirmed
   }
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;

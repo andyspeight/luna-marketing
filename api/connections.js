@@ -62,34 +62,36 @@ module.exports = async function handler(req, res) {
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      // Extract WL tokens — the response should contain access URLs
-      var wlToken = data.whiteLabelToken || data.wlToken || data.token || null;
-      var wlUrl = data.whiteLabelUrl || data.wlUrl || null;
-      var editUrl = data.whiteLabelEditUrl || null;
-
-      // Build the connections URL
+      // Extract the white-label link
+      var wlLink = data.whiteLabelLink || null;
       var connectionUrl = null;
-      if (wlToken) {
-        connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
-      } else if (wlUrl) {
-        // Try to extract token from the URL
-        var match = wlUrl.match(/autoin\/([^?]+)/);
-        if (match) connectionUrl = "https://app.metricool.com/autoin/" + match[1] + "?redirect=/connections";
-        else connectionUrl = wlUrl;
+      if (wlLink) {
+        // Replace the redirect to go to connections page
+        if (wlLink.includes("autoin/")) {
+          var token = wlLink.split("autoin/")[1].split("?")[0];
+          connectionUrl = "https://app.metricool.com/autoin/" + token + "?redirect=/connections";
+        } else {
+          connectionUrl = wlLink;
+        }
       }
+
+      // Detect connected platforms from individual fields
+      var connected = [];
+      if (data.facebook) connected.push("Facebook");
+      if (data.instagram) connected.push("Instagram");
+      if (data.linkedinCompany || data.linkedInCompanyName) connected.push("LinkedIn");
+      if (data.twitter) connected.push("X/Twitter");
+      if (data.tiktok) connected.push("TikTok");
+      if (data.pinterest) connected.push("Pinterest");
+      if (data.gmb || data.gmbAccountName) connected.push("Google Business");
 
       return res.status(200).json({
         success: true,
         clientId: clientId,
         blogId: blogId,
         connectionUrl: connectionUrl,
-        // Include raw response for debugging
-        debug: {
-          keys: Object.keys(data),
-          hasWlToken: !!wlToken,
-          hasWlUrl: !!wlUrl,
-          rawSnippet: JSON.stringify(data).substring(0, 500)
-        }
+        connectedPlatforms: connected,
+        brandName: data.label || null
       });
     }
 
@@ -102,26 +104,22 @@ module.exports = async function handler(req, res) {
       var blogId = client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Get the brand profile which should show connected networks
+      // Get the brand profile to check connected networks
       var url = MC_BASE + "/admin/profile?blogId=" + blogId + "&userId=" + METRICOOL_USER + "&refreshBrandCache=true";
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      // Try to extract connected networks from the profile
+      // Detect connected platforms from individual fields
       var connected = [];
-      var networks = data.providers || data.networks || data.connections || data.socialNetworks || [];
+      if (data.facebook) connected.push("Facebook");
+      if (data.instagram) connected.push("Instagram");
+      if (data.linkedinCompany || data.linkedInCompanyName) connected.push("LinkedIn");
+      if (data.twitter) connected.push("X/Twitter");
+      if (data.tiktok) connected.push("TikTok");
+      if (data.pinterest) connected.push("Pinterest");
+      if (data.gmb || data.gmbAccountName) connected.push("Google Business");
 
-      // If it's an array of objects with network names
-      if (Array.isArray(networks)) {
-        networks.forEach(function(n) {
-          var name = n.network || n.provider || n.type || n;
-          if (typeof name === "string" && NET_TO_NAME[name.toLowerCase()]) {
-            connected.push(NET_TO_NAME[name.toLowerCase()]);
-          }
-        });
-      }
-
-      // If we found connected platforms, update Airtable
+      // Update Airtable with detected platforms
       if (connected.length > 0) {
         await atPatch(CLIENTS, clientId, { "Connected Platforms": connected });
       }
@@ -130,12 +128,7 @@ module.exports = async function handler(req, res) {
         success: true,
         clientId: clientId,
         blogId: blogId,
-        connectedPlatforms: connected,
-        // Debug info to understand the response structure
-        debug: {
-          keys: Object.keys(data),
-          rawSnippet: JSON.stringify(data).substring(0, 500)
-        }
+        connectedPlatforms: connected
       });
     }
 
@@ -156,23 +149,33 @@ module.exports = async function handler(req, res) {
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      var wlToken = data.whiteLabelToken || data.wlToken || data.token || null;
+      var wlLink2 = data.whiteLabelLink || null;
       var connectionUrl = null;
-      if (wlToken) {
-        connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
+      if (wlLink2) {
+        if (wlLink2.includes("autoin/")) {
+          var token2 = wlLink2.split("autoin/")[1].split("?")[0];
+          connectionUrl = "https://app.metricool.com/autoin/" + token2 + "?redirect=/connections";
+        } else {
+          connectionUrl = wlLink2;
+        }
       }
 
-      // Get current connected platforms
-      var connRaw = client.fields["Connected Platforms"] || [];
-      var currentConnected = connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
+      // Detect connected platforms
+      var detectedPlatforms = [];
+      if (data.facebook) detectedPlatforms.push("Facebook");
+      if (data.instagram) detectedPlatforms.push("Instagram");
+      if (data.linkedinCompany || data.linkedInCompanyName) detectedPlatforms.push("LinkedIn");
+      if (data.twitter) detectedPlatforms.push("X/Twitter");
+      if (data.tiktok) detectedPlatforms.push("TikTok");
+      if (data.pinterest) detectedPlatforms.push("Pinterest");
+      if (data.gmb || data.gmbAccountName) detectedPlatforms.push("Google Business");
 
       return res.status(200).json({
         success: true,
         clientName: client.fields["Trading Name"],
         blogId: blogId,
         connectionUrl: connectionUrl,
-        connectedPlatforms: currentConnected,
-        debug: { keys: Object.keys(data), rawSnippet: JSON.stringify(data).substring(0, 300) }
+        connectedPlatforms: detectedPlatforms
       });
     }
 

@@ -73,7 +73,7 @@ var PLATFORMS = [
   { network: "twitter", caption: "Caption - Twitter", data: { twitterData: { type: "POST" } } },
   { network: "pinterest", caption: "Caption - Pinterest", data: {} },
   { network: "tiktok", caption: "Caption - TikTok", data: {} },
-  { network: "google", caption: "Caption - GBP", data: { googleData: { type: "STANDARD" } } }
+  { network: "google", caption: "Caption - GBP", data: {} }
 ];
 
 // Schedule a post to ONE platform on Metricool
@@ -92,11 +92,6 @@ async function scheduleOne(blogId, dateTime, caption, platform, imageUrl) {
     body.media = [imageUrl];
     body.mediaAltText = [null];
     body.saveExternalMediaFiles = true;
-  }
-  // Pinterest needs a title
-  if (platform.network === "pinterest") {
-    body.pinterestData = body.pinterestData || {};
-    body.pinterestData.title = caption.substring(0, 100);
   }
 
   var url = MC_BASE + "/v2/scheduler/posts?blogId=" + blogId + "&userId=" + METRICOOL_USER;

@@ -1,91 +1,282 @@
+const Anthropic = require("@anthropic-ai/sdk").default;
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const CLIENTS_TABLE = "tblUkzvBujc94Yali";
+const QUEUE_TABLE = "tblbhyiuULvedva0K";
 const CRON_SECRET = process.env.CRON_SECRET;
 
+// Fetch all active clients from Airtable
 async function getActiveClients() {
-  var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + CLIENTS_TABLE + "?filterByFormula={Status}='Active'";
-  var res = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula={Status}='Active'`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${AIRTABLE_KEY}` },
+  });
   if (!res.ok) throw new Error("Failed to fetch clients: " + res.statusText);
-  var data = await res.json();
+  const data = await res.json();
   return data.records || [];
 }
 
+// Build system prompt for a single client
+function buildSystemPrompt(f) {
+  return `You are Luna, the automated social media content engine for travel agents. You generate social media posts that will be published to Facebook, Instagram and LinkedIn without human review. Because no human checks your output before it goes live, accuracy and brand safety are paramount.
+
+You are writing on behalf of a specific travel agent. Their brand profile is provided below. Every post must sound like it came from this agent, not from an AI or a generic marketing tool.
+
+## Client Profile
+
+Business Name: ${f["Business Name"] || ""}
+Trading Name: ${f["Trading Name"] || ""}
+Website: ${f["Website URL"] || ""}
+Phone: ${f["Phone"] || ""}
+
+## Brand Voice
+
+Tone: ${f["Tone Keywords"] || "warm, professional"}
+Emoji usage: ${f["Emoji Usage"] || "Light"}
+Formality: ${f["Formality"] || "Balanced"}
+Sentence style: ${f["Sentence Style"] || "Short and punchy"}
+CTA style: ${f["CTA Style"] || "Question-based"}
+Example phrases from their brand: ${f["Example Phrases"] || ""}
+
+## What This Agent Sells
+
+Destinations: ${f["Destinations"] || ""}
+Specialisms: ${Array.isArray(f["Specialisms"]) ? f["Specialisms"].join(", ") : f["Specialisms"] || ""}
+
+## Content Request
+
+Generate ${f["Posting Frequency"] || 3} social media posts for the week beginning ${getNextMonday()}.
+
+The content mix should follow these weightings:
+- Destination Inspiration: 40%
+- Offer Highlight: 20%
+- Travel Tips: 15%
+- Social Proof: 10%
+- Seasonal/Event: 10%
+- Behind the Scenes: 5%
+
+Round to the nearest whole post. For 3 posts per week, a typical mix is 2 Destination Inspiration and 1 rotating type. Vary the rotating type week to week.
+
+## Content Rules (Non-Negotiable)
+
+### Language
+- UK English only. Colour not color. Favourite not favorite. Centre not center.
+- No em dashes. Use commas, full stops or colons instead.
+- No Oxford comma.
+
+### Banned Phrases
+Never use any of these: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, at the end of the day, in today's world, it's important to note, it's worth noting, delve, nestled, embark, tapestry, picture this, ever-changing, testament to, whether you're, there's something for everyone, the world is waiting, adventure awaits, escape the ordinary, hidden gem, bucket list, wander, paradise found, sun-kissed
+
+### Safety
+- No political content. No religious content. No controversial opinions.
+- No health claims or medical advice.
+- No pricing unless explicitly provided. Never invent, estimate or round prices.
+- No competitor mentions.
+- No negative content about any destination, country, culture or people.
+- No content about destinations not in this agent's destination list.
+
+### Structure
+- Every post must include a call-to-action.
+- Captions: 50-200 words for Facebook, 50-150 words for Instagram, 50-250 words for LinkedIn.
+- Hashtags: 5-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn.
+- Never use the same opening word for two posts.
+- Never start a post with a hashtag.
+- Be specific to the destination.
+
+### CTA Links
+- Format: ${f["Website URL"] || ""}/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing
+
+### Image Tags
+For each post, provide 3 image search tags that describe the ideal image. Be specific.
+
+## Output Format
+
+Return a JSON array. No markdown, no commentary, no preamble. Only valid JSON.
+
+Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), cta_url_facebook, cta_url_instagram, cta_url_linkedin, image_tags (array of 3), image_orientation, suggested_day, suggested_time`;
+}
+
+function getNextMonday() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? 1 : 8 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  return monday.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function getWeekString() {
-  var now = new Date();
-  var start = new Date(now.getFullYear(), 0, 1);
-  var week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  return now.getFullYear() + "-W" + String(week).padStart(2, "0");
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now - start;
+  const week = Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+// Generate posts for one client
+async function generateForClient(record) {
+  const f = record.fields;
+  const systemPrompt = buildSystemPrompt(f);
+
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4096,
+    temperature: 0.7,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: "Generate this week's social media posts." },
+    ],
+  });
+
+  const text = response.content
+    .map((c) => (c.type === "text" ? c.text : ""))
+    .filter(Boolean)
+    .join("");
+
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(cleaned);
+}
+
+// Write posts to the queue
+async function queuePosts(posts, clientId) {
+  const created = [];
+  for (const post of posts) {
+    const record = {
+      fields: {
+        "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
+        Client: [clientId],
+        "Content Type": post.content_type,
+        "Caption - Facebook": post.caption_facebook,
+        "Caption - Instagram": post.caption_instagram,
+        "Caption - LinkedIn": post.caption_linkedin || "",
+        Hashtags: [
+          ...(post.hashtags_facebook || []),
+          ...(post.hashtags_instagram || []),
+        ]
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", "),
+        "CTA URL": post.cta_url_facebook || "",
+        Destination: post.destination || "",
+        "Scheduled Time": post.suggested_time || "09:00",
+        Status: "Queued",
+        "Generated Week": getWeekString(),
+      },
+    };
+
+    const res = await fetch(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ records: [record], typecast: true }),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      created.push(data.records[0]);
+    }
+  }
+  return created;
 }
 
 module.exports = async function handler(req, res) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Security: verify cron secret
-  var authHeader = req.headers.authorization;
-  if (CRON_SECRET && authHeader !== "Bearer " + CRON_SECRET) {
+  // Security: verify cron secret (Vercel sends this automatically)
+  const authHeader = req.headers.authorization;
+  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Sunday guard — no generation on Sundays
-  var today = new Date();
-  if (today.getDay() === 0) {
-    return res.status(200).json({ success: true, skipped: true, reason: "Sunday — no generation", week: getWeekString() });
-  }
-
-  var results = { week: getWeekString(), started: new Date().toISOString(), clients: [], errors: [], totalPosts: 0 };
+  const results = {
+    week: getWeekString(),
+    started: new Date().toISOString(),
+    clients: [],
+    errors: [],
+    totalPosts: 0,
+  };
 
   try {
     // 1. Get all active clients
-    var clients = await getActiveClients();
-    console.log("Cron: found " + clients.length + " active clients");
+    const clients = await getActiveClients();
+    console.log(`Found ${clients.length} active clients`);
 
-    // 2. Determine base URL for internal API calls
-    var host = req.headers.host || "luna-marketing.vercel.app";
-    var protocol = host.includes("localhost") ? "http" : "https";
-    var baseUrl = protocol + "://" + host;
-
-    // 3. Generate for each client by calling /api/generate
-    for (var i = 0; i < clients.length; i++) {
-      var record = clients[i];
-      var name = record.fields["Trading Name"] || record.fields["Business Name"] || "Unknown";
+    // 2. Generate posts for each client sequentially
+    for (const clientRecord of clients) {
+      const name = clientRecord.fields["Business Name"] || "Unknown";
       try {
-        console.log("Cron: generating for " + name + " (" + (i + 1) + "/" + clients.length + ")");
+        console.log(`Generating for: ${name}`);
+        const posts = await generateForClient(clientRecord);
+        const queued = await queuePosts(posts, clientRecord.id);
 
-        var genRes = await fetch(baseUrl + "/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clientId: record.id }),
-          signal: AbortSignal.timeout(120000), // 2 min timeout per client
-        });
-
-        var genData = await genRes.json();
-
-        if (genRes.ok && genData.success) {
-          var postCount = genData.posts ? genData.posts.length : 0;
-          results.clients.push({ name: name, id: record.id, postsGenerated: postCount, status: "success" });
-          results.totalPosts += postCount;
-        } else {
-          throw new Error(genData.error || "Generation failed");
+        // Auto-publish if client has auto_publish enabled
+        var autoPublished = 0;
+        if (clientRecord.fields["Auto Publish"] && queued.length > 0) {
+          try {
+            console.log(`Auto-publishing for: ${name}`);
+            var pubRes = await fetch((process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://luna-marketing.vercel.app') + '/api/publish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'publish_client', clientId: clientRecord.id })
+            });
+            var pubData = await pubRes.json();
+            autoPublished = pubData.published || 0;
+            console.log(`Auto-published ${autoPublished} posts for ${name}`);
+          } catch (pubErr) {
+            console.error(`Auto-publish error for ${name}: ${pubErr.message}`);
+          }
         }
+
+        results.clients.push({
+          name,
+          id: clientRecord.id,
+          postsGenerated: posts.length,
+          postsQueued: queued.length,
+          autoPublished: autoPublished,
+          status: "success",
+        });
+        results.totalPosts += queued.length;
       } catch (err) {
-        console.error("Cron error for " + name + ": " + err.message);
-        results.errors.push({ name: name, id: record.id, error: err.message });
-        results.clients.push({ name: name, id: record.id, postsGenerated: 0, status: "error", error: err.message });
+        console.error(`Error for ${name}: ${err.message}`);
+        results.errors.push({
+          name,
+          id: clientRecord.id,
+          error: err.message,
+        });
+        results.clients.push({
+          name,
+          id: clientRecord.id,
+          postsGenerated: 0,
+          postsQueued: 0,
+          status: "error",
+          error: err.message,
+        });
       }
 
-      // Delay between clients to avoid rate limits
-      if (i < clients.length - 1) await new Promise(function(r) { setTimeout(r, 3000); });
+      // Small delay between clients to avoid rate limits
+      await new Promise((r) => setTimeout(r, 2000));
     }
 
     results.completed = new Date().toISOString();
     results.success = true;
+
     return res.status(200).json(results);
   } catch (err) {
     console.error("Batch generation error:", err);
-    return res.status(500).json({ error: err.message, results: results });
+    return res.status(500).json({ error: err.message, results });
   }
 };

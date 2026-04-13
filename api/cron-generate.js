@@ -80,8 +80,14 @@ Never use any of these: leverage, seamless, game-changer, deep dive, elevate, un
 
 ### Structure
 - Every post must include a call-to-action.
-- Captions: 50-200 words for Facebook, 50-150 words for Instagram, 50-250 words for LinkedIn.
-- Hashtags: 5-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn.
+- Facebook: 50-200 words. Conversational, storytelling, question-based engagement.
+- Instagram: 50-150 words. Visual-first, emoji-friendly, hashtag-rich (8-15 hashtags).
+- LinkedIn: 50-250 words. Professional, insight-driven, thought-leadership tone.
+- Twitter/X: 200 characters max. Punchy, conversational, includes CTA link. No hashtags in caption.
+- Pinterest: 300 characters max. SEO-rich, keyword-heavy, inspirational. Focus on searchability.
+- TikTok: 100 words max. Casual, trend-aware, hook-first opening line. Include 3-5 hashtags.
+- Google Business Profile: 100 words max. Local SEO focused, includes business CTA and location relevance.
+- Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.
 - Never use the same opening word for two posts.
 - Never start a post with a hashtag.
 - Be specific to the destination.
@@ -96,7 +102,7 @@ For each post, provide 3 image search tags that describe the ideal image. Be spe
 
 Return a JSON array. No markdown, no commentary, no preamble. Only valid JSON.
 
-Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), cta_url_facebook, cta_url_instagram, cta_url_linkedin, image_tags (array of 3), image_orientation, suggested_day, suggested_time`;
+Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time`;
 }
 
 function getNextMonday() {
@@ -156,6 +162,10 @@ async function queuePosts(posts, clientId) {
         "Caption - Facebook": post.caption_facebook,
         "Caption - Instagram": post.caption_instagram,
         "Caption - LinkedIn": post.caption_linkedin || "",
+        "Caption - Twitter": post.caption_twitter || "",
+        "Caption - Pinterest": post.caption_pinterest || "",
+        "Caption - TikTok": post.caption_tiktok || "",
+        "Caption - GBP": post.caption_gbp || "",
         Hashtags: [
           ...(post.hashtags_facebook || []),
           ...(post.hashtags_instagram || []),

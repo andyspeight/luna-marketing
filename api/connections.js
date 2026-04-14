@@ -26,7 +26,6 @@ async function atList(table, formula) {
   return data.records || [];
 }
 
-// Safe Metricool JSON parser — handles HTML error pages gracefully
 async function safeMcFetch(url) {
   var r = await fetch(url, { headers: mcH() });
   var ct = r.headers.get("content-type") || "";
@@ -37,6 +36,12 @@ async function safeMcFetch(url) {
     return {};
   }
   return r.json();
+}
+
+function getConnectedPlatforms(client, isPersonal) {
+  var fieldName = isPersonal ? "Connected Platforms Personal" : "Connected Platforms";
+  var connRaw = client.fields[fieldName] || [];
+  return connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
 }
 
 module.exports = async function handler(req, res) {
@@ -55,6 +60,7 @@ module.exports = async function handler(req, res) {
       if (!clientId) return res.status(400).json({ error: "clientId required" });
 
       var client = await atGet(CLIENTS, clientId);
+      var isPersonal = !!body.blogId;
       var blogId = body.blogId || client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
@@ -66,8 +72,7 @@ module.exports = async function handler(req, res) {
         connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
       }
 
-      var connRaw = client.fields["Connected Platforms"] || [];
-      var currentConnected = connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
+      var currentConnected = getConnectedPlatforms(client, isPersonal);
 
       return res.status(200).json({
         success: true,
@@ -110,8 +115,7 @@ module.exports = async function handler(req, res) {
         connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
       }
 
-      var connRaw = client.fields["Connected Platforms"] || [];
-      var currentConnected = connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
+      var currentConnected = getConnectedPlatforms(client, false);
 
       return res.status(200).json({
         success: true,

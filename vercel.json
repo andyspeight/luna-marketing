@@ -17,6 +17,7 @@
     "api/videos.js": { "maxDuration": 15 },
     "api/fcdo.js": { "maxDuration": 15 },
     "api/publish.js": { "maxDuration": 120 },
-    "api/connections.js": { "maxDuration": 30 }
+    "api/connections.js": { "maxDuration": 30 },
+    "api/events.js": { "maxDuration": 15 }
   }
 }

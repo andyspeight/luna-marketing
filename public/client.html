@@ -458,25 +458,101 @@ function stClass(s){s=(s||'').toLowerCase();return s==='approved'?'cal-status-ap
 // Events View
 var EVT_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var EVT_CAT_COLORS={'Sporting Event':'#3B82F6','Cultural Festival':'#8B5CF6','Religious Festival':'#F59E0B','Public Holiday':'#10B981','School Holiday':'#EC4899','Awareness Day':'#6366F1','Music Festival':'#EF4444','Food & Drink':'#F97316','Major Anniversary':'#14B8A6','Conference/Expo':'#64748B'};
-var evtState={events:[],filter:'all'};
+var evtState={events:[],filter:'all',postedIds:[],selected:{}};
 function evtDate(d){if(!d)return'';var p=d.split('-');return parseInt(p[2])+' '+EVT_MONTHS[parseInt(p[1])-1].substring(0,3)}
 function evtDay(d){return d?parseInt(d.split('-')[2]):''}
 function evtMon(d){return d?EVT_MONTHS[parseInt(d.split('-')[1])-1].substring(0,3).toUpperCase():''}
 function evtMonthYear(d){if(!d)return'';var p=d.split('-');return EVT_MONTHS[parseInt(p[1])-1]+' '+p[0]}
 function evtImpact(i){if(!i)return['minor','Awareness'];if(i.includes('Major'))return['major','Drives Bookings'];if(i.includes('Moderate'))return['mod','Content Hook'];return['minor','Awareness']}
 
-// Event delegation for filters and toggles
+// Event delegation for filters, toggles, checkboxes, and generate buttons
 document.addEventListener('click',function(e){
   var fb=e.target.closest('[data-evt-filter]');
   if(fb){evtState.filter=fb.getAttribute('data-evt-filter');drawEventsClient();return}
   var tb=e.target.closest('[data-evt-toggle]');
   if(tb){var id=tb.getAttribute('data-evt-toggle');var card=document.getElementById('evt-'+id);if(card)card.classList.toggle('evt-open');return}
+  var gb=e.target.closest('[data-evt-generate]');
+  if(gb){var eid=gb.getAttribute('data-evt-generate');generateEventPosts([eid]);return}
+  var batch=e.target.closest('#evtBatchGenerate');
+  if(batch){var ids=Object.keys(evtState.selected).filter(function(k){return evtState.selected[k]});if(ids.length)generateEventPosts(ids);return}
 });
+document.addEventListener('change',function(e){
+  if(e.target.matches('.evt-checkbox')){
+    var id=e.target.getAttribute('data-evt-check');
+    evtState.selected[id]=e.target.checked;
+    updateBatchBar();
+  }
+});
+
+function updateBatchBar(){
+  var bar=document.getElementById('evtBatchBar');
+  if(!bar)return;
+  var count=Object.keys(evtState.selected).filter(function(k){return evtState.selected[k]}).length;
+  bar.style.display=count>0?'flex':'none';
+  var label=document.getElementById('evtBatchCount');
+  if(label)label.textContent=count+' event'+(count!==1?'s':'')+' selected';
+}
+
+async function generateEventPosts(eventIds){
+  // Show generating state
+  eventIds.forEach(function(id){
+    var btn=document.querySelector('[data-evt-generate="'+id+'"]');
+    if(btn){btn.textContent='Generating...';btn.style.opacity='0.6';btn.style.pointerEvents='none'}
+  });
+  var bar=document.getElementById('evtBatchGenerate');
+  if(bar){bar.textContent='Generating...';bar.style.opacity='0.6'}
+
+  try{
+    var res=await fetch('/api/event-post',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'generate',clientId:state.profile.id,eventIds:eventIds})
+    });
+    var d=await res.json();
+    if(!d.success)throw new Error(d.error);
+
+    // Update posted IDs and refresh
+    d.results.forEach(function(r){
+      if(r.status==='created'&&evtState.postedIds.indexOf(r.eventId)===-1)evtState.postedIds.push(r.eventId);
+    });
+    evtState.selected={};
+
+    // Show success toast
+    var msg=d.generated+' post'+(d.generated!==1?'s':'')+' created';
+    if(d.skipped>0)msg+=' ('+d.skipped+' already posted)';
+    showEvtToast(msg,'success');
+
+    drawEventsClient();
+  }catch(err){
+    showEvtToast('Error: '+err.message,'error');
+    eventIds.forEach(function(id){
+      var btn=document.querySelector('[data-evt-generate="'+id+'"]');
+      if(btn){btn.textContent='Create Post';btn.style.opacity='1';btn.style.pointerEvents='auto'}
+    });
+    if(bar){bar.textContent='Generate Posts for Selected';bar.style.opacity='1'}
+  }
+}
+
+function showEvtToast(msg,type){
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;animation:fadeIn 0.3s;font-family:var(--tg-font-body);box-shadow:0 8px 24px rgba(0,0,0,0.15);';
+  t.style.background=type==='success'?'#059669':'#DC2626';
+  t.style.color='#fff';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(function(){t.remove()},300)},3000);
+}
 
 async function renderEventsView(){
   var el=$('view-events');
   el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading events...</div>';
-  try{var res=await fetch('/api/events?months=12');var d=await res.json();if(!d.success)throw new Error(d.error);evtState.events=d.events}catch(e){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error)">Error: '+e.message+'</div>';return}
+  try{
+    var res=await fetch('/api/events?months=12');var d=await res.json();if(!d.success)throw new Error(d.error);evtState.events=d.events;
+    // Fetch posted event IDs
+    var pr=await fetch('/api/event-post?action=posted&clientId='+state.profile.id);var pd=await pr.json();
+    evtState.postedIds=pd.postedEventIds||[];
+  }catch(e){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error)">Error: '+e.message+'</div>';return}
+  evtState.selected={};
   drawEventsClient();
 }
 
@@ -526,14 +602,35 @@ function drawEventsClient(){
     evts.forEach(function(e){
       var color=EVT_CAT_COLORS[e.category]||'#64748B';var imp=evtImpact(e.impact);
       var dateRange=evtDate(e.dateStart);if(e.dateEnd&&e.dateEnd!==e.dateStart)dateRange+=' \u2014 '+evtDate(e.dateEnd);
-      h+='<div class="evt-card" id="evt-'+e.id+'" style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;transition:box-shadow 0.2s">';
-      h+='<div data-evt-toggle="'+e.id+'" style="display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer">';
+      var isPosted=evtState.postedIds.indexOf(e.id)!==-1;
+      var isChecked=evtState.selected[e.id]||false;
+
+      h+='<div class="evt-card'+(isPosted?' evt-posted':'')+'" id="evt-'+e.id+'" style="background:var(--tg-bg-primary);border:1px solid '+(isPosted?'rgba(16,185,129,0.3)':'var(--tg-border)')+';border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;transition:box-shadow 0.2s">';
+      h+='<div style="display:flex;align-items:center;gap:10px;padding:14px 16px">';
+
+      // Checkbox (not for posted events)
+      if(!isPosted){
+        h+='<input type="checkbox" class="evt-checkbox" data-evt-check="'+e.id+'" '+(isChecked?'checked':'')+' style="width:18px;height:18px;flex-shrink:0;accent-color:var(--tg-accent);cursor:pointer" onclick="event.stopPropagation()">';
+      } else {
+        h+='<div style="width:18px;flex-shrink:0"></div>';
+      }
+
+      // Clickable row content
+      h+='<div data-evt-toggle="'+e.id+'" style="display:flex;align-items:center;gap:14px;flex:1;cursor:pointer">';
       h+='<div style="width:50px;text-align:center;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:var(--tg-text-primary);line-height:1.1">'+evtDay(e.dateStart)+'</div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary)">'+evtMon(e.dateStart)+'</div></div>';
       h+='<div style="width:1px;height:34px;background:var(--tg-border);flex-shrink:0"></div>';
       h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--tg-text-primary)">'+esc(e.name)+'</div><div style="font-size:12px;color:var(--tg-text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.countries+(e.destinations?' \u2014 '+e.destinations:''))+'</div></div>';
+
+      // Tags + Posted pill
+      if(isPosted){
+        h+='<span style="flex-shrink:0;height:22px;padding:0 10px;border-radius:11px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;background:rgba(16,185,129,0.12);color:#059669;border:1px solid rgba(16,185,129,0.25)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Posted</span>';
+      }
       h+='<span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:flex;align-items:center;background:'+color+'14;color:'+color+';border:1px solid '+color+'30">'+esc(e.category)+'</span>';
       h+='<span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:flex;align-items:center;'+(imp[0]==='major'?'background:rgba(16,185,129,0.1);color:#059669':imp[0]==='mod'?'background:rgba(245,158,11,0.1);color:#D97706':'background:rgba(100,116,139,0.1);color:#64748B')+'">'+imp[1]+'</span>';
-      h+='<svg style="width:18px;height:18px;flex-shrink:0;color:var(--tg-text-tertiary);transition:transform 0.3s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>';
+      h+='<svg style="width:18px;height:18px;flex-shrink:0;color:var(--tg-text-tertiary);transition:transform 0.3s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+      h+='</div></div>';
+
+      // Expanded detail
       h+='<div class="evt-detail" style="display:none;padding:0 16px 16px">';
       h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
       h+='<div style="background:var(--tg-bg-secondary);border-radius:8px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary);margin-bottom:6px">When</div><div style="font-size:13px;color:var(--tg-text-primary)">'+dateRange+'</div></div>';
@@ -542,15 +639,34 @@ function drawEventsClient(){
       if(e.contentSuggestion)h+='<div style="background:linear-gradient(135deg,rgba(0,180,216,0.06),rgba(27,43,91,0.04));border:1px solid rgba(0,180,216,0.15);border-radius:8px;padding:14px;grid-column:1/-1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-accent-dark);margin-bottom:6px">Content Ideas</div><div style="font-size:13px;color:var(--tg-text-primary);line-height:1.5">'+esc(e.contentSuggestion)+'</div></div>';
       h+='</div>';
       if(e.audience&&e.audience.length){h+='<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary);margin-bottom:6px">Best For</div><div style="display:flex;gap:5px;flex-wrap:wrap">';e.audience.forEach(function(a){var n=typeof a==='string'?a:a.name;h+='<span style="height:24px;padding:0 10px;border-radius:12px;font-size:11px;font-weight:500;background:rgba(0,180,216,0.08);color:var(--tg-accent-dark);display:flex;align-items:center">'+esc(n)+'</span>'});h+='</div></div>'}
-      h+='<div style="display:flex;gap:14px;padding-top:10px;border-top:1px solid var(--tg-border);flex-wrap:wrap">';
+
+      // Meta + Create Post button
+      h+='<div style="display:flex;align-items:center;gap:14px;padding-top:12px;border-top:1px solid var(--tg-border);flex-wrap:wrap">';
       h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">Post '+e.leadTimeWeeks+' weeks before</span>';
       h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">'+(e.recurring||'Annual')+'</span>';
-      h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">'+esc(e.countries)+'</span></div></div></div>';
+      h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">'+esc(e.countries)+'</span>';
+      h+='<div style="flex:1"></div>';
+      if(isPosted){
+        h+='<span style="font-size:12px;font-weight:600;color:#059669;display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Post created</span>';
+      } else {
+        h+='<button data-evt-generate="'+e.id+'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:var(--tg-accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px;transition:opacity 0.2s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Create Post</button>';
+      }
+      h+='</div></div></div>';
     });
     h+='</div>';
   });
+
+  // Batch action bar (fixed at bottom when events selected)
+  h+='<div id="evtBatchBar" style="display:none;position:sticky;bottom:0;left:0;right:0;padding:12px 20px;background:var(--tg-bg-primary);border-top:2px solid var(--tg-accent);border-radius:var(--radius-md) var(--radius-md) 0 0;box-shadow:0 -4px 20px rgba(0,0,0,0.1);align-items:center;gap:12px;z-index:10">';
+  h+='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+  h+='<span id="evtBatchCount" style="font-size:13px;font-weight:600;color:var(--tg-text-primary)">0 events selected</span>';
+  h+='<div style="flex:1"></div>';
+  h+='<button id="evtBatchGenerate" style="height:36px;padding:0 20px;border-radius:8px;border:none;background:var(--tg-accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Generate Posts for Selected</button>';
+  h+='</div>';
+
   el.innerHTML=h;
-  if(!document.getElementById('evtStyles')){var s=document.createElement('style');s.id='evtStyles';s.textContent='.evt-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08);border-color:var(--tg-accent)}.evt-open .evt-detail{display:block!important}.evt-open svg:last-child{transform:rotate(180deg)}';document.head.appendChild(s)}
+  if(!document.getElementById('evtStyles')){var s=document.createElement('style');s.id='evtStyles';s.textContent='.evt-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08);border-color:var(--tg-accent)}.evt-open .evt-detail{display:block!important}.evt-open svg:last-child{transform:rotate(180deg)}.evt-posted{background:rgba(16,185,129,0.02)!important}';document.head.appendChild(s)}
+  updateBatchBar();
 }
 
 function renderCalendar(){

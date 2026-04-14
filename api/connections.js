@@ -1,140 +1,101 @@
-/* ══════════════════════════════════════════
-   LUNA MARKETING — CONNECTIONS
-   White-label Metricool platform connections
-   ══════════════════════════════════════════ */
-
 var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
-var METRICOOL_KEY = process.env.METRICOOL_KEY;
-var METRICOOL_USER = process.env.METRICOOL_USER_ID;
-var BASE = "appSoIlSe0sNaJ4BZ";
+var AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 var CLIENTS = "tblUkzvBujc94Yali";
 var MC_BASE = "https://app.metricool.com/api";
+var METRICOOL_KEY = process.env.METRICOOL_KEY;
+var METRICOOL_USER = process.env.METRICOOL_USER_ID || "3429319";
 
-function mcH() { return { "Content-Type": "application/json", "X-Mc-Auth": METRICOOL_KEY }; }
-
-async function atGet(table, id) {
-  var r = await fetch("https://api.airtable.com/v0/" + BASE + "/" + table + "/" + id, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
-  if (!r.ok) throw new Error("Airtable GET " + r.status);
-  return r.json();
-}
-
-async function atPatch(table, id, fields) {
-  var r = await fetch("https://api.airtable.com/v0/" + BASE + "/" + table + "/" + id, { method: "PATCH", headers: { Authorization: "Bearer " + AIRTABLE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ fields: fields, typecast: true }) });
-  if (!r.ok) throw new Error("Airtable PATCH " + r.status);
-  return r.json();
+function mcH() {
+  return { "x-api-key": METRICOOL_KEY, "Content-Type": "application/json" };
 }
 
 async function atList(table, formula) {
-  var r = await fetch("https://api.airtable.com/v0/" + BASE + "/" + table + "?filterByFormula=" + encodeURIComponent(formula), { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
-  if (!r.ok) throw new Error("Airtable LIST " + r.status);
-  return (await r.json()).records || [];
+  var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + table;
+  if (formula) url += "?filterByFormula=" + encodeURIComponent(formula);
+  var r = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
+  if (!r.ok) throw new Error("Airtable error: " + r.statusText);
+  var data = await r.json();
+  return data.records || [];
 }
 
-// Map Metricool network keys to our platform names
-var NET_TO_NAME = {
-  facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn",
-  twitter: "X/Twitter", tiktok: "TikTok", pinterest: "Pinterest",
-  google: "Google Business", youtube: "YouTube", threads: "Threads"
-};
+async function atGet(table, recordId) {
+  var r = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + table + "/" + recordId, {
+    headers: { Authorization: "Bearer " + AIRTABLE_KEY }
+  });
+  if (!r.ok) throw new Error("Airtable error: " + r.statusText);
+  return r.json();
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   try {
     var body = req.body || {};
     var action = body.action;
 
-    // ── Get white-label connection URL for a client ──
+    // ── get_connection_url: get Metricool WL connection URL for a client ──
     if (action === "get_connection_url") {
       var clientId = body.clientId;
       if (!clientId) return res.status(400).json({ error: "clientId required" });
 
       var client = await atGet(CLIENTS, clientId);
-      var blogId = client.fields["Metricool Blog ID"];
+
+      // Allow blogId override (for B2B personal accounts)
+      var blogId = body.blogId || client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Get the white-label profile which includes the WL token/URL
+      // Get WL connection URL from Metricool
       var url = MC_BASE + "/admin/profile?blogId=" + blogId + "&userId=" + METRICOOL_USER + "&refreshBrandCache=false";
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      // Extract the white-label link
-      var wlLink = data.whiteLabelLink || null;
+      var wlToken = data.whiteLabelToken || data.wlToken || data.token || null;
       var connectionUrl = null;
-      if (wlLink) {
-        // Replace the redirect to go to connections page
-        if (wlLink.includes("autoin/")) {
-          var token = wlLink.split("autoin/")[1].split("?")[0];
-          connectionUrl = "https://app.metricool.com/autoin/" + token + "?redirect=/connections";
-        } else {
-          connectionUrl = wlLink;
-        }
+      if (wlToken) {
+        connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
       }
 
-      // Detect connected platforms from individual fields
-      var connected = [];
-      if (data.facebook) connected.push("Facebook");
-      if (data.instagram) connected.push("Instagram");
-      if (data.linkedinCompany || data.linkedInCompanyName) connected.push("LinkedIn");
-      if (data.twitter) connected.push("X/Twitter");
-      if (data.tiktok) connected.push("TikTok");
-      if (data.pinterest) connected.push("Pinterest");
-      if (data.gmb || data.gmbAccountName) connected.push("Google Business");
+      // Get current connected platforms from Airtable
+      var connRaw = client.fields["Connected Platforms"] || [];
+      var currentConnected = connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
 
       return res.status(200).json({
         success: true,
-        clientId: clientId,
+        clientName: client.fields["Trading Name"],
         blogId: blogId,
         connectionUrl: connectionUrl,
-        connectedPlatforms: connected,
-        brandName: data.label || null
+        connectedPlatforms: currentConnected,
+        debug: { keys: Object.keys(data), rawSnippet: JSON.stringify(data).substring(0, 300) }
       });
     }
 
-    // ── Check which platforms are connected for a client ──
+    // ── check_connections: check which platforms are connected in Metricool ──
     if (action === "check_connections") {
       var clientId = body.clientId;
       if (!clientId) return res.status(400).json({ error: "clientId required" });
 
       var client = await atGet(CLIENTS, clientId);
-      var blogId = client.fields["Metricool Blog ID"];
-      if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
+      var blogId = body.blogId || client.fields["Metricool Blog ID"];
+      if (!blogId) return res.status(400).json({ error: "No Metricool Blog ID" });
 
-      // Get the brand profile to check connected networks
-      var url = MC_BASE + "/admin/profile?blogId=" + blogId + "&userId=" + METRICOOL_USER + "&refreshBrandCache=true";
+      var url = MC_BASE + "/admin/profile?blogId=" + blogId + "&userId=" + METRICOOL_USER;
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      // Detect connected platforms from individual fields
-      var connected = [];
-      if (data.facebook) connected.push("Facebook");
-      if (data.instagram) connected.push("Instagram");
-      if (data.linkedinCompany || data.linkedInCompanyName) connected.push("LinkedIn");
-      if (data.twitter) connected.push("X/Twitter");
-      if (data.tiktok) connected.push("TikTok");
-      if (data.pinterest) connected.push("Pinterest");
-      if (data.gmb || data.gmbAccountName) connected.push("Google Business");
-
-      // Update Airtable with detected platforms
-      if (connected.length > 0) {
-        await atPatch(CLIENTS, clientId, { "Connected Platforms": connected });
-      }
-
       return res.status(200).json({
         success: true,
-        clientId: clientId,
         blogId: blogId,
-        connectedPlatforms: connected
+        profile: data
       });
     }
 
-    // ── Get connection URL by email (for client portal login) ──
+    // ── get_connection_url_by_email: look up client by email ──
     if (action === "get_connection_url_by_email") {
-      var email = body.email;
+      var email = (body.email || "").trim().toLowerCase();
       if (!email) return res.status(400).json({ error: "email required" });
 
       var clients = await atList(CLIENTS, "{Email}='" + email.replace(/'/g, "\\'") + "'");
@@ -144,38 +105,25 @@ module.exports = async function handler(req, res) {
       var blogId = client.fields["Metricool Blog ID"];
       if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Get WL connection URL
       var url = MC_BASE + "/admin/profile?blogId=" + blogId + "&userId=" + METRICOOL_USER + "&refreshBrandCache=false";
       var r = await fetch(url, { headers: mcH() });
       var data = await r.json();
 
-      var wlLink2 = data.whiteLabelLink || null;
+      var wlToken = data.whiteLabelToken || data.wlToken || data.token || null;
       var connectionUrl = null;
-      if (wlLink2) {
-        if (wlLink2.includes("autoin/")) {
-          var token2 = wlLink2.split("autoin/")[1].split("?")[0];
-          connectionUrl = "https://app.metricool.com/autoin/" + token2 + "?redirect=/connections";
-        } else {
-          connectionUrl = wlLink2;
-        }
+      if (wlToken) {
+        connectionUrl = "https://app.metricool.com/autoin/" + wlToken + "?redirect=/connections";
       }
 
-      // Detect connected platforms
-      var detectedPlatforms = [];
-      if (data.facebook) detectedPlatforms.push("Facebook");
-      if (data.instagram) detectedPlatforms.push("Instagram");
-      if (data.linkedinCompany || data.linkedInCompanyName) detectedPlatforms.push("LinkedIn");
-      if (data.twitter) detectedPlatforms.push("X/Twitter");
-      if (data.tiktok) detectedPlatforms.push("TikTok");
-      if (data.pinterest) detectedPlatforms.push("Pinterest");
-      if (data.gmb || data.gmbAccountName) detectedPlatforms.push("Google Business");
+      var connRaw = client.fields["Connected Platforms"] || [];
+      var currentConnected = connRaw.map(function(p) { return typeof p === "string" ? p : p.name; });
 
       return res.status(200).json({
         success: true,
         clientName: client.fields["Trading Name"],
         blogId: blogId,
         connectionUrl: connectionUrl,
-        connectedPlatforms: detectedPlatforms
+        connectedPlatforms: currentConnected
       });
     }
 

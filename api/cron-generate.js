@@ -186,14 +186,12 @@ Generate ${f["Posting Frequency"] || 3} social media posts for the week beginnin
 
 const B2B_SCHEDULE = [
   { day: "Monday", channel: "LinkedIn Personal", time: "08:30" },
-  { day: "Monday", channel: "Twitter/X", time: "12:00" },
+  { day: "Monday", channel: "Google Business Profile", time: "10:00" },
   { day: "Tuesday", channel: "LinkedIn Personal", time: "08:30" },
   { day: "Tuesday", channel: "Facebook", time: "10:00" },
   { day: "Wednesday", channel: "LinkedIn Company", time: "09:00" },
-  { day: "Wednesday", channel: "Twitter/X", time: "12:00" },
   { day: "Wednesday", channel: "Instagram", time: "18:00" },
   { day: "Thursday", channel: "LinkedIn Personal", time: "08:30" },
-  { day: "Thursday", channel: "Twitter/X", time: "12:00" },
   { day: "Thursday", channel: "Facebook", time: "10:00" },
   { day: "Friday", channel: "LinkedIn Personal", time: "08:30" },
   { day: "Friday", channel: "LinkedIn Company", time: "09:00" },
@@ -351,6 +349,7 @@ async function processClient(record, events) {
       fields.fldZyrr9DTA6mQvxH = post.pillar || "Education"; // Content Pillar
       fields.fldkOeFJLYsjhZ9KZ = stripCitations(post.firstComment); // First Comment
       fields.fldrDRwNKnOQrl5lx = "Thought Leadership"; // Content Type
+      if (post.captionGBP) fields.fld39pPTqpajLLpnX = stripCitations(post.captionGBP); // Caption - GBP
     } else {
       // B2C-specific fields
       fields.fldrDRwNKnOQrl5lx = post.contentType || "Destination Inspiration";

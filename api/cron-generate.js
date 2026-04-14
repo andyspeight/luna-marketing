@@ -6,7 +6,80 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const CLIENTS_TABLE = "tblUkzvBujc94Yali";
 const QUEUE_TABLE = "tblbhyiuULvedva0K";
+const EVENTS_TABLE = "tblQxIYrbzd6YlJYV";
 const CRON_SECRET = process.env.CRON_SECRET;
+
+// Fetch upcoming events from the Events Calendar
+async function getUpcomingEvents() {
+  var now = new Date();
+  var future = new Date();
+  future.setDate(future.getDate() + 42); // 6 weeks ahead
+  var startStr = now.toISOString().split("T")[0];
+  var endStr = future.toISOString().split("T")[0];
+  var formula = "AND({Date Start}>='" + startStr + "',{Date Start}<='" + endStr + "')";
+  var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + EVENTS_TABLE +
+    "?filterByFormula=" + encodeURIComponent(formula) +
+    "&sort%5B0%5D%5Bfield%5D=Date+Start&sort%5B0%5D%5Bdirection%5D=asc";
+  try {
+    var res = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
+    if (!res.ok) return [];
+    var data = await res.json();
+    return (data.records || []).map(function(r) {
+      var f = r.fields;
+      return {
+        name: f["Event Name"] || "",
+        dateStart: f["Date Start"] || "",
+        dateEnd: f["Date End"] || "",
+        category: f["Category"] || "",
+        countries: f["Countries"] || "",
+        destinations: f["Destinations"] || "",
+        travelAngle: f["Travel Angle"] || "",
+        contentSuggestion: f["Content Suggestion"] || "",
+        audience: f["Audience"] || [],
+        impact: f["Impact"] || "",
+        leadTimeWeeks: f["Lead Time Weeks"] || 4
+      };
+    });
+  } catch (e) {
+    console.error("Events fetch error:", e.message);
+    return [];
+  }
+}
+
+// Match events to a client based on their destinations and universal events
+function matchEventsToClient(events, clientDestinations) {
+  if (!events || !events.length) return [];
+  var destStr = (clientDestinations || "").toLowerCase();
+  var now = new Date();
+
+  return events.filter(function(ev) {
+    // Check if event is within its lead time window
+    var eventDate = new Date(ev.dateStart);
+    var weeksUntil = (eventDate - now) / (7 * 24 * 60 * 60 * 1000);
+    if (weeksUntil > ev.leadTimeWeeks) return false;
+
+    // Universal events (apply to all clients regardless of destination)
+    var universal = ["Public Holiday", "School Holiday", "Awareness Day"];
+    if (universal.indexOf(ev.category) !== -1 && ev.countries && ev.countries.toLowerCase().includes("uk")) return true;
+    if (ev.countries && (ev.countries.toLowerCase().includes("global"))) return true;
+
+    // Destination-matched events
+    if (!destStr) return false;
+    var evCountries = (ev.countries || "").toLowerCase().split(",").map(function(s) { return s.trim(); });
+    var evDests = (ev.destinations || "").toLowerCase().split(",").map(function(s) { return s.trim(); });
+    var allEvLocs = evCountries.concat(evDests).filter(Boolean);
+
+    for (var i = 0; i < allEvLocs.length; i++) {
+      if (destStr.includes(allEvLocs[i])) return true;
+      // Also check if any word from the event location appears in destinations
+      var words = allEvLocs[i].split(" ");
+      for (var j = 0; j < words.length; j++) {
+        if (words[j].length > 3 && destStr.includes(words[j])) return true;
+      }
+    }
+    return false;
+  });
+}
 
 // Fetch all active clients from Airtable
 async function getActiveClients() {
@@ -19,8 +92,29 @@ async function getActiveClients() {
   return data.records || [];
 }
 
+// Build events context section for the prompt
+function buildEventsSection(events) {
+  if (!events || !events.length) return "";
+  var section = "\n## Upcoming Events & Seasonal Hooks\n\nThe following events are coming up and are relevant to this client's destinations. Where possible, tie at least ONE post to an upcoming event. Use the travel angle and content suggestions provided. If an event is marked as a booking driver, it's especially important to create content around it.\n\n";
+  events.forEach(function(ev) {
+    var dateStr = ev.dateStart;
+    if (ev.dateEnd && ev.dateEnd !== ev.dateStart) dateStr += " to " + ev.dateEnd;
+    section += "### " + ev.name + " (" + dateStr + ")\n";
+    section += "Category: " + ev.category + " | Impact: " + (ev.impact || "Moderate") + "\n";
+    if (ev.countries) section += "Where: " + ev.countries + (ev.destinations ? " — " + ev.destinations : "") + "\n";
+    if (ev.travelAngle) section += "Travel Angle: " + ev.travelAngle + "\n";
+    if (ev.contentSuggestion) section += "Content Idea: " + ev.contentSuggestion + "\n";
+    if (ev.audience && ev.audience.length) {
+      var names = ev.audience.map(function(a) { return typeof a === "string" ? a : a.name; });
+      section += "Best For: " + names.join(", ") + "\n";
+    }
+    section += "\n";
+  });
+  return section;
+}
+
 // Build system prompt for a single client
-function buildSystemPrompt(f) {
+function buildSystemPrompt(f, matchedEvents) {
   return `You are Luna, the automated social media content engine for travel agents. You generate social media posts that will be published to Facebook, Instagram and LinkedIn without human review. Because no human checks your output before it goes live, accuracy and brand safety are paramount.
 
 You are writing on behalf of a specific travel agent. Their brand profile is provided below. Every post must sound like it came from this agent, not from an AI or a generic marketing tool.
@@ -59,7 +153,7 @@ The content mix should follow these weightings:
 - Behind the Scenes: 5%
 
 Round to the nearest whole post. For 3 posts per week, a typical mix is 2 Destination Inspiration and 1 rotating type. Vary the rotating type week to week.
-
+` + buildEventsSection(matchedEvents) + `
 ## Content Rules (Non-Negotiable)
 
 ### Language
@@ -127,9 +221,11 @@ function getWeekString() {
 }
 
 // Generate posts for one client
-async function generateForClient(record) {
+async function generateForClient(record, allEvents) {
   const f = record.fields;
-  const systemPrompt = buildSystemPrompt(f);
+  var matched = matchEventsToClient(allEvents || [], f["Destinations"] || "");
+  console.log("  Events matched: " + matched.length + (matched.length ? " (" + matched.map(function(e) { return e.name; }).join(", ") + ")" : ""));
+  const systemPrompt = buildSystemPrompt(f, matched);
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -218,6 +314,7 @@ module.exports = async function handler(req, res) {
     clients: [],
     errors: [],
     totalPosts: 0,
+    eventsLoaded: 0,
   };
 
   try {
@@ -225,12 +322,17 @@ module.exports = async function handler(req, res) {
     const clients = await getActiveClients();
     console.log(`Found ${clients.length} active clients`);
 
+    // 1b. Fetch upcoming events once for all clients
+    const allEvents = await getUpcomingEvents();
+    console.log(`Found ${allEvents.length} upcoming events`);
+    results.eventsLoaded = allEvents.length;
+
     // 2. Generate posts for each client sequentially
     for (const clientRecord of clients) {
       const name = clientRecord.fields["Business Name"] || "Unknown";
       try {
         console.log(`Generating for: ${name}`);
-        const posts = await generateForClient(clientRecord);
+        const posts = await generateForClient(clientRecord, allEvents);
         const queued = await queuePosts(posts, clientRecord.id);
 
         // Auto-publish if client has auto_publish enabled

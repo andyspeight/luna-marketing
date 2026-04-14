@@ -19,6 +19,7 @@
     "api/publish.js": { "maxDuration": 120 },
     "api/connections.js": { "maxDuration": 30 },
     "api/events.js": { "maxDuration": 15 },
-    "api/event-post.js": { "maxDuration": 120 }
+    "api/event-post.js": { "maxDuration": 120 },
+    "api/schedule.js": { "maxDuration": 15 }
   }
 }

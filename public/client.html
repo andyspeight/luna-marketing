@@ -458,23 +458,27 @@ function stClass(s){s=(s||'').toLowerCase();return s==='approved'?'cal-status-ap
 // Events View
 var EVT_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var EVT_CAT_COLORS={'Sporting Event':'#3B82F6','Cultural Festival':'#8B5CF6','Religious Festival':'#F59E0B','Public Holiday':'#10B981','School Holiday':'#EC4899','Awareness Day':'#6366F1','Music Festival':'#EF4444','Food & Drink':'#F97316','Major Anniversary':'#14B8A6','Conference/Expo':'#64748B'};
-var evtState={events:[],filter:'all',loaded:false};
+var evtState={events:[],filter:'all'};
 function evtDate(d){if(!d)return'';var p=d.split('-');return parseInt(p[2])+' '+EVT_MONTHS[parseInt(p[1])-1].substring(0,3)}
 function evtDay(d){return d?parseInt(d.split('-')[2]):''}
 function evtMon(d){return d?EVT_MONTHS[parseInt(d.split('-')[1])-1].substring(0,3).toUpperCase():''}
 function evtMonthYear(d){if(!d)return'';var p=d.split('-');return EVT_MONTHS[parseInt(p[1])-1]+' '+p[0]}
 function evtImpact(i){if(!i)return['minor','Awareness'];if(i.includes('Major'))return['major','Drives Bookings'];if(i.includes('Moderate'))return['mod','Content Hook'];return['minor','Awareness']}
 
+// Event delegation for filters and toggles
+document.addEventListener('click',function(e){
+  var fb=e.target.closest('[data-evt-filter]');
+  if(fb){evtState.filter=fb.getAttribute('data-evt-filter');drawEventsClient();return}
+  var tb=e.target.closest('[data-evt-toggle]');
+  if(tb){var id=tb.getAttribute('data-evt-toggle');var card=document.getElementById('evt-'+id);if(card)card.classList.toggle('evt-open');return}
+});
+
 async function renderEventsView(){
   var el=$('view-events');
-  if(!evtState.loaded){
-    el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading events...</div>';
-    try{var res=await fetch('/api/events?months=12');var d=await res.json();if(!d.success)throw new Error(d.error);evtState.events=d.events;evtState.loaded=true}catch(e){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error)">Error: '+e.message+'</div>';return}
-  }
+  el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading events...</div>';
+  try{var res=await fetch('/api/events?months=12');var d=await res.json();if(!d.success)throw new Error(d.error);evtState.events=d.events}catch(e){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error)">Error: '+e.message+'</div>';return}
   drawEventsClient();
 }
-function setEvtFilter(f){evtState.filter=f;drawEventsClient()}
-function toggleEvt(id){var e=$('evt-'+id);if(e)e.classList.toggle('evt-open')}
 
 function drawEventsClient(){
   var el=$('view-events');var events=evtState.events;
@@ -490,8 +494,8 @@ function drawEventsClient(){
   h+='<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:12px 16px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Booking Drivers</div><div style="font-size:24px;font-weight:800;color:var(--tg-text-primary)">'+major+'</div></div></div>';
 
   h+='<div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">';
-  h+='<button onclick="setEvtFilter(\'all\')" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid '+(evtState.filter==='all'?'var(--tg-accent)':'var(--tg-border)')+';background:'+(evtState.filter==='all'?'var(--tg-accent)':'var(--tg-bg-primary)')+';color:'+(evtState.filter==='all'?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">All Events</button>';
-  Object.keys(cats).sort().forEach(function(c){var color=EVT_CAT_COLORS[c]||'#64748B';var isA=evtState.filter===c;h+='<button onclick="setEvtFilter(\''+c.replace(/'/g,"\\'")+'\')" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid '+(isA?color:'var(--tg-border)')+';background:'+(isA?color:'var(--tg-bg-primary)')+';color:'+(isA?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:5px">';if(!isA)h+='<span style="width:7px;height:7px;border-radius:50%;background:'+color+'"></span>';h+=c+' ('+cats[c]+')</button>'});
+  h+='<button data-evt-filter="all" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid '+(evtState.filter==='all'?'var(--tg-accent)':'var(--tg-border)')+';background:'+(evtState.filter==='all'?'var(--tg-accent)':'var(--tg-bg-primary)')+';color:'+(evtState.filter==='all'?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">All Events</button>';
+  Object.keys(cats).sort().forEach(function(c){var color=EVT_CAT_COLORS[c]||'#64748B';var isA=evtState.filter===c;h+='<button data-evt-filter="'+esc(c)+'" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid '+(isA?color:'var(--tg-border)')+';background:'+(isA?color:'var(--tg-bg-primary)')+';color:'+(isA?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:5px">';if(!isA)h+='<span style="width:7px;height:7px;border-radius:50%;background:'+color+'"></span>';h+=esc(c)+' ('+cats[c]+')</button>'});
   h+='</div>';
 
   if(!events.length){h+='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No events for this filter.</div>';el.innerHTML=h;return}
@@ -505,7 +509,7 @@ function drawEventsClient(){
       var color=EVT_CAT_COLORS[e.category]||'#64748B';var imp=evtImpact(e.impact);
       var dateRange=evtDate(e.dateStart);if(e.dateEnd&&e.dateEnd!==e.dateStart)dateRange+=' \u2014 '+evtDate(e.dateEnd);
       h+='<div class="evt-card" id="evt-'+e.id+'" style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;transition:box-shadow 0.2s">';
-      h+='<div onclick="toggleEvt(\''+e.id+'\')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer">';
+      h+='<div data-evt-toggle="'+e.id+'" style="display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer">';
       h+='<div style="width:50px;text-align:center;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:var(--tg-text-primary);line-height:1.1">'+evtDay(e.dateStart)+'</div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary)">'+evtMon(e.dateStart)+'</div></div>';
       h+='<div style="width:1px;height:34px;background:var(--tg-border);flex-shrink:0"></div>';
       h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--tg-text-primary)">'+esc(e.name)+'</div><div style="font-size:12px;color:var(--tg-text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.countries+(e.destinations?' \u2014 '+e.destinations:''))+'</div></div>';

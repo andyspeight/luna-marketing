@@ -111,7 +111,7 @@ Format: Spotlight. "Shout out to [client type] who just..." — never name speci
 Data-driven observations about the travel market. Booking trends, search patterns, seasonal data.
 Format: Data + insight + implication. Analytical but accessible.
 
-## Channel Routing — Generate ${fields["Posting Frequency"] || 12} Posts
+## Channel Routing — Generate ${fields["Posting Frequency"] || 10} Posts
 
 Distribute posts across these channels and days:
 
@@ -125,11 +125,6 @@ LinkedIn Company (Travelgenix): 2 posts — Wed, Fri at 09:00
 - Voice: Company (we/our). Warm, not corporate.
 - Can include links.
 
-Twitter/X: 3 posts — Mon, Wed, Thu at 12:00
-- Pillars: Industry Commentary, Education, Market Intelligence
-- Voice: Punchy Andy. Short sharp takes.
-- Max 280 characters. Can include link.
-
 Facebook: 2 posts — Tue, Thu at 10:00
 - Pillars: Client Proof, Education, Product in Action
 - Voice: Community-facing, slightly warmer.
@@ -139,6 +134,11 @@ Instagram: 1 post — Wed at 18:00
 - Pillars: Founder's Perspective, Client Proof, Product in Action
 - Voice: Visual storytelling.
 - Max 500 characters. Must work with an image.
+
+Google Business Profile: 1 post — Mon at 10:00
+- Pillars: Education, Product in Action, Client Proof
+- Voice: Local business voice (we/our). Professional, SEO-rich.
+- Max 1500 characters. Include CTA. Focus on local relevance and service descriptions.
 
 ## Upcoming Events (use if relevant)
 
@@ -182,16 +182,16 @@ Each object:
   "day": "Monday",
   "time": "08:30",
   "captionLinkedIn": "Full LinkedIn caption...",
-  "captionTwitter": "Twitter version (max 280)...",
   "captionFacebook": "Facebook version (max 500)...",
   "captionInstagram": "Instagram version (max 500)...",
+  "captionGBP": "Google Business Profile version (max 1500)...",
   "hashtags": "#traveltech #smetravel",
   "firstComment": "Suggested first comment to seed engagement...",
   "imagePrompt": "Pexels search query for business/tech image",
   "ctaUrl": "https://travelgenix.io"
 }
 
-Generate ${fields["Posting Frequency"] || 12} posts for the week beginning ${getNextMonday()}.`;
+Generate ${fields["Posting Frequency"] || 10} posts for the week beginning ${getNextMonday()}.`;
 }
 
 module.exports = { buildB2BSystemPrompt, getNextMonday };

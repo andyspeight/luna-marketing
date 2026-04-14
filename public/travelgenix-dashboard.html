@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travelgenix — Content Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --tg-primary: #1B2B5B;
+  --tg-primary-light: #2A3F7A;
+  --tg-accent: #00B4D8;
+  --tg-accent-light: #48CAE4;
+  --tg-accent-dark: #0096B7;
+  --tg-success: #10B981;
+  --tg-warning: #F59E0B;
+  --tg-error: #EF4444;
+  --tg-bg-primary: #FFFFFF;
+  --tg-bg-secondary: #F8FAFC;
+  --tg-bg-tertiary: #F1F5F9;
+  --tg-border: #E2E8F0;
+  --tg-text-primary: #0F172A;
+  --tg-text-secondary: #475569;
+  --tg-text-tertiary: #94A3B8;
+  --tg-text-inverse: #FFFFFF;
+  --tg-radius: 8px;
+  --tg-radius-lg: 12px;
+  --tg-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --tg-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+}
+[data-theme="dark"] {
+  --tg-bg-primary: #0F172A;
+  --tg-bg-secondary: #1E293B;
+  --tg-bg-tertiary: #334155;
+  --tg-border: #334155;
+  --tg-text-primary: #F8FAFC;
+  --tg-text-secondary: #CBD5E1;
+  --tg-text-tertiary: #64748B;
+  --tg-shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --tg-shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--tg-bg-secondary);
+  color:var(--tg-text-primary);
+  min-height:100vh;
+}
+
+/* Login */
+.login-overlay {
+  position:fixed; inset:0; background:var(--tg-primary);
+  display:flex; align-items:center; justify-content:center; z-index:1000;
+}
+.login-box {
+  background:var(--tg-bg-primary); border-radius:var(--tg-radius-lg);
+  padding:40px; width:360px; box-shadow:var(--tg-shadow-md); text-align:center;
+}
+.login-box h1 { font-size:22px; font-weight:700; margin-bottom:4px; color:var(--tg-text-primary); }
+.login-box p { font-size:13px; color:var(--tg-text-tertiary); margin-bottom:24px; }
+.login-box input {
+  width:100%; padding:12px 16px; border:1px solid var(--tg-border); border-radius:var(--tg-radius);
+  font-size:15px; font-family:inherit; outline:none; margin-bottom:16px;
+  background:var(--tg-bg-secondary); color:var(--tg-text-primary);
+}
+.login-box input:focus { border-color:var(--tg-accent); }
+.login-box button {
+  width:100%; padding:12px; border:none; border-radius:var(--tg-radius);
+  background:var(--tg-accent); color:white; font-size:15px; font-weight:600;
+  cursor:pointer; transition:background 0.2s;
+}
+.login-box button:hover { background:var(--tg-accent-dark); }
+.login-error { color:var(--tg-error); font-size:13px; margin-top:8px; display:none; }
+
+/* Header */
+.header {
+  background:var(--tg-bg-primary); border-bottom:1px solid var(--tg-border);
+  padding:16px 32px; display:flex; align-items:center; justify-content:space-between;
+}
+.header-left { display:flex; align-items:center; gap:12px; }
+.header-left h1 { font-size:18px; font-weight:700; }
+.header-left span { font-size:13px; color:var(--tg-text-tertiary); }
+.header-right { display:flex; align-items:center; gap:12px; }
+.theme-toggle {
+  background:var(--tg-bg-tertiary); border:1px solid var(--tg-border); border-radius:var(--tg-radius);
+  padding:6px 12px; font-size:13px; cursor:pointer; color:var(--tg-text-secondary); font-family:inherit;
+}
+.refresh-btn {
+  background:var(--tg-accent); color:white; border:none; border-radius:var(--tg-radius);
+  padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.refresh-btn:hover { background:var(--tg-accent-dark); }
+
+/* Stats bar */
+.stats-bar {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:12px; padding:20px 32px;
+}
+.stat-card {
+  background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--tg-radius);
+  padding:16px; text-align:center; box-shadow:var(--tg-shadow-sm);
+}
+.stat-card .number { font-size:28px; font-weight:700; color:var(--tg-accent); }
+.stat-card .label { font-size:11px; color:var(--tg-text-tertiary); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+
+/* Week nav */
+.week-nav {
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  padding:12px 32px;
+}
+.week-nav button {
+  background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--tg-radius);
+  padding:6px 14px; font-size:13px; cursor:pointer; color:var(--tg-text-secondary); font-family:inherit;
+}
+.week-nav button:hover { border-color:var(--tg-accent); color:var(--tg-accent); }
+.week-label { font-size:15px; font-weight:600; min-width:120px; text-align:center; }
+
+/* Calendar grid */
+.calendar {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:12px;
+  padding:0 32px 32px;
+}
+.day-col {
+  background:var(--tg-bg-primary); border:1px solid var(--tg-border);
+  border-radius:var(--tg-radius-lg); overflow:hidden; box-shadow:var(--tg-shadow-sm);
+}
+.day-header {
+  padding:12px 16px; background:var(--tg-bg-tertiary); border-bottom:1px solid var(--tg-border);
+  font-size:13px; font-weight:600; text-align:center;
+}
+.day-header .date { font-size:11px; color:var(--tg-text-tertiary); font-weight:400; margin-top:2px; }
+.day-posts { padding:8px; display:flex; flex-direction:column; gap:8px; min-height:120px; }
+
+/* Post card */
+.post-card {
+  border:1px solid var(--tg-border); border-radius:var(--tg-radius); padding:10px;
+  cursor:pointer; transition:all 0.15s; position:relative;
+}
+.post-card:hover { border-color:var(--tg-accent); box-shadow:var(--tg-shadow-sm); }
+.post-card.expanded { background:var(--tg-bg-secondary); }
+.post-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.channel-pill {
+  font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px;
+  color:white; text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap;
+}
+.channel-pill.li-personal { background:#0A66C2; }
+.channel-pill.li-company { background:#0096B7; }
+.channel-pill.facebook { background:#1877F2; }
+.channel-pill.instagram { background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); }
+.channel-pill.gbp { background:var(--tg-success); }
+.channel-pill.blog { background:var(--tg-primary); }
+.pillar-badge {
+  font-size:10px; font-weight:500; padding:2px 6px; border-radius:4px;
+  background:var(--tg-bg-tertiary); color:var(--tg-text-secondary); white-space:nowrap;
+}
+.time-badge { font-size:10px; color:var(--tg-text-tertiary); margin-left:auto; }
+.post-title { font-size:13px; font-weight:500; line-height:1.4; }
+.post-preview {
+  font-size:12px; color:var(--tg-text-secondary); line-height:1.5;
+  margin-top:6px; max-height:60px; overflow:hidden;
+}
+.post-card.expanded .post-preview { max-height:none; }
+.post-detail { display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--tg-border); }
+.post-card.expanded .post-detail { display:block; }
+.detail-section { margin-bottom:10px; }
+.detail-label { font-size:10px; font-weight:600; color:var(--tg-accent); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+.detail-text { font-size:12px; color:var(--tg-text-secondary); line-height:1.5; white-space:pre-wrap; }
+.status-dot {
+  width:6px; height:6px; border-radius:50%; display:inline-block;
+}
+.status-dot.queued { background:var(--tg-warning); }
+.status-dot.published { background:var(--tg-success); }
+
+/* Blog section */
+.blog-section {
+  padding:0 32px 32px;
+}
+.blog-card {
+  background:var(--tg-bg-primary); border:1px solid var(--tg-border);
+  border-radius:var(--tg-radius-lg); padding:24px; box-shadow:var(--tg-shadow-sm);
+}
+.blog-card h3 { font-size:16px; font-weight:600; margin-bottom:4px; }
+.section-title { font-size:16px; font-weight:600; margin-bottom:12px; color:var(--tg-text-primary); }
+
+/* Loading / Empty */
+.loading { text-align:center; padding:60px; color:var(--tg-text-tertiary); font-size:15px; }
+.empty-day { text-align:center; padding:20px; color:var(--tg-text-tertiary); font-size:12px; }
+
+/* Responsive */
+@media(max-width:900px) {
+  .calendar { grid-template-columns:1fr; }
+  .header { padding:12px 16px; }
+  .stats-bar, .week-nav, .blog-section { padding-left:16px; padding-right:16px; }
+  .calendar { padding:0 16px 16px; }
+}
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- Login Gate -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h1>Travelgenix</h1>
+    <p>Content Dashboard</p>
+    <input type="password" id="pwInput" placeholder="Password" autofocus>
+    <button onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="loginError">Incorrect password</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="hidden">
+  <div class="header">
+    <div class="header-left">
+      <h1>Content Dashboard</h1>
+      <span>Travelgenix B2B Marketing</span>
+    </div>
+    <div class="header-right">
+      <button class="theme-toggle" onclick="toggleTheme()">Dark Mode</button>
+      <button class="refresh-btn" onclick="loadPosts()">Refresh</button>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="statsBar"></div>
+
+  <div class="week-nav">
+    <button onclick="changeWeek(-1)">&larr; Previous</button>
+    <div class="week-label" id="weekLabel">This Week</div>
+    <button onclick="changeWeek(1)">Next &rarr;</button>
+  </div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <div class="blog-section" id="blogSection"></div>
+</div>
+
+<script>
+const PW = "travelgenix2026";
+const API_BASE = window.location.origin;
+let allPosts = [];
+let currentWeekOffset = 0;
+
+// Login
+function doLogin() {
+  const pw = document.getElementById("pwInput").value;
+  if (pw === PW) {
+    sessionStorage.setItem("tgx-auth", "1");
+    document.getElementById("loginOverlay").classList.add("hidden");
+    document.getElementById("dashboard").classList.remove("hidden");
+    loadPosts();
+  } else {
+    document.getElementById("loginError").style.display = "block";
+  }
+}
+document.getElementById("pwInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doLogin();
+});
+if (sessionStorage.getItem("tgx-auth") === "1") {
+  document.getElementById("loginOverlay").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  loadPosts();
+}
+
+// Theme
+function toggleTheme() {
+  const btn = document.querySelector(".theme-toggle");
+  if (document.documentElement.getAttribute("data-theme") === "dark") {
+    document.documentElement.removeAttribute("data-theme");
+    btn.textContent = "Dark Mode";
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    btn.textContent = "Light Mode";
+  }
+}
+
+// Date helpers
+function getMonday(offset) {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) + (offset * 7);
+  const mon = new Date(d.setDate(diff));
+  mon.setHours(0, 0, 0, 0);
+  return mon;
+}
+function formatDate(d) {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+function getWeekDates(offset) {
+  const mon = getMonday(offset);
+  return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((name, i) => {
+    const d = new Date(mon);
+    d.setDate(d.getDate() + i);
+    return { name, date: d, dateStr: d.toISOString().split("T")[0] };
+  });
+}
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  renderCalendar();
+}
+
+// Channel styling
+function channelClass(ch) {
+  const map = {
+    "LinkedIn Personal": "li-personal",
+    "LinkedIn Company": "li-company",
+    "Facebook": "facebook",
+    "Instagram": "instagram",
+    "Google Business Profile": "gbp",
+  };
+  return map[ch] || "li-personal";
+}
+
+function channelLabel(ch) {
+  const map = {
+    "LinkedIn Personal": "LI Personal",
+    "LinkedIn Company": "LI Company",
+    "Facebook": "Facebook",
+    "Instagram": "Instagram",
+    "Google Business Profile": "GBP",
+  };
+  return map[ch] || ch;
+}
+
+// Get the right caption for the channel
+function getCaption(post) {
+  const ch = post.targetChannel;
+  if (ch.includes("LinkedIn")) return post.captionLinkedIn;
+  if (ch === "Facebook") return post.captionFacebook;
+  if (ch === "Instagram") return post.captionInstagram;
+  if (ch === "Google Business Profile") return post.captionGBP;
+  return post.captionLinkedIn || post.captionFacebook;
+}
+
+// Toggle post expansion
+function togglePost(id) {
+  document.getElementById(id).classList.toggle("expanded");
+}
+
+// Load posts from API
+async function loadPosts() {
+  document.getElementById("calendar").innerHTML = '<div class="loading" style="grid-column:1/-1">Loading content...</div>';
+  try {
+    const res = await fetch(`${API_BASE}/api/travelgenix-posts?pw=${PW}`);
+    const data = await res.json();
+    allPosts = data.posts || [];
+    renderStats();
+    renderCalendar();
+    renderBlog();
+  } catch (e) {
+    document.getElementById("calendar").innerHTML = `<div class="loading" style="grid-column:1/-1">Error loading posts: ${e.message}</div>`;
+  }
+}
+
+// Render stats
+function renderStats() {
+  const total = allPosts.length;
+  const queued = allPosts.filter((p) => p.status === "Queued").length;
+  const published = allPosts.filter((p) => p.status === "Published").length;
+  const blogs = allPosts.filter((p) => p.isBlog).length;
+  const channels = [...new Set(allPosts.map((p) => p.targetChannel))].length;
+
+  document.getElementById("statsBar").innerHTML = `
+    <div class="stat-card"><div class="number">${total}</div><div class="label">Total Posts</div></div>
+    <div class="stat-card"><div class="number">${queued}</div><div class="label">Queued</div></div>
+    <div class="stat-card"><div class="number">${published}</div><div class="label">Published</div></div>
+    <div class="stat-card"><div class="number">${blogs}</div><div class="label">Blog Articles</div></div>
+    <div class="stat-card"><div class="number">${channels}</div><div class="label">Channels</div></div>
+  `;
+}
+
+// Render calendar
+function renderCalendar() {
+  const days = getWeekDates(currentWeekOffset);
+  const mon = days[0].date;
+  const fri = days[4].date;
+
+  document.getElementById("weekLabel").textContent = `${formatDate(mon)} — ${formatDate(fri)}`;
+
+  let html = "";
+  days.forEach((day) => {
+    const dayPosts = allPosts
+      .filter((p) => p.scheduledDate === day.dateStr && !p.isBlog)
+      .sort((a, b) => (a.scheduledTime || "").localeCompare(b.scheduledTime || ""));
+
+    html += `<div class="day-col">
+      <div class="day-header">${day.name}<div class="date">${formatDate(day.date)}</div></div>
+      <div class="day-posts">`;
+
+    if (dayPosts.length === 0) {
+      html += '<div class="empty-day">No posts scheduled</div>';
+    } else {
+      dayPosts.forEach((post, i) => {
+        const caption = getCaption(post);
+        const preview = caption ? caption.slice(0, 120) + (caption.length > 120 ? "..." : "") : "";
+        const cardId = `post-${day.dateStr}-${i}`;
+
+        html += `<div class="post-card" id="${cardId}" onclick="togglePost('${cardId}')">
+          <div class="post-meta">
+            <span class="channel-pill ${channelClass(post.targetChannel)}">${channelLabel(post.targetChannel)}</span>
+            <span class="pillar-badge">${post.contentPillar}</span>
+            <span class="time-badge">${post.scheduledTime || ""}</span>
+            <span class="status-dot ${(post.status || "queued").toLowerCase()}"></span>
+          </div>
+          <div class="post-title">${post.title}</div>
+          <div class="post-preview">${preview}</div>
+          <div class="post-detail">
+            <div class="detail-section">
+              <div class="detail-label">Full Caption</div>
+              <div class="detail-text">${caption}</div>
+            </div>
+            ${post.firstComment ? `<div class="detail-section">
+              <div class="detail-label">First Comment</div>
+              <div class="detail-text">${post.firstComment}</div>
+            </div>` : ""}
+            ${post.hashtags ? `<div class="detail-section">
+              <div class="detail-label">Hashtags</div>
+              <div class="detail-text">${post.hashtags}</div>
+            </div>` : ""}
+            ${post.imageUrl ? `<div class="detail-section">
+              <div class="detail-label">Image</div>
+              <img src="${post.imageUrl}" style="width:100%;border-radius:6px;margin-top:4px;" alt="">
+            </div>` : ""}
+          </div>
+        </div>`;
+      });
+    }
+
+    html += "</div></div>";
+  });
+
+  document.getElementById("calendar").innerHTML = html;
+}
+
+// Render blog section
+function renderBlog() {
+  const blogs = allPosts.filter((p) => p.isBlog);
+  if (blogs.length === 0) {
+    document.getElementById("blogSection").innerHTML = "";
+    return;
+  }
+
+  let html = '<div class="section-title">Blog Articles</div>';
+  blogs.slice(0, 5).forEach((blog) => {
+    const preview = blog.captionLinkedIn
+      ? blog.captionLinkedIn.slice(0, 200) + "..."
+      : blog.title;
+
+    html += `<div class="blog-card" style="margin-bottom:12px;">
+      <div class="post-meta" style="margin-bottom:8px;">
+        <span class="channel-pill blog">Blog</span>
+        <span class="pillar-badge">${blog.contentPillar}</span>
+        <span class="time-badge">${blog.scheduledDate || ""}</span>
+        <span class="status-dot ${(blog.status || "queued").toLowerCase()}"></span>
+      </div>
+      <h3>${blog.title}</h3>
+      <div class="detail-text" style="margin-top:8px;">${preview}</div>
+      ${blog.ctaUrl ? `<a href="${blog.ctaUrl}" target="_blank" style="font-size:12px;color:var(--tg-accent);text-decoration:none;display:inline-block;margin-top:8px;">${blog.ctaUrl}</a>` : ""}
+    </div>`;
+  });
+
+  document.getElementById("blogSection").innerHTML = html;
+}
+</script>
+</body>
+</html>

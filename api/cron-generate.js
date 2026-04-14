@@ -224,7 +224,16 @@ For each post, provide 3 image search tags that describe the ideal image. Be spe
 
 Return a JSON array. No markdown, no commentary, no preamble. Only valid JSON.
 
-Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time`;
+Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, blog_content, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time
+
+### Blog Content
+For each post, also generate a blog_content field containing a long-form article (300-800 words) that expands on the social caption topic. This blog article should:
+- Have a compelling headline as the first line (no # markdown, just the text)
+- Be well-structured with clear paragraphs
+- Include practical travel tips, destination highlights, or booking inspiration
+- Be written in the same brand voice as the social captions
+- NOT repeat the social caption word-for-word but expand on the same theme
+- Include a clear call-to-action at the end encouraging the reader to enquire or book`;
 }
 
 function getNextMonday() {
@@ -290,6 +299,7 @@ async function queuePosts(posts, clientId) {
         "Caption - Pinterest": post.caption_pinterest || "",
         "Caption - TikTok": post.caption_tiktok || "",
         "Caption - GBP": post.caption_gbp || "",
+        "Blog Content": post.blog_content || "",
         Hashtags: [
           ...(post.hashtags_facebook || []),
           ...(post.hashtags_instagram || []),

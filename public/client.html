@@ -429,6 +429,12 @@ function renderPosts(){
     });
     h+='<div class="img-search-panel"><input placeholder="Search for a new image..." id="imgq-'+p.id+'" onkeydown="if(event.key===\'Enter\')C.searchImg(\''+p.id+'\')"><button class="btn btn-ghost btn-sm" onclick="C.searchImg(\''+p.id+'\')">Search</button><div id="imgr-'+p.id+'" style="display:flex;gap:var(--space-1);margin-top:var(--space-2);overflow-x:auto;width:100%"></div></div>';
     h+='<div style="padding:var(--space-2) var(--space-3);display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap"><span class="pill pill-accent">'+(p.content_type||'')+'</span><span style="font-weight:600;font-size:var(--text-sm)">'+(p.destination||'')+'</span><span style="margin-left:auto;font-family:var(--tg-font-mono);color:var(--tg-text-tertiary);font-size:var(--text-xs)">'+(p.scheduled_time||'')+'</span></div>';
+    if(p.blog_content){
+      h+='<div style="padding:0 var(--space-3) var(--space-2)"><details style="border:1px solid var(--tg-border);border-radius:var(--radius-md);overflow:hidden">';
+      h+='<summary style="padding:10px 14px;font-size:12px;font-weight:600;color:var(--tg-accent-dark);cursor:pointer;background:rgba(0,180,216,0.04);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Blog Article ('+p.blog_content.split(/\s+/).filter(Boolean).length+' words)</summary>';
+      h+='<div style="padding:14px;font-size:13px;color:var(--tg-text-primary);line-height:1.7;max-height:300px;overflow-y:auto;white-space:pre-wrap">'+esc(p.blog_content)+'</div>';
+      h+='</details></div>';
+    }
     h+='<div class="post-actions"><button class="btn btn-approve btn-sm" onclick="C.action(\''+p.id+'\',\'approve\')">Approve</button><button class="btn btn-reject btn-sm" onclick="C.showReject(\''+p.id+'\')">Reject</button></div>';
     h+='<div class="post-feedback" id="cfb-'+p.id+'"></div></div>';
   });
@@ -780,7 +786,59 @@ function renderSettings(){
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d){var on=(c.posting_days||'').includes(d);h+='<button class="ps-btn'+(on?' active':'')+'" style="width:44px;font-size:var(--text-xs);font-family:var(--tg-font-mono)" onclick="C.toggleDay(this,\''+d+'\')">'+d+'</button>'});
   h+='</div></div><div style="margin-left:auto;display:flex;align-items:center;gap:var(--space-3)"><div style="text-align:right"><div style="font-size:var(--text-sm);font-weight:500">Auto Publish</div><div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Skip manual review</div></div>';
   h+='<label class="toggle"><input type="checkbox"'+(c.auto_publish?' checked':'')+' onchange="C.setAuto(this.checked)"><span class="toggle-track"></span></label><span class="saved" id="auto-saved">Saved</span></div></div></div></div>';
+
+  // Smart Schedule section
+  h+='<div class="card full-width" id="smartScheduleCard"><div class="card-title" style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Smart Schedule <span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:8px;background:rgba(0,180,216,0.1);color:var(--tg-accent-dark)">AI-Optimised</span></div>';
+  h+='<p style="font-size:var(--text-sm);color:var(--tg-text-secondary);margin-bottom:var(--space-4);line-height:1.5">Luna analyses 2026 UK engagement data across 230 million+ interactions to schedule your posts at the times your audience is most likely to engage. Here are the optimal posting times for your connected platforms:</p>';
+  h+='<div id="smartScheduleGrid" style="color:var(--tg-text-tertiary);font-size:var(--text-sm)">Loading schedule data...</div></div>';
+
   $('view-settings').innerHTML=h;
+  loadSmartSchedule();
+}
+
+async function loadSmartSchedule(){
+  try{
+    var c=state.profile;
+    var plats=(c.connected_platforms||['Facebook','Instagram','LinkedIn']).map(function(p){var n=typeof p==='string'?p:p.name;return{Facebook:'facebook',Instagram:'instagram',LinkedIn:'linkedin','X/Twitter':'twitter',TikTok:'tiktok',Pinterest:'pinterest','Google Business':'google'}[n]||''}).filter(Boolean);
+    var res=await fetch('/api/schedule?platforms='+plats.join(',')+'&days='+(c.posting_days||'Mon,Wed,Fri')+'&posts='+(c.posting_frequency||3));
+    var d=await res.json();
+    if(!d.success)throw new Error(d.error);
+
+    var platIcons={facebook:'📘',instagram:'📸',linkedin:'💼',twitter:'🐦',tiktok:'🎵',pinterest:'📌',google:'📍'};
+    var platNames={facebook:'Facebook',instagram:'Instagram',linkedin:'LinkedIn',twitter:'X / Twitter',tiktok:'TikTok',pinterest:'Pinterest',google:'Google Business'};
+
+    var h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-3);margin-bottom:var(--space-4)">';
+    Object.keys(d.summary||{}).forEach(function(plat){
+      var s=d.summary[plat];
+      h+='<div style="background:var(--tg-bg-secondary);border-radius:var(--radius-md);padding:14px">';
+      h+='<div style="font-size:13px;font-weight:700;color:var(--tg-text-primary);margin-bottom:8px">'+(platIcons[plat]||'')+' '+(platNames[plat]||plat)+'</div>';
+      h+='<div style="font-size:11px;color:var(--tg-text-tertiary);margin-bottom:4px">Best day: <strong style="color:var(--tg-text-primary)">'+s.bestDay+'</strong></div>';
+      h+='<div style="font-size:11px;color:var(--tg-text-tertiary)">Peak time: <strong style="color:var(--tg-accent-dark)">'+s.bestTime+'</strong></div>';
+      if(s.topTimes&&s.topTimes.length>1){h+='<div style="font-size:10px;color:var(--tg-text-tertiary);margin-top:6px;border-top:1px solid var(--tg-border);padding-top:6px">Also good: '+s.topTimes.slice(1).join(', ')+'</div>'}
+      h+='</div>';
+    });
+    h+='</div>';
+
+    // Weekly schedule
+    if(d.weekSchedule&&d.weekSchedule.length){
+      h+='<div style="font-size:12px;font-weight:600;color:var(--tg-text-primary);margin-bottom:8px">Your weekly posting schedule:</div>';
+      h+='<div style="display:flex;gap:var(--space-2);flex-wrap:wrap">';
+      d.weekSchedule.forEach(function(s,i){
+        h+='<div style="background:linear-gradient(135deg,rgba(0,180,216,0.08),rgba(27,43,91,0.04));border:1px solid rgba(0,180,216,0.15);border-radius:var(--radius-md);padding:10px 14px;flex:1;min-width:140px">';
+        h+='<div style="font-size:11px;font-weight:600;color:var(--tg-accent-dark)">Post '+(i+1)+'</div>';
+        h+='<div style="font-size:14px;font-weight:700;color:var(--tg-text-primary)">'+s.day+'</div>';
+        h+='<div style="font-size:12px;color:var(--tg-text-secondary)">'+s.time+'</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+
+    h+='<div style="font-size:10px;color:var(--tg-text-tertiary);margin-top:var(--space-3);font-style:italic">'+d.methodology+'</div>';
+
+    $('smartScheduleGrid').innerHTML=h;
+  }catch(e){
+    $('smartScheduleGrid').innerHTML='<div style="color:var(--tg-text-tertiary);font-size:var(--text-sm)">Schedule data unavailable</div>';
+  }
 }
 function settingPills(label,options,current){var h='<div style="margin-bottom:var(--space-4)"><div class="input-label">'+label+'</div><div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">';options.forEach(function(o){var on=(current||'').toLowerCase().includes(o.toLowerCase());h+='<button class="ps-btn'+(on?' active':'')+'" onclick="C.toggleTone(this,\''+o+'\')">'+o+'</button>'});return h+'</div></div>'}
 function settingRadio(label,options,key,current){var h='<div style="margin-bottom:var(--space-4)"><div class="input-label">'+label+'</div><div style="display:flex;gap:var(--space-2)">';options.forEach(function(o){h+='<button class="ps-btn'+(current===o?' active':'')+'" style="flex:1" onclick="C.setRadio(\''+key+'\',\''+o+'\',this)">'+o+'</button>'});return h+'</div></div>'}

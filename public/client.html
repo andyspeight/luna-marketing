@@ -375,7 +375,7 @@ function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=nu
 function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;loadPosts();loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['posts','create','events','calendar','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['posts','create','events','calendar','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts()};
 
 // Data
 var PLATS=[
@@ -521,6 +521,7 @@ async function generateEventPosts(eventIds){
     var msg=d.generated+' post'+(d.generated!==1?'s':'')+' created';
     if(d.skipped>0)msg+=' ('+d.skipped+' already posted)';
     showEvtToast(msg,'success');
+    loadPosts(); // Refresh My Posts so the new post appears
 
     drawEventsClient();
   }catch(err){

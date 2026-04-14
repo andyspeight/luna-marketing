@@ -98,7 +98,16 @@ For each post, provide 3 image search tags that describe the ideal image. Be spe
 Return a JSON array of post objects. No markdown, no commentary, no preamble. Only valid JSON.
 
 Each post object must have exactly these fields:
-post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time`;
+post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, blog_content, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time
+
+### Blog Content
+For each post, also generate a blog_content field containing a long-form article (300-800 words) that expands on the social caption topic. This blog article should:
+- Have a compelling headline as the first line (no # markdown, just the text)
+- Be well-structured with clear paragraphs
+- Include practical travel tips, destination highlights, or booking inspiration
+- Be written in the same brand voice as the social captions
+- NOT repeat the social caption word-for-word but expand on the same theme
+- Include a clear call-to-action at the end encouraging the reader to enquire or book`;
 }
 
 function getNextMonday() {
@@ -114,36 +123,54 @@ function getNextMonday() {
   });
 }
 
-async function queuePosts(posts, clientId) {
-  const records = posts.map((post) => ({
-    fields: {
-      "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
-      Client: [clientId],
-      "Content Type": post.content_type,
-      "Caption - Facebook": post.caption_facebook,
-      "Caption - Instagram": post.caption_instagram,
-      "Caption - LinkedIn": post.caption_linkedin || "",
-      "Caption - Twitter": post.caption_twitter || "",
-      "Caption - Pinterest": post.caption_pinterest || "",
-      "Caption - TikTok": post.caption_tiktok || "",
-      "Caption - GBP": post.caption_gbp || "",
-      Hashtags: [
-        ...(post.hashtags_facebook || []),
-        ...(post.hashtags_instagram || []),
-      ]
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .join(", "),
-      "CTA URL": post.cta_url_facebook || "",
-      Destination: post.destination || "",
-      "Scheduled Time": post.suggested_time || "09:00",
-      Status: "Queued",
-      "Generated Week": getWeekString(),
-    },
-  }));
+async function fetchPexelsImage(tags) {
+  try {
+    var query = (tags && tags.length) ? tags[0] : "travel destination";
+    var r = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&orientation=landscape&per_page=3&size=large", {
+      headers: { Authorization: process.env.PEXELS_KEY }
+    });
+    if (r.ok) {
+      var d = await r.json();
+      if (d.photos && d.photos.length > 0) return d.photos[0].src.large2x || d.photos[0].src.large || "";
+    }
+  } catch (e) { console.error("Pexels error:", e.message); }
+  return "";
+}
 
-  // Push one at a time to avoid payload limits
+async function queuePosts(posts, clientId) {
   const created = [];
-  for (const record of records) {
+  for (const post of posts) {
+    // Auto-fetch image from Pexels
+    var imageUrl = await fetchPexelsImage(post.image_tags);
+
+    const record = {
+      fields: {
+        "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
+        Client: [clientId],
+        "Content Type": post.content_type,
+        "Caption - Facebook": post.caption_facebook,
+        "Caption - Instagram": post.caption_instagram,
+        "Caption - LinkedIn": post.caption_linkedin || "",
+        "Caption - Twitter": post.caption_twitter || "",
+        "Caption - Pinterest": post.caption_pinterest || "",
+        "Caption - TikTok": post.caption_tiktok || "",
+        "Caption - GBP": post.caption_gbp || "",
+        "Blog Content": post.blog_content || "",
+        Hashtags: [
+          ...(post.hashtags_facebook || []),
+          ...(post.hashtags_instagram || []),
+        ]
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .join(", "),
+        "CTA URL": post.cta_url_facebook || "",
+        Destination: post.destination || "",
+        "Scheduled Time": post.suggested_time || "09:00",
+        "Image URL": imageUrl,
+        Status: "Queued",
+        "Generated Week": getWeekString(),
+      },
+    };
+
     const res = await fetch(
       `https://api.airtable.com/v0/${AIRTABLE_BASE}/tblbhyiuULvedva0K`,
       {
@@ -159,6 +186,9 @@ async function queuePosts(posts, clientId) {
       const data = await res.json();
       created.push(data.records[0]);
     }
+
+    // Small delay for Pexels rate limiting
+    if (posts.indexOf(post) < posts.length - 1) await new Promise(r => setTimeout(r, 500));
   }
   return created;
 }
@@ -197,7 +227,7 @@ module.exports = async function handler(req, res) {
     // 3. Call Claude API
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0.7,
       system: systemPrompt,
       messages: [

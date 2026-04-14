@@ -101,7 +101,7 @@ Each post object must have exactly these fields:
 post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, blog_content, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time
 
 ### Blog Content
-For each post, also generate a blog_content field containing a long-form article (300-800 words) that expands on the social caption topic. This blog article should:
+For each post, also generate a blog_content field containing a long-form article (500-1000 words) that expands on the social caption topic. This blog article should:
 - Have a compelling headline as the first line (no # markdown, just the text)
 - Be well-structured with clear paragraphs
 - Include practical travel tips, destination highlights, or booking inspiration

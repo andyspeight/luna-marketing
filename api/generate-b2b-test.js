@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
         {
           role: "user",
           content:
-            "Generate this week's B2B content for Travelgenix. Search for current UK travel industry news first, then generate all 12 posts. Return ONLY a valid JSON array.",
+            "Generate this week's B2B content for Travelgenix. Search for current UK travel industry news first, then generate all 10 posts. Return ONLY a valid JSON array.",
         },
       ],
     });
@@ -105,18 +105,18 @@ module.exports = async (req, res) => {
     };
 
     const channelMap = {
-      "twitter": "Twitter/X", "twitter/x": "Twitter/X", "x": "Twitter/X",
       "linkedin personal": "LinkedIn Personal", "linkedin company": "LinkedIn Company",
       "facebook": "Facebook", "instagram": "Instagram",
+      "google business profile": "Google Business Profile", "gbp": "Google Business Profile",
     };
 
     const cleanedPosts = posts.map((p) => ({
       ...p,
       targetChannel: channelMap[(p.targetChannel || "").toLowerCase()] || p.targetChannel,
       captionLinkedIn: cleanText(p.captionLinkedIn),
-      captionTwitter: cleanText(p.captionTwitter),
       captionFacebook: cleanText(p.captionFacebook),
       captionInstagram: cleanText(p.captionInstagram),
+      captionGBP: cleanText(p.captionGBP),
       firstComment: cleanText(p.firstComment),
     }));
 

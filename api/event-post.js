@@ -81,9 +81,10 @@ function buildEventPrompt(client, event) {
     "Audience: " + (Array.isArray(event.audience) ? event.audience.map(function(a) { return typeof a === "string" ? a : a.name; }).join(", ") : "") + "\n\n" +
     "## Rules\n" +
     "- UK English only. No em dashes. No Oxford comma.\n" +
+    "- CRITICAL: The post MUST clearly name the event (e.g. 'Oktoberfest', 'FIFA World Cup', 'Diwali') and state WHEN it takes place (e.g. 'this September', '6-22 February', 'on 31st October'). The reader must know exactly what event you're talking about and when it happens.\n" +
     "- Tie the post directly to this event with a clear travel booking angle.\n" +
     "- Include a call-to-action encouraging the reader to book or enquire.\n" +
-    "- Be specific — mention the event by name, the destination, and what makes it special.\n" +
+    "- Be specific — mention the event by name, the destination, the dates, and what makes it special.\n" +
     "- Never use banned phrases: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, delve, nestled, embark, tapestry, picture this, hidden gem, bucket list, paradise found, sun-kissed.\n\n" +
     "## Output Format\n" +
     "Return a JSON object (no markdown, no preamble). Fields:\n" +
@@ -158,6 +159,23 @@ module.exports = async function handler(req, res) {
           var cleaned = text.replace(/```json|```/g, "").trim();
           var post = JSON.parse(cleaned);
 
+          // Auto-fetch image from Pexels using image tags
+          var imageUrl = "";
+          try {
+            var imgQuery = (post.image_tags && post.image_tags.length) ? post.image_tags[0] : event.name + " " + (event.destinations || event.countries);
+            var pexRes = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(imgQuery) + "&orientation=landscape&per_page=3&size=large", {
+              headers: { Authorization: process.env.PEXELS_KEY }
+            });
+            if (pexRes.ok) {
+              var pexData = await pexRes.json();
+              if (pexData.photos && pexData.photos.length > 0) {
+                imageUrl = pexData.photos[0].src.large2x || pexData.photos[0].src.large || "";
+              }
+            }
+          } catch (imgErr) {
+            console.error("Pexels image error:", imgErr.message);
+          }
+
           // Queue the post with Event Source
           var record = await atCreate(QUEUE, {
             "Post Title": event.name + " — " + (post.destination || event.countries),
@@ -175,7 +193,8 @@ module.exports = async function handler(req, res) {
             "Scheduled Time": post.suggested_time || "09:00",
             "Status": "Queued",
             "Generated Week": getWeekStr(),
-            "Event Source": eventId
+            "Event Source": eventId,
+            "Image URL": imageUrl || ""
           });
 
           results.push({ eventId: eventId, status: "created", postId: record.id, eventName: event.name });

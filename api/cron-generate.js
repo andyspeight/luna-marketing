@@ -1,4 +1,5 @@
 const Anthropic = require("@anthropic-ai/sdk").default;
+var smartSchedule = require("./smart-schedule.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -92,6 +93,27 @@ async function getActiveClients() {
   return data.records || [];
 }
 
+// Build smart schedule instructions for the prompt
+function buildScheduleInstructions(f) {
+  var platforms = [];
+  var connected = f["Connected Platforms"];
+  if (Array.isArray(connected)) {
+    var map = { "Facebook": "facebook", "Instagram": "instagram", "LinkedIn": "linkedin", "X/Twitter": "twitter", "TikTok": "tiktok", "Pinterest": "pinterest", "Google Business": "google" };
+    connected.forEach(function(p) { var name = typeof p === "string" ? p : p.name; if (map[name]) platforms.push(map[name]); });
+  }
+  if (!platforms.length) platforms = ["facebook", "instagram", "linkedin"];
+
+  var schedule = smartSchedule.getSmartSchedule(
+    parseInt(f["Posting Frequency"]) || 3,
+    f["Posting Days"] || "Mon,Wed,Fri",
+    platforms
+  );
+
+  return schedule.map(function(s, i) {
+    return "Post " + (i + 1) + ": " + s.day + " at " + s.time;
+  }).join("\n");
+}
+
 // Build events context section for the prompt
 function buildEventsSection(events) {
   if (!events || !events.length) return "";
@@ -143,6 +165,12 @@ Specialisms: ${Array.isArray(f["Specialisms"]) ? f["Specialisms"].join(", ") : f
 ## Content Request
 
 Generate ${f["Posting Frequency"] || 3} social media posts for the week beginning ${getNextMonday()}.
+
+## Smart Schedule
+Use these optimised posting days and times (based on 2026 UK engagement data for travel audiences):
+${buildScheduleInstructions(f)}
+
+Assign each post to one of the above slots. The suggested_day and suggested_time in your output MUST match these slots exactly.
 
 The content mix should follow these weightings:
 - Destination Inspiration: 40%

@@ -488,7 +488,25 @@ function drawEventsClient(){
   var soon=evtState.events.filter(function(e){var d=new Date(e.dateStart);return d>=now&&d<=n30}).length;
   var cats={};evtState.events.forEach(function(e){cats[e.category]=(cats[e.category]||0)+1});
 
-  var h='<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap">';
+  // Intro section
+  var h='<div style="background:linear-gradient(135deg,rgba(0,180,216,0.06),rgba(27,43,91,0.04));border:1px solid rgba(0,180,216,0.15);border-radius:var(--radius-md);padding:20px 24px;margin-bottom:var(--space-4)">';
+  h+='<div style="display:flex;align-items:flex-start;gap:16px">';
+  h+='<div style="width:40px;height:40px;border-radius:10px;background:rgba(0,180,216,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>';
+  h+='<div><div style="font-size:15px;font-weight:700;color:var(--tg-text-primary);margin-bottom:6px">How Luna\'s Events Calendar Works</div>';
+  h+='<div style="font-size:13px;color:var(--tg-text-secondary);line-height:1.6">';
+  h+='Luna tracks over 100 global events, festivals, holidays and sporting occasions throughout the year. When generating your weekly posts, Luna automatically checks which events are coming up that match the destinations you sell and creates timely, topical content.';
+  h+='</div>';
+  h+='<details style="margin-top:10px"><summary style="font-size:12px;font-weight:600;color:var(--tg-accent-dark);cursor:pointer">Tips for getting the most from events</summary>';
+  h+='<div style="font-size:12px;color:var(--tg-text-secondary);line-height:1.6;margin-top:8px;padding-left:2px">';
+  h+='<div style="margin-bottom:6px"><strong style="color:var(--tg-text-primary)">Keep your destinations up to date</strong> in Settings \u2014 the more destinations Luna knows you sell, the more events it can match you with.</div>';
+  h+='<div style="margin-bottom:6px">Events marked <span style="display:inline-block;padding:1px 6px;border-radius:4px;background:rgba(16,185,129,0.1);color:#059669;font-size:11px;font-weight:600">Drives Bookings</span> are the big ones that genuinely move the needle. These get extra attention in your content.</div>';
+  h+='<div style="margin-bottom:6px"><strong style="color:var(--tg-text-primary)">Lead Time</strong> tells you how far in advance Luna starts creating content about each event \u2014 major events like the World Cup start 8 weeks out.</div>';
+  h+='<div>The best part? You don\'t need to do anything. Luna handles it all automatically.</div>';
+  h+='</div></details>';
+  h+='</div></div></div>';
+
+  // Stats
+  h+='<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap">';
   h+='<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:12px 16px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Total Events</div><div style="font-size:24px;font-weight:800;color:var(--tg-text-primary)">'+evtState.events.length+'</div></div>';
   h+='<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:12px 16px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Next 30 Days</div><div style="font-size:24px;font-weight:800;color:var(--tg-text-primary)">'+soon+'</div></div>';
   h+='<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:12px 16px;flex:1;min-width:120px"><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Booking Drivers</div><div style="font-size:24px;font-weight:800;color:var(--tg-text-primary)">'+major+'</div></div></div>';

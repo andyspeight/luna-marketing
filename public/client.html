@@ -432,7 +432,8 @@ function renderPosts(){
     if(p.blog_content){
       h+='<div style="padding:0 var(--space-3) var(--space-2)"><details style="border:1px solid var(--tg-border);border-radius:var(--radius-md);overflow:hidden">';
       h+='<summary style="padding:10px 14px;font-size:12px;font-weight:600;color:var(--tg-accent-dark);cursor:pointer;background:rgba(0,180,216,0.04);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>Blog Article ('+p.blog_content.split(/\s+/).filter(Boolean).length+' words)</summary>';
-      h+='<div style="padding:14px;font-size:13px;color:var(--tg-text-primary);line-height:1.7;max-height:300px;overflow-y:auto;white-space:pre-wrap">'+esc(p.blog_content)+'</div>';
+      if(p.image_url)h+='<img src="'+p.image_url+'" style="width:100%;height:200px;object-fit:cover;object-position:'+(p.image_position||'50% 50%')+'" alt="Blog header image">';
+      h+='<div style="padding:14px;font-size:13px;color:var(--tg-text-primary);line-height:1.7;max-height:400px;overflow-y:auto;white-space:pre-wrap">'+esc(p.blog_content)+'</div>';
       h+='</details></div>';
     }
     h+='<div class="post-actions"><button class="btn btn-approve btn-sm" onclick="C.action(\''+p.id+'\',\'approve\')">Approve</button><button class="btn btn-reject btn-sm" onclick="C.showReject(\''+p.id+'\')">Reject</button></div>';

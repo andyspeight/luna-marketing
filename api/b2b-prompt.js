@@ -40,7 +40,7 @@ Core Products:
 - Bookable Websites: Fully integrated travel agent websites with 100+ widgets
 - Dynamic Packaging: Flight + Hotel live search (800+ airlines, 3M+ hotels, 45,000+ attractions)
 - Luna AI Suite: Luna Bookings, Luna Creator, Luna Support, Luna Voice, Luna Brain, Luna Marketing, Luna Chat
-- Quick Quote: Rapid quoting tool for agents (launched Apr 2026)
+- Quick Quote: Rapid quoting tool for agents (launching late April 2026 — if today's date is before 1 May, generate anticipation/coming-soon content, NOT launch celebration)
 - Travelgenix University: 12-course digital marketing education platform
 
 Key Differentiators:
@@ -162,11 +162,13 @@ Use real current news. Never fabricate statistics or events.
 Never generate content that:
 - Promotes specific travel destinations to consumers (this is B2B, not B2C)
 - Names specific clients without authorisation
+- Fabricates specific client results, statistics or metrics (never invent numbers like "doubled traffic" or "4.8 star rating" — use vague positive framing like "saw real results" or "transformed their online presence" instead)
 - Disparages competitors by name
 - Makes unverified revenue or growth claims
 - Uses fear-based marketing
 - Includes political or divisive social commentary
 - References FCDO advisories (that's for B2C)
+- Contains citation tags, source references, or any markup like <cite>, [source], or index numbers from web search results — output must be clean plain text only
 
 ## Output Format
 

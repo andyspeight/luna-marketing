@@ -404,6 +404,7 @@ body { font-family:var(--tg-font-body); background:var(--bg); color:var(--text);
       <div><div class="header-title">Luna Marketing</div><div class="header-sub">Admin Dashboard</div></div>
     </div>
     <div class="header-right">
+      <a href="events.html" style="height:34px;padding:0 14px;border-radius:8px;font-size:12px;font-weight:600;font-family:var(--font);text-decoration:none;display:flex;align-items:center;gap:6px;background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.2);color:var(--teal);transition:all 0.2s"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Events</a>
       <div class="header-meta"><div id="clock"></div><div class="header-agent" id="agentLabel"></div></div>
       <button class="theme-btn" id="themeBtn" title="Toggle light/dark mode">
         <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -416,6 +417,9 @@ body { font-family:var(--tg-font-body); background:var(--bg); color:var(--text);
   <!-- Stats -->
   <div class="stats" id="statsRow"></div>
   <div id="alerts"></div>
+
+  <!-- Events Ticker -->
+  <div id="eventsTicker" style="margin-bottom:var(--space-4);overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--card)"></div>
 
   <!-- Tabs -->
   <div class="tabs" id="mainTabs">
@@ -548,6 +552,47 @@ function showApp() {
   $('clock').textContent = new Date().toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   loadDashboard();
   loadReviewQueue();
+  loadEventsTicker();
+}
+
+/* ── EVENTS TICKER ── */
+var TICKER_CAT_COLORS = { 'Sporting Event': '#3B82F6', 'Cultural Festival': '#8B5CF6', 'Religious Festival': '#F59E0B', 'Public Holiday': '#10B981', 'School Holiday': '#EC4899', 'Awareness Day': '#6366F1', 'Music Festival': '#EF4444', 'Food & Drink': '#F97316', 'Major Anniversary': '#14B8A6', 'Conference/Expo': '#64748B' };
+var TICKER_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+async function loadEventsTicker() {
+  var el = $('eventsTicker');
+  if (!el) return;
+  try {
+    var res = await fetch('/api/events?months=3');
+    var d = await res.json();
+    if (!d.success || !d.events || !d.events.length) { el.style.display = 'none'; return; }
+
+    var events = d.events;
+    var h = '<div style="display:flex;align-items:center;padding:10px 16px;gap:12px;overflow-x:auto;scrollbar-width:none">';
+    h += '<div style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding-right:12px;border-right:1px solid var(--border)">';
+    h += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+    h += '<span style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Upcoming</span></div>';
+
+    events.forEach(function(ev) {
+      var color = TICKER_CAT_COLORS[ev.category] || '#64748B';
+      var parts = ev.dateStart ? ev.dateStart.split('-') : [];
+      var dateStr = parts.length === 3 ? parseInt(parts[2]) + ' ' + TICKER_MONTHS[parseInt(parts[1]) - 1] : '';
+      var isMajor = ev.impact && ev.impact.includes('Major');
+
+      h += '<a href="events.html" style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);text-decoration:none;transition:all 0.15s;background:var(--card)" onmouseover="this.style.borderColor=\'' + color + '\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+      h += '<span style="font-size:11px;font-weight:700;color:var(--text-dim);white-space:nowrap;font-family:var(--mono)">' + dateStr + '</span>';
+      h += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';flex-shrink:0"></span>';
+      h += '<span style="font-size:12px;font-weight:600;color:var(--text-body);white-space:nowrap">' + escHTML(ev.name) + '</span>';
+      if (isMajor) h += '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.1);color:#059669;white-space:nowrap">BOOKING DRIVER</span>';
+      h += '</a>';
+    });
+
+    h += '</div>';
+    el.innerHTML = h;
+    el.style.display = 'block';
+  } catch (e) {
+    el.style.display = 'none';
+  }
 }
 
 /* ── TABS ── */

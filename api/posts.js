@@ -2,42 +2,53 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const QUEUE_TABLE = "tblbhyiuULvedva0K";
 
-// List queued posts, optionally filtered by client
-async function listPosts(status, clientId) {
-  let formula = "";
-  if (status && clientId) {
-    formula = `&filterByFormula=AND({Status}='${status}',RECORD_ID()!='')`;
-  } else if (status) {
-    formula = `&filterByFormula={Status}='${status}'`;
+async function listPosts(status) {
+  var formula = "";
+  if (status) {
+    formula = "&filterByFormula={Status}='" + status + "'";
   }
-
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}?sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc${formula}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${AIRTABLE_KEY}` },
+  var url =
+    "https://api.airtable.com/v0/" +
+    AIRTABLE_BASE +
+    "/" +
+    QUEUE_TABLE +
+    "?sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc" +
+    formula;
+  var res = await fetch(url, {
+    headers: { Authorization: "Bearer " + AIRTABLE_KEY },
   });
   if (!res.ok) throw new Error("Failed to fetch posts: " + res.statusText);
-  const data = await res.json();
+  var data = await res.json();
   return data.records || [];
 }
 
-// Update a post's status
-async function updatePostStatus(recordId, newStatus, reason) {
-  const fields = { Status: newStatus };
-  if (reason) fields["Suppression Reason"] = reason;
-
-  const res = await fetch(
-    `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}/${recordId}`,
+async function updatePost(recordId, fields) {
+  var res = await fetch(
+    "https://api.airtable.com/v0/" +
+      AIRTABLE_BASE +
+      "/" +
+      QUEUE_TABLE +
+      "/" +
+      recordId,
     {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${AIRTABLE_KEY}`,
+        Authorization: "Bearer " + AIRTABLE_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ fields, typecast: true }),
+      body: JSON.stringify({ fields: fields, typecast: true }),
     }
   );
   if (!res.ok) throw new Error("Failed to update post: " + res.statusText);
   return res.json();
+}
+
+// Helper to safely extract singleSelect name from Airtable (can be object or string)
+function selectName(val) {
+  if (!val) return "";
+  if (typeof val === "object" && val.name) return val.name;
+  if (typeof val === "string") return val;
+  return "";
 }
 
 module.exports = async function handler(req, res) {
@@ -49,20 +60,13 @@ module.exports = async function handler(req, res) {
   try {
     // GET: list posts
     if (req.method === "GET") {
-      const status = req.query.status || "Queued";
-      const clientId = req.query.clientId || null;
-      const records = await listPosts(status, clientId);
+      var status = req.query.status || null;
+      var records = await listPosts(status);
 
-      const posts = records.map(function (r) {
+      var posts = records.map(function (r) {
         var f = r.fields;
-        var statusVal = f.Status;
-        var statusName =
-          typeof statusVal === "object" ? statusVal.name : statusVal || "";
-        var contentType = f["Content Type"];
-        var contentTypeName =
-          typeof contentType === "object"
-            ? contentType.name
-            : contentType || "";
+        var statusName = selectName(f.Status);
+        var contentTypeName = selectName(f["Content Type"]);
         var clientLinks = f.Client || [];
 
         return {
@@ -90,34 +94,155 @@ module.exports = async function handler(req, res) {
           suppression_reason: f["Suppression Reason"] || "",
           generated_week: f["Generated Week"] || "",
           event_source: f["Event Source"] || "",
+          // B2B fields
+          target_channel: selectName(f["Target Channel"]),
+          content_pillar: selectName(f["Content Pillar"]),
+          first_comment: f["First Comment"] || "",
           client_id: clientLinks[0] || "",
         };
       });
-
-      return res.status(200).json({ success: true, posts, count: posts.length });
+      return res
+        .status(200)
+        .json({ success: true, posts: posts, count: posts.length });
     }
 
-    // PATCH: approve or reject a post
+    // PATCH: update a post
     if (req.method === "PATCH") {
       var body = req.body || {};
       var recordId = body.recordId;
-      var action = body.action;
-      var reason = body.reason || "";
-
       if (!recordId)
         return res.status(400).json({ error: "recordId is required" });
-      if (!action || !["approve", "reject", "suppress"].includes(action))
+      var action = body.action;
+
+      // Update image URL
+      if (action === "update_image") {
+        var imgFields = {};
+        if (body.imageUrl) imgFields["Image URL"] = body.imageUrl;
+        if (body.imagePosition)
+          imgFields["Image Position"] = body.imagePosition;
+        if (Object.keys(imgFields).length === 0)
+          return res
+            .status(400)
+            .json({ error: "imageUrl or imagePosition required" });
+        await updatePost(recordId, imgFields);
+        return res
+          .status(200)
+          .json({ success: true, action: "update_image", recordId: recordId });
+      }
+
+      // Update image position only
+      if (action === "update_position") {
+        if (!body.imagePosition)
+          return res.status(400).json({ error: "imagePosition required" });
+        await updatePost(recordId, {
+          "Image Position": body.imagePosition,
+        });
+        return res.status(200).json({
+          success: true,
+          action: "update_position",
+          recordId: recordId,
+          imagePosition: body.imagePosition,
+        });
+      }
+
+      // Update captions (per-platform editing)
+      if (action === "update_caption") {
+        var capFields = {};
+        var capMap = {
+          facebook: "Caption - Facebook",
+          instagram: "Caption - Instagram",
+          linkedin: "Caption - LinkedIn",
+          twitter: "Caption - Twitter",
+          pinterest: "Caption - Pinterest",
+          tiktok: "Caption - TikTok",
+          gbp: "Caption - GBP",
+        };
+        Object.keys(capMap).forEach(function (k) {
+          if (body[k] !== undefined) capFields[capMap[k]] = body[k];
+        });
+        if (Object.keys(capFields).length === 0)
+          return res
+            .status(400)
+            .json({ error: "No caption fields provided" });
+        await updatePost(recordId, capFields);
+        return res.status(200).json({
+          success: true,
+          action: "update_caption",
+          recordId: recordId,
+          updated: Object.keys(capFields),
+        });
+      }
+
+      // Update first comment (B2B)
+      if (action === "update_first_comment") {
+        await updatePost(recordId, {
+          "First Comment": body.first_comment || "",
+        });
+        return res.status(200).json({
+          success: true,
+          action: "update_first_comment",
+          recordId: recordId,
+        });
+      }
+
+      // Image URL shortcut (from image search panel)
+      if (body.imageUrl && !action) {
+        var updateFields = { "Image URL": body.imageUrl };
+        if (body.imagePosition)
+          updateFields["Image Position"] = body.imagePosition;
+        await updatePost(recordId, updateFields);
+        return res
+          .status(200)
+          .json({ success: true, action: "update_image", recordId: recordId });
+      }
+
+      // Image position shortcut (from click-to-reposition)
+      if (body.imagePosition && !action) {
+        await updatePost(recordId, {
+          "Image Position": body.imagePosition,
+        });
+        return res.status(200).json({
+          success: true,
+          action: "update_position",
+          recordId: recordId,
+        });
+      }
+
+      // Scheduled time update (from calendar drag)
+      if (body.scheduledTime) {
+        var schedFields = { "Scheduled Time": body.scheduledTime };
+        if (body.title) schedFields["Post Title"] = body.title;
+        await updatePost(recordId, schedFields);
+        return res.status(200).json({
+          success: true,
+          action: "reschedule",
+          recordId: recordId,
+        });
+      }
+
+      // Approve / Reject / Suppress
+      if (
+        !action ||
+        !["approve", "reject", "suppress"].includes(action)
+      )
         return res.status(400).json({
-          error: "action must be approve, reject, or suppress",
+          error:
+            "action must be approve, reject, suppress, update_image, update_position, update_caption, or update_first_comment",
         });
 
-      var newStatus = "Queued";
-      if (action === "approve") newStatus = "Queued";
-      if (action === "reject") newStatus = "Replaced";
-      if (action === "suppress") newStatus = "Suppressed";
-
-      var updated = await updatePostStatus(recordId, newStatus, reason);
-
+      var newStatus =
+        action === "approve"
+          ? "Approved"
+          : action === "reject"
+          ? "Replaced"
+          : "Suppressed";
+      var statusFields = { Status: newStatus };
+      if (body.reason) statusFields["Suppression Reason"] = body.reason;
+      if (body.rejectionReason)
+        statusFields["Rejection Reason"] = body.rejectionReason;
+      if (body.rejectionNotes)
+        statusFields["Rejection Notes"] = body.rejectionNotes;
+      await updatePost(recordId, statusFields);
       return res.status(200).json({
         success: true,
         action: action,

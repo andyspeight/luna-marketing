@@ -1,142 +1,21 @@
 const Anthropic = require("@anthropic-ai/sdk").default;
-var smartSchedule = require("./smart-schedule.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
-const CLIENTS_TABLE = "tblUkzvBujc94Yali";
-const QUEUE_TABLE = "tblbhyiuULvedva0K";
-const EVENTS_TABLE = "tblQxIYrbzd6YlJYV";
-const CRON_SECRET = process.env.CRON_SECRET;
 
-// Fetch upcoming events from the Events Calendar
-async function getUpcomingEvents() {
-  var now = new Date();
-  var future = new Date();
-  future.setDate(future.getDate() + 42); // 6 weeks ahead
-  var startStr = now.toISOString().split("T")[0];
-  var endStr = future.toISOString().split("T")[0];
-  var formula = "AND({Date Start}>='" + startStr + "',{Date Start}<='" + endStr + "')";
-  var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + EVENTS_TABLE +
-    "?filterByFormula=" + encodeURIComponent(formula) +
-    "&sort%5B0%5D%5Bfield%5D=Date+Start&sort%5B0%5D%5Bdirection%5D=asc";
-  try {
-    var res = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
-    if (!res.ok) return [];
-    var data = await res.json();
-    return (data.records || []).map(function(r) {
-      var f = r.fields;
-      return {
-        name: f["Event Name"] || "",
-        dateStart: f["Date Start"] || "",
-        dateEnd: f["Date End"] || "",
-        category: f["Category"] || "",
-        countries: f["Countries"] || "",
-        destinations: f["Destinations"] || "",
-        travelAngle: f["Travel Angle"] || "",
-        contentSuggestion: f["Content Suggestion"] || "",
-        audience: f["Audience"] || [],
-        impact: f["Impact"] || "",
-        leadTimeWeeks: f["Lead Time Weeks"] || 4
-      };
-    });
-  } catch (e) {
-    console.error("Events fetch error:", e.message);
-    return [];
-  }
-}
-
-// Match events to a client based on their destinations and universal events
-function matchEventsToClient(events, clientDestinations) {
-  if (!events || !events.length) return [];
-  var destStr = (clientDestinations || "").toLowerCase();
-  var now = new Date();
-
-  return events.filter(function(ev) {
-    // Check if event is within its lead time window
-    var eventDate = new Date(ev.dateStart);
-    var weeksUntil = (eventDate - now) / (7 * 24 * 60 * 60 * 1000);
-    if (weeksUntil > ev.leadTimeWeeks) return false;
-
-    // Universal events (apply to all clients regardless of destination)
-    var universal = ["Public Holiday", "School Holiday", "Awareness Day"];
-    if (universal.indexOf(ev.category) !== -1 && ev.countries && ev.countries.toLowerCase().includes("uk")) return true;
-    if (ev.countries && (ev.countries.toLowerCase().includes("global"))) return true;
-
-    // Destination-matched events
-    if (!destStr) return false;
-    var evCountries = (ev.countries || "").toLowerCase().split(",").map(function(s) { return s.trim(); });
-    var evDests = (ev.destinations || "").toLowerCase().split(",").map(function(s) { return s.trim(); });
-    var allEvLocs = evCountries.concat(evDests).filter(Boolean);
-
-    for (var i = 0; i < allEvLocs.length; i++) {
-      if (destStr.includes(allEvLocs[i])) return true;
-      // Also check if any word from the event location appears in destinations
-      var words = allEvLocs[i].split(" ");
-      for (var j = 0; j < words.length; j++) {
-        if (words[j].length > 3 && destStr.includes(words[j])) return true;
-      }
-    }
-    return false;
-  });
-}
-
-// Fetch all active clients from Airtable
-async function getActiveClients() {
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}?filterByFormula={Status}='Active'`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${AIRTABLE_KEY}` },
-  });
-  if (!res.ok) throw new Error("Failed to fetch clients: " + res.statusText);
-  const data = await res.json();
-  return data.records || [];
-}
-
-// Build smart schedule instructions for the prompt
-function buildScheduleInstructions(f) {
-  var platforms = [];
-  var connected = f["Connected Platforms"];
-  if (Array.isArray(connected)) {
-    var map = { "Facebook": "facebook", "Instagram": "instagram", "LinkedIn": "linkedin", "X/Twitter": "twitter", "TikTok": "tiktok", "Pinterest": "pinterest", "Google Business": "google" };
-    connected.forEach(function(p) { var name = typeof p === "string" ? p : p.name; if (map[name]) platforms.push(map[name]); });
-  }
-  if (!platforms.length) platforms = ["facebook", "instagram", "linkedin"];
-
-  var schedule = smartSchedule.getSmartSchedule(
-    parseInt(f["Posting Frequency"]) || 3,
-    f["Posting Days"] || "Mon,Wed,Fri",
-    platforms
+async function getClient(clientId) {
+  const res = await fetch(
+    `https://api.airtable.com/v0/${AIRTABLE_BASE}/tblUkzvBujc94Yali/${clientId}`,
+    { headers: { Authorization: `Bearer ${AIRTABLE_KEY}` } }
   );
-
-  return schedule.map(function(s, i) {
-    return "Post " + (i + 1) + ": " + s.day + " at " + s.time;
-  }).join("\n");
+  if (!res.ok) throw new Error("Failed to fetch client: " + res.statusText);
+  return res.json();
 }
 
-// Build events context section for the prompt
-function buildEventsSection(events) {
-  if (!events || !events.length) return "";
-  var section = "\n## Upcoming Events & Seasonal Hooks\n\nThe following events are coming up and are relevant to this client's destinations. Where possible, tie at least ONE post to an upcoming event. Use the travel angle and content suggestions provided. If an event is marked as a booking driver, it's especially important to create content around it.\n\n";
-  events.forEach(function(ev) {
-    var dateStr = ev.dateStart;
-    if (ev.dateEnd && ev.dateEnd !== ev.dateStart) dateStr += " to " + ev.dateEnd;
-    section += "### " + ev.name + " (" + dateStr + ")\n";
-    section += "Category: " + ev.category + " | Impact: " + (ev.impact || "Moderate") + "\n";
-    if (ev.countries) section += "Where: " + ev.countries + (ev.destinations ? " — " + ev.destinations : "") + "\n";
-    if (ev.travelAngle) section += "Travel Angle: " + ev.travelAngle + "\n";
-    if (ev.contentSuggestion) section += "Content Idea: " + ev.contentSuggestion + "\n";
-    if (ev.audience && ev.audience.length) {
-      var names = ev.audience.map(function(a) { return typeof a === "string" ? a : a.name; });
-      section += "Best For: " + names.join(", ") + "\n";
-    }
-    section += "\n";
-  });
-  return section;
-}
-
-// Build system prompt for a single client
-function buildSystemPrompt(f, matchedEvents) {
+function buildSystemPrompt(client) {
+  const f = client.fields;
   return `You are Luna, the automated social media content engine for travel agents. You generate social media posts that will be published to Facebook, Instagram and LinkedIn without human review. Because no human checks your output before it goes live, accuracy and brand safety are paramount.
 
 You are writing on behalf of a specific travel agent. Their brand profile is provided below. Every post must sound like it came from this agent, not from an AI or a generic marketing tool.
@@ -166,12 +45,6 @@ Specialisms: ${Array.isArray(f["Specialisms"]) ? f["Specialisms"].join(", ") : f
 
 Generate ${f["Posting Frequency"] || 3} social media posts for the week beginning ${getNextMonday()}.
 
-## Smart Schedule
-Use these optimised posting days and times (based on 2026 UK engagement data for travel audiences):
-${buildScheduleInstructions(f)}
-
-Assign each post to one of the above slots. The suggested_day and suggested_time in your output MUST match these slots exactly.
-
 The content mix should follow these weightings:
 - Destination Inspiration: 40%
 - Offer Highlight: 20%
@@ -181,13 +54,13 @@ The content mix should follow these weightings:
 - Behind the Scenes: 5%
 
 Round to the nearest whole post. For 3 posts per week, a typical mix is 2 Destination Inspiration and 1 rotating type. Vary the rotating type week to week.
-` + buildEventsSection(matchedEvents) + `
+
 ## Content Rules (Non-Negotiable)
 
 ### Language
 - UK English only. Colour not color. Favourite not favorite. Centre not center.
 - No em dashes. Use commas, full stops or colons instead.
-- No Oxford comma.
+- No Oxford comma. Write "Turkey, Greece and Spain" not "Turkey, Greece, and Spain".
 
 ### Banned Phrases
 Never use any of these: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, at the end of the day, in today's world, it's important to note, it's worth noting, delve, nestled, embark, tapestry, picture this, ever-changing, testament to, whether you're, there's something for everyone, the world is waiting, adventure awaits, escape the ordinary, hidden gem, bucket list, wander, paradise found, sun-kissed
@@ -195,8 +68,8 @@ Never use any of these: leverage, seamless, game-changer, deep dive, elevate, un
 ### Safety
 - No political content. No religious content. No controversial opinions.
 - No health claims or medical advice.
-- No pricing unless explicitly provided. Never invent, estimate or round prices.
-- No competitor mentions.
+- No pricing unless explicitly provided in a supplier offers section. Never invent, estimate or round prices.
+- No competitor mentions. Never name another travel agent, OTA, tour operator or technology provider.
 - No negative content about any destination, country, culture or people.
 - No content about destinations not in this agent's destination list.
 
@@ -212,7 +85,7 @@ Never use any of these: leverage, seamless, game-changer, deep dive, elevate, un
 - Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.
 - Never use the same opening word for two posts.
 - Never start a post with a hashtag.
-- Be specific to the destination.
+- Be specific to the destination. Reference actual places, beaches, streets, dishes, experiences.
 
 ### CTA Links
 - Format: ${f["Website URL"] || ""}/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing
@@ -222,9 +95,10 @@ For each post, provide 3 image search tags that describe the ideal image. Be spe
 
 ## Output Format
 
-Return a JSON array. No markdown, no commentary, no preamble. Only valid JSON.
+Return a JSON array of post objects. No markdown, no commentary, no preamble. Only valid JSON.
 
-Each post object: post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, blog_content, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time
+Each post object must have exactly these fields:
+post_number, content_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, blog_content, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3), image_orientation, suggested_day, suggested_time
 
 ### Blog Content
 For each post, also generate a blog_content field containing a long-form article (300-800 words) that expands on the social caption topic. This blog article should:
@@ -249,44 +123,26 @@ function getNextMonday() {
   });
 }
 
-function getWeekString() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = now - start;
-  const week = Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
+async function fetchPexelsImage(tags) {
+  try {
+    var query = (tags && tags.length) ? tags[0] : "travel destination";
+    var r = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&orientation=landscape&per_page=3&size=large", {
+      headers: { Authorization: process.env.PEXELS_KEY }
+    });
+    if (r.ok) {
+      var d = await r.json();
+      if (d.photos && d.photos.length > 0) return d.photos[0].src.large2x || d.photos[0].src.large || "";
+    }
+  } catch (e) { console.error("Pexels error:", e.message); }
+  return "";
 }
 
-// Generate posts for one client
-async function generateForClient(record, allEvents) {
-  const f = record.fields;
-  var matched = matchEventsToClient(allEvents || [], f["Destinations"] || "");
-  console.log("  Events matched: " + matched.length + (matched.length ? " (" + matched.map(function(e) { return e.name; }).join(", ") + ")" : ""));
-  const systemPrompt = buildSystemPrompt(f, matched);
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 4096,
-    temperature: 0.7,
-    system: systemPrompt,
-    messages: [
-      { role: "user", content: "Generate this week's social media posts." },
-    ],
-  });
-
-  const text = response.content
-    .map((c) => (c.type === "text" ? c.text : ""))
-    .filter(Boolean)
-    .join("");
-
-  const cleaned = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(cleaned);
-}
-
-// Write posts to the queue
 async function queuePosts(posts, clientId) {
   const created = [];
   for (const post of posts) {
+    // Auto-fetch image from Pexels
+    var imageUrl = await fetchPexelsImage(post.image_tags);
+
     const record = {
       fields: {
         "Post Title": `${post.destination} ${post.content_type} - ${post.suggested_day}`,
@@ -309,13 +165,14 @@ async function queuePosts(posts, clientId) {
         "CTA URL": post.cta_url_facebook || "",
         Destination: post.destination || "",
         "Scheduled Time": post.suggested_time || "09:00",
+        "Image URL": imageUrl,
         Status: "Queued",
         "Generated Week": getWeekString(),
       },
     };
 
     const res = await fetch(
-      `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}`,
+      `https://api.airtable.com/v0/${AIRTABLE_BASE}/tblbhyiuULvedva0K`,
       {
         method: "POST",
         headers: {
@@ -329,104 +186,87 @@ async function queuePosts(posts, clientId) {
       const data = await res.json();
       created.push(data.records[0]);
     }
+
+    // Small delay for Pexels rate limiting
+    if (posts.indexOf(post) < posts.length - 1) await new Promise(r => setTimeout(r, 500));
   }
   return created;
+}
+
+function getWeekString() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now - start;
+  const week = Math.ceil(
+    ((diff / 86400000 + start.getDay() + 1) / 7)
+  );
+  return `${now.getFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 module.exports = async function handler(req, res) {
   // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-
-  // Security: verify cron secret (Vercel sends this automatically)
-  const authHeader = req.headers.authorization;
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const results = {
-    week: getWeekString(),
-    started: new Date().toISOString(),
-    clients: [],
-    errors: [],
-    totalPosts: 0,
-    eventsLoaded: 0,
-  };
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    // 1. Get all active clients
-    const clients = await getActiveClients();
-    console.log(`Found ${clients.length} active clients`);
+    const { clientId, dryRun } = req.body || {};
 
-    // 1b. Fetch upcoming events once for all clients
-    const allEvents = await getUpcomingEvents();
-    console.log(`Found ${allEvents.length} upcoming events`);
-    results.eventsLoaded = allEvents.length;
+    if (!clientId)
+      return res.status(400).json({ error: "clientId is required" });
 
-    // 2. Generate posts for each client sequentially
-    for (const clientRecord of clients) {
-      const name = clientRecord.fields["Business Name"] || "Unknown";
-      try {
-        console.log(`Generating for: ${name}`);
-        const posts = await generateForClient(clientRecord, allEvents);
-        const queued = await queuePosts(posts, clientRecord.id);
+    // 1. Fetch client from Airtable
+    const clientRecord = await getClient(clientId);
 
-        // Auto-publish if client has auto_publish enabled
-        var autoPublished = 0;
-        if (clientRecord.fields["Auto Publish"] && queued.length > 0) {
-          try {
-            console.log(`Auto-publishing for: ${name}`);
-            var pubRes = await fetch((process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://luna-marketing.vercel.app') + '/api/publish', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'publish_client', clientId: clientRecord.id })
-            });
-            var pubData = await pubRes.json();
-            autoPublished = pubData.published || 0;
-            console.log(`Auto-published ${autoPublished} posts for ${name}`);
-          } catch (pubErr) {
-            console.error(`Auto-publish error for ${name}: ${pubErr.message}`);
-          }
-        }
+    // 2. Build system prompt
+    const systemPrompt = buildSystemPrompt(clientRecord);
 
-        results.clients.push({
-          name,
-          id: clientRecord.id,
-          postsGenerated: posts.length,
-          postsQueued: queued.length,
-          autoPublished: autoPublished,
-          status: "success",
-        });
-        results.totalPosts += queued.length;
-      } catch (err) {
-        console.error(`Error for ${name}: ${err.message}`);
-        results.errors.push({
-          name,
-          id: clientRecord.id,
-          error: err.message,
-        });
-        results.clients.push({
-          name,
-          id: clientRecord.id,
-          postsGenerated: 0,
-          postsQueued: 0,
-          status: "error",
-          error: err.message,
-        });
-      }
+    // 3. Call Claude API
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8192,
+      temperature: 0.7,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: "Generate this week's social media posts." },
+      ],
+    });
 
-      // Small delay between clients to avoid rate limits
-      await new Promise((r) => setTimeout(r, 2000));
+    // 4. Parse response
+    const text = response.content
+      .map((c) => (c.type === "text" ? c.text : ""))
+      .filter(Boolean)
+      .join("");
+
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    let posts;
+    try {
+      posts = JSON.parse(cleaned);
+    } catch (e) {
+      return res.status(500).json({
+        error: "Failed to parse Claude response as JSON",
+        raw: cleaned.substring(0, 500),
+      });
     }
 
-    results.completed = new Date().toISOString();
-    results.success = true;
+    // 5. Queue posts to Airtable (unless dry run)
+    let queued = [];
+    if (!dryRun) {
+      queued = await queuePosts(posts, clientId);
+    }
 
-    return res.status(200).json(results);
+    return res.status(200).json({
+      success: true,
+      posts,
+      queued: queued.length,
+      client: clientRecord.fields["Business Name"],
+      week: getWeekString(),
+    });
   } catch (err) {
-    console.error("Batch generation error:", err);
-    return res.status(500).json({ error: err.message, results });
+    console.error("Generate error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };

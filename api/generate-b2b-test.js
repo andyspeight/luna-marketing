@@ -93,14 +93,41 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Clean posts: strip citations from web search and normalise channels
+    const cleanText = (t) => {
+      if (!t) return "";
+      return t
+        .replace(/<\/?cite[^>]*>/gi, "")
+        .replace(/<\/?antml:cite[^>]*>/gi, "")
+        .replace(/\[source[^\]]*\]/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    };
+
+    const channelMap = {
+      "twitter": "Twitter/X", "twitter/x": "Twitter/X", "x": "Twitter/X",
+      "linkedin personal": "LinkedIn Personal", "linkedin company": "LinkedIn Company",
+      "facebook": "Facebook", "instagram": "Instagram",
+    };
+
+    const cleanedPosts = posts.map((p) => ({
+      ...p,
+      targetChannel: channelMap[(p.targetChannel || "").toLowerCase()] || p.targetChannel,
+      captionLinkedIn: cleanText(p.captionLinkedIn),
+      captionTwitter: cleanText(p.captionTwitter),
+      captionFacebook: cleanText(p.captionFacebook),
+      captionInstagram: cleanText(p.captionInstagram),
+      firstComment: cleanText(p.firstComment),
+    }));
+
     // Return for review (don't write to queue in test mode)
     return res.status(200).json({
       status: "success",
       client: "Travelgenix",
       clientType: "b2b-saas",
       eventsInScope: events.map((e) => e["Event Name"]),
-      postCount: posts.length,
-      posts,
+      postCount: cleanedPosts.length,
+      posts: cleanedPosts,
       usage: response.usage,
       note: "TEST MODE — posts NOT written to queue. Review and then use the full cron endpoint to write.",
     });

@@ -1,20 +1,19 @@
-const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
-const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
-const CLIENTS_TABLE = "tblUkzvBujc94Yali";
+var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
+var AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
+var CLIENTS_TABLE = "tblUkzvBujc94Yali";
 
-async function findClientByEmail(email) {
-  var formula = encodeURIComponent("{Monthly Report Email}='" + email.replace(/'/g, "\\'") + "'");
-  var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + CLIENTS_TABLE + "?filterByFormula=" + formula;
-  var res = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
-  if (!res.ok) throw new Error("Airtable error: " + res.statusText);
-  var data = await res.json();
-  return data.records && data.records.length > 0 ? data.records[0] : null;
+function getVal(fields, name) {
+  var v = fields[name];
+  if (!v) return "";
+  if (typeof v === "object" && v.name) return v.name;
+  return v;
 }
 
-function getVal(f, key) {
-  var v = f[key];
-  if (typeof v === "object" && v !== null && v.name) return v.name;
-  return v || "";
+function getMultiVal(fields, name) {
+  var v = fields[name];
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(function(s) { return typeof s === "object" ? s.name : s; });
+  return [];
 }
 
 module.exports = async function handler(req, res) {
@@ -29,20 +28,32 @@ module.exports = async function handler(req, res) {
     var email = (body.email || "").trim().toLowerCase();
     var code = (body.code || "").trim();
 
-    if (!email) return res.status(400).json({ error: "Email is required" });
-    if (!code) return res.status(400).json({ error: "Access code is required" });
+    if (!email || !code) {
+      return res.status(400).json({ error: "Email and access code are required" });
+    }
 
-    // Find client by email
-    var record = await findClientByEmail(email);
-    if (!record) return res.status(401).json({ error: "No account found with this email address" });
+    // Search for client by email
+    var formula = encodeURIComponent("LOWER({Monthly Report Email})='" + email.replace(/'/g, "\\'") + "'");
+    var url = "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/" + CLIENTS_TABLE + "?filterByFormula=" + formula + "&maxRecords=1";
+    var r = await fetch(url, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
+    var data = await r.json();
 
-    // Validate access code
-    var storedCode = record.fields["Access Code"] || "";
-    if (!storedCode) return res.status(401).json({ error: "No access code set for this account. Please contact your account manager." });
-    if (storedCode !== code) return res.status(401).json({ error: "Incorrect access code" });
+    if (!data.records || data.records.length === 0) {
+      return res.status(401).json({ error: "No account found for this email address. Please contact your account manager." });
+    }
+
+    var record = data.records[0];
+    var f = record.fields;
+    var storedCode = (f["Access Code"] || "").trim();
+
+    if (!storedCode) {
+      return res.status(401).json({ error: "Account not yet activated. Please contact your account manager." });
+    }
+    if (storedCode !== code) {
+      return res.status(401).json({ error: "Incorrect access code" });
+    }
 
     // Return client profile
-    var f = record.fields;
     var profile = {
       id: record.id,
       business_name: f["Business Name"] || "",
@@ -53,7 +64,7 @@ module.exports = async function handler(req, res) {
       status: getVal(f, "Status"),
       package: getVal(f, "Package"),
       destinations: f["Destinations"] || "",
-      specialisms: Array.isArray(f["Specialisms"]) ? f["Specialisms"].map(function(s) { return typeof s === "object" ? s.name : s; }) : [],
+      specialisms: getMultiVal(f, "Specialisms"),
       posting_frequency: f["Posting Frequency"] || 3,
       posting_days: f["Posting Days"] || "Mon,Wed,Fri",
       tone: f["Tone Keywords"] || "",
@@ -68,6 +79,13 @@ module.exports = async function handler(req, res) {
       fb_connected: !!f["FB Page ID"],
       ig_connected: !!f["IG Account ID"],
       li_connected: !!f["LinkedIn Page ID"],
+      // B2B fields
+      client_type: getVal(f, "Client Type") || "b2c-travel",
+      connected_platforms: getMultiVal(f, "Connected Platforms"),
+      content_pillars: getMultiVal(f, "Content Pillars"),
+      target_channels: getMultiVal(f, "Target Channels"),
+      metricool_blog_id: f["Metricool Blog ID"] || "",
+      metricool_blog_id_personal: f["Metricool Blog ID - Personal"] || "",
     };
 
     return res.status(200).json({ success: true, profile: profile });

@@ -631,28 +631,33 @@ async function loadEventsTicker() {
 /* ── EVENTS VIEW ── */
 var EVT_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 var EVT_CAT_COLORS = { 'Sporting Event': '#3B82F6', 'Cultural Festival': '#8B5CF6', 'Religious Festival': '#F59E0B', 'Public Holiday': '#10B981', 'School Holiday': '#EC4899', 'Awareness Day': '#6366F1', 'Music Festival': '#EF4444', 'Food & Drink': '#F97316', 'Major Anniversary': '#14B8A6', 'Conference/Expo': '#64748B' };
-var evtState = { events: [], filter: 'all', loaded: false };
+var evtState = { events: [], filter: 'all' };
 
 function evtDate(d) { if (!d) return ''; var p = d.split('-'); return parseInt(p[2]) + ' ' + EVT_MONTHS[parseInt(p[1])-1].substring(0,3); }
 function evtDay(d) { return d ? parseInt(d.split('-')[2]) : ''; }
 function evtMon(d) { return d ? EVT_MONTHS[parseInt(d.split('-')[1])-1].substring(0,3).toUpperCase() : ''; }
 function evtMonthYear(d) { if (!d) return ''; var p = d.split('-'); return EVT_MONTHS[parseInt(p[1])-1] + ' ' + p[0]; }
-function evtImpact(i) { if (!i) return ['impact-minor','Awareness']; if (i.includes('Major')) return ['impact-major','Drives Bookings']; if (i.includes('Moderate')) return ['impact-mod','Content Hook']; return ['impact-minor','Awareness']; }
+function evtImpact(i) { if (!i) return ['minor','Awareness']; if (i.includes('Major')) return ['major','Drives Bookings']; if (i.includes('Moderate')) return ['mod','Content Hook']; return ['minor','Awareness']; }
+
+// Event delegation for filters and toggles
+document.addEventListener('click', function(e) {
+  var fb = e.target.closest('[data-evt-filter]');
+  if (fb) { evtState.filter = fb.getAttribute('data-evt-filter'); drawEvents(); return; }
+  var tb = e.target.closest('[data-evt-toggle]');
+  if (tb) { var id = tb.getAttribute('data-evt-toggle'); var card = $('evt-' + id); if (card) card.classList.toggle('evt-open'); return; }
+});
 
 async function renderEventsView() {
   var el = $('view-events');
-  if (!evtState.loaded) {
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">Loading events...</div>';
-    try {
-      var res = await fetch('/api/events?months=12');
-      var d = await res.json();
-      if (!d.success) throw new Error(d.error);
-      evtState.events = d.events;
-      evtState.loaded = true;
-    } catch (e) {
-      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Error: ' + e.message + '</div>';
-      return;
-    }
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)">Loading events...</div>';
+  try {
+    var res = await fetch('/api/events?months=12');
+    var d = await res.json();
+    if (!d.success) throw new Error(d.error);
+    evtState.events = d.events;
+  } catch (e) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Error: ' + e.message + '</div>';
+    return;
   }
   drawEvents();
 }
@@ -679,13 +684,13 @@ function drawEvents() {
 
   // Filters
   h += '<div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">';
-  h += '<button onclick="setEvtFilter(\'all\')" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid ' + (evtState.filter === 'all' ? 'var(--teal)' : 'var(--border)') + ';background:' + (evtState.filter === 'all' ? 'var(--teal)' : 'var(--card)') + ';color:' + (evtState.filter === 'all' ? '#fff' : 'var(--text-dim)') + ';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)">All Events</button>';
+  h += '<button data-evt-filter="all" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid ' + (evtState.filter === 'all' ? 'var(--teal)' : 'var(--border)') + ';background:' + (evtState.filter === 'all' ? 'var(--teal)' : 'var(--card)') + ';color:' + (evtState.filter === 'all' ? '#fff' : 'var(--text-dim)') + ';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)">All Events</button>';
   Object.keys(cats).sort().forEach(function(c) {
     var color = EVT_CAT_COLORS[c] || '#64748B';
     var isActive = evtState.filter === c;
-    h += '<button onclick="setEvtFilter(\'' + c.replace(/'/g, "\\'") + '\')" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid ' + (isActive ? color : 'var(--border)') + ';background:' + (isActive ? color : 'var(--card)') + ';color:' + (isActive ? '#fff' : 'var(--text-dim)') + ';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px">';
+    h += '<button data-evt-filter="' + escHTML(c) + '" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid ' + (isActive ? color : 'var(--border)') + ';background:' + (isActive ? color : 'var(--card)') + ';color:' + (isActive ? '#fff' : 'var(--text-dim)') + ';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px">';
     if (!isActive) h += '<span style="width:7px;height:7px;border-radius:50%;background:' + color + '"></span>';
-    h += c + ' (' + cats[c] + ')</button>';
+    h += escHTML(c) + ' (' + cats[c] + ')</button>';
   });
   h += '</div>';
 
@@ -707,12 +712,12 @@ function drawEvents() {
       h += '<div class="evt-card" id="evt-' + e.id + '" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;transition:box-shadow 0.2s">';
 
       // Row
-      h += '<div onclick="toggleEvt(\'' + e.id + '\')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer">';
+      h += '<div data-evt-toggle="' + e.id + '" style="display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer">';
       h += '<div style="width:50px;text-align:center;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:var(--tg-navy);line-height:1.1">' + evtDay(e.dateStart) + '</div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim)">' + evtMon(e.dateStart) + '</div></div>';
       h += '<div style="width:1px;height:34px;background:var(--border);flex-shrink:0"></div>';
       h += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text-body)">' + escHTML(e.name) + '</div><div style="font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHTML(e.countries + (e.destinations ? ' \u2014 ' + e.destinations : '')) + '</div></div>';
       h += '<span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:flex;align-items:center;background:' + color + '14;color:' + color + ';border:1px solid ' + color + '30">' + escHTML(e.category) + '</span>';
-      h += '<span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:flex;align-items:center;' + (imp[0] === 'impact-major' ? 'background:rgba(16,185,129,0.1);color:#059669' : imp[0] === 'impact-mod' ? 'background:rgba(245,158,11,0.1);color:#D97706' : 'background:rgba(100,116,139,0.1);color:#64748B') + '">' + imp[1] + '</span>';
+      h += '<span style="flex-shrink:0;height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:flex;align-items:center;' + (imp[0] === 'major' ? 'background:rgba(16,185,129,0.1);color:#059669' : imp[0] === 'mod' ? 'background:rgba(245,158,11,0.1);color:#D97706' : 'background:rgba(100,116,139,0.1);color:#64748B') + '">' + imp[1] + '</span>';
       h += '<svg style="width:18px;height:18px;flex-shrink:0;color:var(--text-dim);transition:transform 0.3s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
       h += '</div>';
 

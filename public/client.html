@@ -777,12 +777,21 @@ function renderPlatforms() {
   var hasPersonal = isB2B && state.profile.metricool_blog_id_personal;
   el.innerHTML = '<div style="text-align:center;padding:var(--space-8);color:var(--tg-text-tertiary)">Loading platform connections...</div>';
 
+  // Safe JSON parse helper
+  function safeJson(r) {
+    var ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      return r.text().then(function(t) { throw new Error('API returned non-JSON (status ' + r.status + '): ' + t.substring(0, 100)); });
+    }
+    return r.json();
+  }
+
   // Fetch company connections
   fetch('/api/connections', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'get_connection_url', clientId: state.profile.id })
-  }).then(function(r) { return r.json(); }).then(function(companyData) {
+  }).then(safeJson).then(function(companyData) {
     if (!companyData.success) { el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error: ' + (companyData.error || 'Unknown') + '</p>'; return; }
 
     // If B2B with personal account, fetch that too
@@ -791,7 +800,7 @@ function renderPlatforms() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'get_connection_url', clientId: state.profile.id, blogId: state.profile.metricool_blog_id_personal })
-      }).then(function(r) { return r.json(); }).catch(function() { return { success: false }; }) :
+      }).then(safeJson).catch(function() { return { success: false }; }) :
       Promise.resolve(null);
 
     personalPromise.then(function(personalData) {

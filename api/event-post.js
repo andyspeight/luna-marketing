@@ -12,6 +12,13 @@ var CLIENTS = "tblUkzvBujc94Yali";
 var QUEUE = "tblbhyiuULvedva0K";
 var EVENTS = "tblQxIYrbzd6YlJYV";
 
+function getWeekStr() {
+  var now = new Date();
+  var start = new Date(now.getFullYear(), 0, 1);
+  var week = Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
+  return now.getFullYear() + "-W" + String(week).padStart(2, "0");
+}
+
 async function atGet(table, id) {
   var r = await fetch("https://api.airtable.com/v0/" + BASE + "/" + table + "/" + id, {
     headers: { Authorization: "Bearer " + AIRTABLE_KEY }
@@ -167,6 +174,7 @@ module.exports = async function handler(req, res) {
             "Destination": post.destination || "",
             "Scheduled Time": post.suggested_time || "09:00",
             "Status": "Queued",
+            "Generated Week": getWeekStr(),
             "Event Source": eventId
           });
 

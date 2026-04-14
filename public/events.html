@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events Calendar — Luna Marketing</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --tg-font: 'Inter', -apple-system, system-ui, sans-serif;
+  --tg-navy: #1B2B5B;
+  --tg-accent: #00B4D8;
+  --tg-accent-dark: #0090AD;
+  --tg-bg: #F8F9FB;
+  --tg-bg-card: #FFFFFF;
+  --tg-text: #1E293B;
+  --tg-text-secondary: #64748B;
+  --tg-text-tertiary: #94A3B8;
+  --tg-border: #E2E8F0;
+  --tg-success: #10B981;
+  --tg-error: #EF4444;
+  --tg-amber: #F59E0B;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --cat-sporting: #3B82F6;
+  --cat-cultural: #8B5CF6;
+  --cat-religious: #F59E0B;
+  --cat-holiday: #10B981;
+  --cat-school: #EC4899;
+  --cat-awareness: #6366F1;
+  --cat-music: #EF4444;
+  --cat-food: #F97316;
+  --cat-anniversary: #14B8A6;
+  --cat-conference: #64748B;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--tg-font); background: var(--tg-bg); color: var(--tg-text); -webkit-font-smoothing: antialiased; }
+
+/* Header */
+.header { background: var(--tg-navy); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header-logo { width: 36px; height: 36px; border-radius: 10px; background: var(--tg-accent); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; }
+.header h1 { color: #fff; font-size: 18px; font-weight: 700; }
+.header h1 span { color: var(--tg-accent); }
+.header-nav { display: flex; gap: 8px; }
+.header-nav a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 6px; transition: all 0.2s; }
+.header-nav a:hover, .header-nav a.active { color: #fff; background: rgba(255,255,255,0.1); }
+
+/* Page layout */
+.page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.page-title { font-size: 28px; font-weight: 800; color: var(--tg-navy); margin-bottom: 4px; }
+.page-subtitle { font-size: 15px; color: var(--tg-text-secondary); margin-bottom: 24px; }
+
+/* Stats row */
+.stats { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.stat-card { background: var(--tg-bg-card); border: 1px solid var(--tg-border); border-radius: var(--radius); padding: 16px 20px; flex: 1; min-width: 140px; }
+.stat-val { font-size: 28px; font-weight: 800; color: var(--tg-navy); }
+.stat-label { font-size: 12px; font-weight: 600; color: var(--tg-text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+/* Filters */
+.filters { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; align-items: center; }
+.filter-btn { height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid var(--tg-border); background: var(--tg-bg-card); color: var(--tg-text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--tg-font); transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+.filter-btn:hover { border-color: var(--tg-accent); color: var(--tg-accent); }
+.filter-btn.active { background: var(--tg-accent); border-color: var(--tg-accent); color: #fff; }
+.filter-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Month section */
+.month-section { margin-bottom: 40px; }
+.month-header { font-size: 20px; font-weight: 700; color: var(--tg-navy); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--tg-border); display: flex; align-items: center; gap: 12px; }
+.month-count { font-size: 13px; font-weight: 600; color: var(--tg-text-tertiary); background: var(--tg-bg); padding: 2px 10px; border-radius: 12px; }
+
+/* Event card */
+.event-card { background: var(--tg-bg-card); border: 1px solid var(--tg-border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; transition: box-shadow 0.2s, border-color 0.2s; }
+.event-card:hover { box-shadow: var(--shadow-md); border-color: var(--tg-accent); }
+.event-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; cursor: pointer; }
+.event-date { width: 60px; text-align: center; flex-shrink: 0; }
+.event-date-day { font-size: 26px; font-weight: 800; color: var(--tg-navy); line-height: 1.1; }
+.event-date-month { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--tg-text-tertiary); }
+.event-divider { width: 1px; height: 40px; background: var(--tg-border); flex-shrink: 0; }
+.event-info { flex: 1; min-width: 0; }
+.event-title { font-size: 16px; font-weight: 700; color: var(--tg-text); margin-bottom: 4px; }
+.event-desc { font-size: 13px; color: var(--tg-text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.event-tags { display: flex; gap: 6px; flex-shrink: 0; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.event-tag { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.event-impact { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
+.impact-major { background: rgba(16,185,129,0.1); color: #059669; }
+.impact-moderate { background: rgba(245,158,11,0.1); color: #D97706; }
+.impact-minor { background: rgba(100,116,139,0.1); color: #64748B; }
+.event-chevron { width: 20px; height: 20px; flex-shrink: 0; color: var(--tg-text-tertiary); transition: transform 0.3s; }
+.event-card.open .event-chevron { transform: rotate(180deg); }
+
+/* Expanded detail */
+.event-detail { display: none; padding: 0 20px 20px; }
+.event-card.open .event-detail { display: block; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.detail-block { background: var(--tg-bg); border-radius: var(--radius-sm); padding: 16px; }
+.detail-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--tg-text-tertiary); margin-bottom: 8px; }
+.detail-text { font-size: 14px; color: var(--tg-text); line-height: 1.6; }
+.detail-full { grid-column: 1 / -1; }
+.detail-suggestions { background: linear-gradient(135deg, rgba(0,180,216,0.06), rgba(27,43,91,0.04)); border: 1px solid rgba(0,180,216,0.15); border-radius: var(--radius-sm); padding: 20px; }
+.detail-suggestions .detail-label { color: var(--tg-accent-dark); }
+.audience-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.audience-tag { height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12px; font-weight: 500; background: rgba(0,180,216,0.08); color: var(--tg-accent-dark); display: flex; align-items: center; }
+.event-meta { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--tg-border); flex-wrap: wrap; }
+.meta-item { font-size: 12px; color: var(--tg-text-secondary); display: flex; align-items: center; gap: 4px; }
+.meta-icon { width: 14px; height: 14px; opacity: 0.5; }
+
+/* Loading */
+.loading { text-align: center; padding: 60px; color: var(--tg-text-tertiary); font-size: 15px; }
+.empty { text-align: center; padding: 60px; color: var(--tg-text-tertiary); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header { padding: 16px; }
+  .page { padding: 20px 16px; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .event-tags { display: none; }
+  .stats { gap: 8px; }
+  .stat-card { min-width: 100px; padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">L</div>
+    <h1>Luna <span>Marketing</span></h1>
+  </div>
+  <nav class="header-nav">
+    <a href="admin.html">Dashboard</a>
+    <a href="events.html" class="active">Events</a>
+  </nav>
+</div>
+
+<div class="page">
+  <div class="page-title">Events Calendar</div>
+  <div class="page-subtitle">Upcoming global events, festivals, holidays and sporting events that drive travel bookings. Use these to create timely, relevant content for your clients.</div>
+
+  <div class="stats" id="statsRow"></div>
+  <div class="filters" id="filtersRow"></div>
+  <div id="eventsContainer"><div class="loading">Loading events...</div></div>
+</div>
+
+<script>
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var CAT_COLORS = {
+  'Sporting Event': '#3B82F6', 'Cultural Festival': '#8B5CF6', 'Religious Festival': '#F59E0B',
+  'Public Holiday': '#10B981', 'School Holiday': '#EC4899', 'Awareness Day': '#6366F1',
+  'Music Festival': '#EF4444', 'Food & Drink': '#F97316', 'Major Anniversary': '#14B8A6',
+  'Conference/Expo': '#64748B'
+};
+var state = { events: [], filter: 'all' };
+
+function formatDate(d) {
+  if (!d) return '';
+  var parts = d.split('-');
+  return parseInt(parts[2]) + ' ' + MONTHS[parseInt(parts[1]) - 1].substring(0, 3);
+}
+function getDay(d) { return d ? parseInt(d.split('-')[2]) : ''; }
+function getMonthStr(d) { return d ? MONTHS[parseInt(d.split('-')[1]) - 1].substring(0, 3).toUpperCase() : ''; }
+function getMonthYear(d) {
+  if (!d) return '';
+  var parts = d.split('-');
+  return MONTHS[parseInt(parts[1]) - 1] + ' ' + parts[0];
+}
+
+function impactClass(impact) {
+  if (!impact) return 'impact-minor';
+  if (impact.includes('Major')) return 'impact-major';
+  if (impact.includes('Moderate')) return 'impact-moderate';
+  return 'impact-minor';
+}
+function impactLabel(impact) {
+  if (!impact) return 'Minor';
+  if (impact.includes('Major')) return 'Drives Bookings';
+  if (impact.includes('Moderate')) return 'Content Hook';
+  return 'Awareness';
+}
+
+function catColor(cat) { return CAT_COLORS[cat] || '#64748B'; }
+
+function renderStats() {
+  var events = state.events;
+  var major = events.filter(function(e) { return e.impact && e.impact.includes('Major'); }).length;
+  var cats = {};
+  events.forEach(function(e) { cats[e.category] = true; });
+  var now = new Date();
+  var next30 = new Date(); next30.setDate(next30.getDate() + 30);
+  var soon = events.filter(function(e) { var d = new Date(e.dateStart); return d >= now && d <= next30; }).length;
+
+  document.getElementById('statsRow').innerHTML =
+    '<div class="stat-card"><div class="stat-label">Total Events</div><div class="stat-val">' + events.length + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Next 30 Days</div><div class="stat-val">' + soon + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Booking Drivers</div><div class="stat-val">' + major + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">Categories</div><div class="stat-val">' + Object.keys(cats).length + '</div></div>';
+}
+
+function renderFilters() {
+  var cats = {};
+  state.events.forEach(function(e) { cats[e.category] = (cats[e.category] || 0) + 1; });
+  var h = '<button class="filter-btn' + (state.filter === 'all' ? ' active' : '') + '" onclick="setFilter(\'all\')">All Events</button>';
+  Object.keys(cats).sort().forEach(function(c) {
+    h += '<button class="filter-btn' + (state.filter === c ? ' active' : '') + '" onclick="setFilter(\'' + c.replace(/'/g, "\\'") + '\')">';
+    h += '<span class="filter-dot" style="background:' + catColor(c) + '"></span>';
+    h += c + ' <span style="opacity:0.5">(' + cats[c] + ')</span></button>';
+  });
+  document.getElementById('filtersRow').innerHTML = h;
+}
+
+function setFilter(f) {
+  state.filter = f;
+  renderFilters();
+  renderEvents();
+}
+
+function toggleEvent(id) {
+  var el = document.getElementById('ev-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+function renderEvents() {
+  var events = state.events;
+  if (state.filter !== 'all') events = events.filter(function(e) { return e.category === state.filter; });
+
+  if (!events.length) {
+    document.getElementById('eventsContainer').innerHTML = '<div class="empty">No events found for this filter.</div>';
+    return;
+  }
+
+  // Group by month
+  var months = {};
+  events.forEach(function(e) {
+    var key = getMonthYear(e.dateStart);
+    if (!months[key]) months[key] = [];
+    months[key].push(e);
+  });
+
+  var h = '';
+  Object.keys(months).forEach(function(month) {
+    var evts = months[month];
+    h += '<div class="month-section">';
+    h += '<div class="month-header">' + month + '<span class="month-count">' + evts.length + ' event' + (evts.length !== 1 ? 's' : '') + '</span></div>';
+
+    evts.forEach(function(e) {
+      var color = catColor(e.category);
+      var dateRange = formatDate(e.dateStart);
+      if (e.dateEnd && e.dateEnd !== e.dateStart) dateRange += ' — ' + formatDate(e.dateEnd);
+
+      h += '<div class="event-card" id="ev-' + e.id + '">';
+
+      // Collapsed row
+      h += '<div class="event-row" onclick="toggleEvent(\'' + e.id + '\')">';
+      h += '<div class="event-date"><div class="event-date-day">' + getDay(e.dateStart) + '</div><div class="event-date-month">' + getMonthStr(e.dateStart) + '</div></div>';
+      h += '<div class="event-divider"></div>';
+      h += '<div class="event-info"><div class="event-title">' + esc(e.name) + '</div>';
+      h += '<div class="event-desc">' + esc(e.countries + (e.destinations ? ' — ' + e.destinations : '')) + '</div></div>';
+      h += '<div class="event-tags">';
+      h += '<span class="event-tag" style="background:' + color + '14;color:' + color + ';border:1px solid ' + color + '30">' + esc(e.category) + '</span>';
+      h += '<span class="event-impact ' + impactClass(e.impact) + '">' + impactLabel(e.impact) + '</span>';
+      h += '</div>';
+      h += '<svg class="event-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+      h += '</div>';
+
+      // Expanded detail
+      h += '<div class="event-detail">';
+      h += '<div class="detail-grid">';
+
+      // Date and location
+      h += '<div class="detail-block"><div class="detail-label">When</div><div class="detail-text">' + dateRange + '</div></div>';
+      h += '<div class="detail-block"><div class="detail-label">Where</div><div class="detail-text">' + esc(e.destinations || e.countries) + '</div></div>';
+
+      // Travel angle
+      if (e.travelAngle) {
+        h += '<div class="detail-block detail-full"><div class="detail-label">Travel Angle</div><div class="detail-text">' + esc(e.travelAngle) + '</div></div>';
+      }
+
+      // Content suggestion - the big one
+      if (e.contentSuggestion) {
+        h += '<div class="detail-suggestions detail-full"><div class="detail-label">Content Ideas for Your Clients</div><div class="detail-text">' + esc(e.contentSuggestion) + '</div></div>';
+      }
+
+      h += '</div>'; // end detail-grid
+
+      // Audience tags
+      if (e.audience && e.audience.length) {
+        h += '<div style="margin-top:12px"><div class="detail-label">Best For</div><div class="audience-tags">';
+        e.audience.forEach(function(a) {
+          var name = typeof a === 'string' ? a : a.name;
+          h += '<span class="audience-tag">' + esc(name) + '</span>';
+        });
+        h += '</div></div>';
+      }
+
+      // Meta row
+      h += '<div class="event-meta">';
+      h += '<div class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>Start posting ' + e.leadTimeWeeks + ' weeks before</div>';
+      h += '<div class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M16 2v4M8 2v4M4 10h16"/></svg>' + (e.recurring || 'Annual') + '</div>';
+      h += '<div class="meta-item"><svg class="meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>' + esc(e.countries) + '</div>';
+      h += '</div>';
+
+      h += '</div>'; // end event-detail
+      h += '</div>'; // end event-card
+    });
+
+    h += '</div>'; // end month-section
+  });
+
+  document.getElementById('eventsContainer').innerHTML = h;
+}
+
+function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Load events
+fetch('/api/events?months=12')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (!d.success) throw new Error(d.error);
+    state.events = d.events;
+    renderStats();
+    renderFilters();
+    renderEvents();
+  })
+  .catch(function(e) {
+    document.getElementById('eventsContainer').innerHTML = '<div class="empty" style="color:var(--tg-error)">Error loading events: ' + e.message + '</div>';
+  });
+</script>
+</body>
+</html>

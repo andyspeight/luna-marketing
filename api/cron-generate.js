@@ -29,6 +29,36 @@ function getDateInWeeks(weeks) {
   return d.toISOString().split("T")[0];
 }
 
+// Strip citation tags that leak from web search (e.g. <cite index="2-7">text</cite>)
+function stripCitations(text) {
+  if (!text) return "";
+  return text
+    .replace(/<\/?cite[^>]*>/gi, "")  // remove <cite ...> and </cite>
+    .replace(/<\/?antml:cite[^>]*>/gi, "")  // remove namespaced variants
+    .replace(/\[source[^\]]*\]/gi, "")  // remove [source] references
+    .replace(/\s{2,}/g, " ")  // collapse double spaces
+    .trim();
+}
+
+// Normalise channel names to match Airtable select options exactly
+function normaliseChannel(channel) {
+  const map = {
+    "twitter": "Twitter/X",
+    "twitter/x": "Twitter/X",
+    "x": "Twitter/X",
+    "linkedin personal": "LinkedIn Personal",
+    "linkedin company": "LinkedIn Company",
+    "linkedin": "LinkedIn Company",
+    "facebook": "Facebook",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "pinterest": "Pinterest",
+    "google business profile": "Google Business Profile",
+    "gbp": "Google Business Profile",
+  };
+  return map[(channel || "").toLowerCase()] || channel || "LinkedIn Personal";
+}
+
 // ── Airtable Fetchers ──
 
 async function airtableFetch(url) {
@@ -298,10 +328,10 @@ async function processClient(record, events) {
     const fields = {
       fldGRsU5pWRoAN34s: post.postTitle || `Post ${i + 1}`, // Post Title
       fldVteQRAcqE2n1lV: [clientId], // Client link
-      fldWe3d6ec4pu9jcZ: post.captionFacebook || "", // Caption - Facebook
-      fldpAenBNwgJMFs7k: post.captionInstagram || "", // Caption - Instagram
-      fldJKPHgL0U9ZZAuX: post.captionLinkedIn || "", // Caption - LinkedIn
-      fldYQsiw65rcd2X2B: post.captionTwitter || "", // Caption - Twitter
+      fldWe3d6ec4pu9jcZ: stripCitations(post.captionFacebook), // Caption - Facebook
+      fldpAenBNwgJMFs7k: stripCitations(post.captionInstagram), // Caption - Instagram
+      fldJKPHgL0U9ZZAuX: stripCitations(post.captionLinkedIn), // Caption - LinkedIn
+      fldYQsiw65rcd2X2B: stripCitations(post.captionTwitter), // Caption - Twitter
       fld1cSSlrKuA1SXp5: post.hashtags || "", // Hashtags
       fld8s5QVemJ4plhzs: post.ctaUrl || f["Website URL"] || "", // CTA URL
       fld1a2lxyXPC71UtQ: scheduledDate, // Scheduled Date
@@ -317,9 +347,9 @@ async function processClient(record, events) {
 
     // B2B-specific fields
     if (isB2B) {
-      fields.fldYHX5rR7f0Dgsnu = post.targetChannel || "LinkedIn Personal"; // Target Channel
+      fields.fldYHX5rR7f0Dgsnu = normaliseChannel(post.targetChannel); // Target Channel
       fields.fldZyrr9DTA6mQvxH = post.pillar || "Education"; // Content Pillar
-      fields.fldkOeFJLYsjhZ9KZ = post.firstComment || ""; // First Comment
+      fields.fldkOeFJLYsjhZ9KZ = stripCitations(post.firstComment); // First Comment
       fields.fldrDRwNKnOQrl5lx = "Thought Leadership"; // Content Type
     } else {
       // B2C-specific fields

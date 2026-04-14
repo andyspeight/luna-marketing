@@ -773,52 +773,73 @@ var PLAT_INFO = [
 
 function renderPlatforms() {
   var el = $('view-platforms');
+  var isB2B = (state.profile.client_type || '').toLowerCase() === 'b2b-saas';
+  var hasPersonal = isB2B && state.profile.metricool_blog_id_personal;
   el.innerHTML = '<div style="text-align:center;padding:var(--space-8);color:var(--tg-text-tertiary)">Loading platform connections...</div>';
 
+  // Fetch company connections
   fetch('/api/connections', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'get_connection_url', clientId: state.profile.id })
-  }).then(function(r) { return r.json(); }).then(function(d) {
-    if (!d.success) { el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error: ' + (d.error || 'Unknown') + '</p>'; return; }
+  }).then(function(r) { return r.json(); }).then(function(companyData) {
+    if (!companyData.success) { el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error: ' + (companyData.error || 'Unknown') + '</p>'; return; }
 
-    var connected = d.connectedPlatforms || [];
-    var connUrl = d.connectionUrl;
+    // If B2B with personal account, fetch that too
+    var personalPromise = hasPersonal ?
+      fetch('/api/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_connection_url', clientId: state.profile.id, blogId: state.profile.metricool_blog_id_personal })
+      }).then(function(r) { return r.json(); }).catch(function() { return { success: false }; }) :
+      Promise.resolve(null);
 
-    var h = '<div style="max-width:640px;margin:0 auto">';
-    h += '<div style="margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Connected Platforms</h2>';
-    h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Connect your social media accounts so Luna can publish content directly to your channels.</p></div>';
+    personalPromise.then(function(personalData) {
+      var h = '<div style="max-width:640px;margin:0 auto">';
 
-    h += '<div style="display:flex;flex-direction:column;gap:var(--space-3)">';
-    PLAT_INFO.forEach(function(p) {
-      var isConn = connected.indexOf(p.key) !== -1;
-      h += '<div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--tg-border);border-radius:var(--radius-lg);background:var(--tg-bg-primary)">';
-      h += '<div style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:' + p.color + ';background:' + p.color + '10;flex-shrink:0">' + p.icon + '</div>';
-      h += '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:var(--text-sm);color:var(--tg-text-primary)">' + p.key + '</div>';
-      if (isConn) {
-        h += '<div style="font-size:var(--text-xs);color:var(--tg-success)">Connected</div>';
-      } else {
-        h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Not connected</div>';
+      // Company connections
+      var compLabel = hasPersonal ? 'Company Platforms' : 'Connected Platforms';
+      var compSub = hasPersonal ? 'Platforms connected to the Travelgenix company accounts.' : 'Connect your social media accounts so Luna can publish content directly to your channels.';
+      h += '<div style="margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">' + compLabel + '</h2>';
+      h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">' + compSub + '</p></div>';
+      h += renderPlatformList(companyData.connectedPlatforms || [], companyData.connectionUrl);
+
+      // Personal connections (B2B only)
+      if (hasPersonal && personalData && personalData.success) {
+        h += '<div style="margin-top:var(--space-8);margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Personal Platforms</h2>';
+        h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Platforms connected to Andy Speight\'s personal accounts (LinkedIn Personal posts).</p></div>';
+        h += renderPlatformList(personalData.connectedPlatforms || [], personalData.connectionUrl);
+      } else if (hasPersonal) {
+        h += '<div style="margin-top:var(--space-8);margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Personal Platforms</h2>';
+        h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Personal account connections could not be loaded.</p></div>';
       }
+
+      h += '<div style="margin-top:var(--space-4)"><button onclick="renderPlatforms()" style="height:44px;padding:0 var(--space-5);border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-weight:500;font-size:var(--text-sm);cursor:pointer;font-family:var(--tg-font-body)">Refresh Status</button></div>';
       h += '</div>';
-      h += '<div style="width:10px;height:10px;border-radius:50%;background:' + (isConn ? 'var(--tg-success)' : 'var(--tg-text-tertiary)') + ';opacity:' + (isConn ? '1' : '0.3') + '"></div>';
-      h += '</div>';
+      el.innerHTML = h;
     });
-    h += '</div>';
-
-    if (connUrl) {
-      h += '<div style="margin-top:var(--space-6);display:flex;gap:var(--space-3);flex-wrap:wrap">';
-      h += '<a href="' + connUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-weight:600;font-size:var(--text-sm);text-decoration:none;font-family:var(--tg-font-body)">Connect / Manage Platforms</a>';
-      h += '<button onclick="renderPlatforms()" style="height:44px;padding:0 var(--space-5);border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-weight:500;font-size:var(--text-sm);cursor:pointer;font-family:var(--tg-font-body)">Refresh Status</button>';
-      h += '</div>';
-    }
-
-    h += '</div>';
-    el.innerHTML = h;
-
   }).catch(function(e) {
     el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error loading platforms: ' + e.message + '</p>';
   });
+}
+
+function renderPlatformList(connected, connUrl) {
+  var h = '<div style="display:flex;flex-direction:column;gap:var(--space-3)">';
+  PLAT_INFO.forEach(function(p) {
+    var isConn = connected.indexOf(p.key) !== -1;
+    h += '<div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--tg-border);border-radius:var(--radius-lg);background:var(--tg-bg-primary)">';
+    h += '<div style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:' + p.color + ';background:' + p.color + '10;flex-shrink:0">' + p.icon + '</div>';
+    h += '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:var(--text-sm);color:var(--tg-text-primary)">' + p.key + '</div>';
+    h += isConn ? '<div style="font-size:var(--text-xs);color:var(--tg-success)">Connected</div>' : '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Not connected</div>';
+    h += '</div>';
+    h += '<div style="width:10px;height:10px;border-radius:50%;background:' + (isConn ? 'var(--tg-success)' : 'var(--tg-text-tertiary)') + ';opacity:' + (isConn ? '1' : '0.3') + '"></div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  if (connUrl) {
+    h += '<div style="margin-top:var(--space-4)"><a href="' + connUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-weight:600;font-size:var(--text-sm);text-decoration:none;font-family:var(--tg-font-body)">Connect / Manage Platforms</a></div>';
+  }
+  return h;
 }
 
 function renderSettings(){
@@ -833,15 +854,24 @@ function renderSettings(){
   h+=settingRadio('CTA style',['Direct','Soft','Question-based'],'cta_style',c.cta_style);
   h+='</div><div style="display:flex;flex-direction:column;gap:var(--space-4)">';
   h+='<div class="card"><div class="card-title">Brand Colours</div><div class="colour-row">'+colourPicker('Primary','primary_colour',c.primary_colour||'#1B2B5B')+colourPicker('Secondary','secondary_colour',c.secondary_colour||'#00B4D8')+'</div></div>';
-  h+='<div class="card"><div class="card-title">Holiday Types</div><div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">';
-  ['Beach','City Breaks','Cruise','Touring','Luxury','Family','Weddings','Ski','Long Haul','Short Haul','Adventure','All Inclusive'].forEach(function(s){var on=(c.specialisms||[]).includes(s);h+='<button class="ps-btn'+(on?' active':'')+'" onclick="C.toggleSpec(this,\''+s+'\')">'+(on?'&#10003; ':'')+s+'</button>'});
+  var isB2B=(c.client_type||'').toLowerCase()==='b2b-saas';
+  var specLabel=isB2B?'Content Topics':'Holiday Types';
+  var specDefaults=isB2B?['Travel Technology','SaaS','AI & Automation','Website Solutions','Mid-Office Software','Dynamic Packaging','Travel Industry News','Digital Marketing for Agents','Business Growth']:['Beach','City Breaks','Cruise','Touring','Luxury','Family','Weddings','Ski','Long Haul','Short Haul','Adventure','All Inclusive'];
+  h+='<div class="card"><div class="card-title">'+specLabel+'</div><div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">';
+  specDefaults.forEach(function(s){var on=(c.specialisms||[]).includes(s);h+='<button class="ps-btn'+(on?' active':'')+'" onclick="C.toggleSpec(this,\''+s.replace(/'/g,"\\'")+'\')">'+(on?'&#10003; ':'')+s+'</button>'});
   h+='</div></div>';
-  h+='<div class="card"><div class="card-title">Featured Destinations</div><div class="dest-tags" id="destTags">';
+  if(!isB2B){h+='<div class="card"><div class="card-title">Featured Destinations</div><div class="dest-tags" id="destTags">';
   (c.destinations||'').split(',').map(function(d){return d.trim()}).filter(Boolean).forEach(function(d){h+='<span class="dest-tag">'+esc(d)+'<span class="dest-tag-x" onclick="C.removeDest(this,\''+esc(d.replace(/'/g,"\\'"))+'\')">&times;</span></span>'});
-  h+='<button class="dest-add-btn" onclick="C.addDest()">+ Add</button></div></div></div>';
+  h+='<button class="dest-add-btn" onclick="C.addDest()">+ Add</button></div></div>'}
+  if(isB2B){h+='<div class="card"><div class="card-title">Content Pillars</div><div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">';
+  var pillarDefaults=['Product in Action','Industry Commentary','Education','Founders Perspective','Client Proof','Market Intelligence'];
+  pillarDefaults.forEach(function(p){var on=(c.content_pillars||[]).includes(p);h+='<span class="ps-btn'+(on?' active':'')+'">'+p+'</span>'});
+  h+='</div><div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-2)">Managed by your account manager</div></div>'}
+  h+='</div>';
   h+='<div class="card full-width"><div class="card-title">Posting Schedule</div><div style="display:flex;gap:var(--space-6);align-items:center;flex-wrap:wrap">';
   h+='<div><div class="input-label">Posts per week</div><div style="display:flex;gap:var(--space-2)">';
-  [2,3,4,5].forEach(function(n){h+='<button class="ps-btn'+(c.posting_frequency===n?' active':'')+'" style="width:44px" onclick="C.setFreq('+n+',this)">'+n+'</button>'});
+  var freqOptions=isB2B?[5,7,10,14]:[2,3,4,5];
+  freqOptions.forEach(function(n){h+='<button class="ps-btn'+(c.posting_frequency===n?' active':'')+'" style="width:44px" onclick="C.setFreq('+n+',this)">'+n+'</button>'});
   h+='</div></div><div><div class="input-label">Posting days</div><div style="display:flex;gap:var(--space-1)">';
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d){var on=(c.posting_days||'').includes(d);h+='<button class="ps-btn'+(on?' active':'')+'" style="width:44px;font-size:var(--text-xs);font-family:var(--tg-font-mono)" onclick="C.toggleDay(this,\''+d+'\')">'+d+'</button>'});
   h+='</div></div><div style="margin-left:auto;display:flex;align-items:center;gap:var(--space-3)"><div style="text-align:right"><div style="font-size:var(--text-sm);font-weight:500">Auto Publish</div><div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Skip manual review</div></div>';

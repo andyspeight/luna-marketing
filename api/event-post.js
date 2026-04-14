@@ -88,7 +88,7 @@ function buildEventPrompt(client, event) {
     "- Never use banned phrases: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, delve, nestled, embark, tapestry, picture this, hidden gem, bucket list, paradise found, sun-kissed.\n\n" +
     "## Output Format\n" +
     "Return a JSON object (no markdown, no preamble). Fields:\n" +
-    "content_type, destination, destination_slug, caption_facebook (50-200 words), caption_instagram (50-150 words with 8-15 hashtags), caption_linkedin (50-250 words), caption_twitter (200 chars max), caption_pinterest (300 chars max), caption_tiktok (100 words max), caption_gbp (100 words max), hashtags_instagram (array), image_tags (array of 3), suggested_day, suggested_time";
+    "content_type, destination, destination_slug, caption_facebook (50-200 words), caption_instagram (50-150 words with 8-15 hashtags), caption_linkedin (50-250 words), caption_twitter (200 chars max), caption_pinterest (300 chars max), caption_tiktok (100 words max), caption_gbp (100 words max), blog_content (300-800 word article expanding on the event with travel tips, destination highlights and a booking CTA — headline as first line, no markdown), hashtags_instagram (array), image_tags (array of 3), suggested_day, suggested_time";
 }
 
 module.exports = async function handler(req, res) {
@@ -149,7 +149,7 @@ module.exports = async function handler(req, res) {
           var prompt = buildEventPrompt(client, event);
           var response = await ai.messages.create({
             model: "claude-sonnet-4-20250514",
-            max_tokens: 2048,
+            max_tokens: 4096,
             temperature: 0.7,
             system: prompt,
             messages: [{ role: "user", content: "Generate the event-themed post now." }]
@@ -188,6 +188,7 @@ module.exports = async function handler(req, res) {
             "Caption - Pinterest": post.caption_pinterest || "",
             "Caption - TikTok": post.caption_tiktok || "",
             "Caption - GBP": post.caption_gbp || "",
+            "Blog Content": post.blog_content || "",
             "Hashtags": (post.hashtags_instagram || []).join(", "),
             "Destination": post.destination || "",
             "Scheduled Time": post.suggested_time || "09:00",

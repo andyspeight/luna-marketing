@@ -777,11 +777,10 @@ function renderPlatforms() {
   var hasPersonal = isB2B && state.profile.metricool_blog_id_personal;
   el.innerHTML = '<div style="text-align:center;padding:var(--space-8);color:var(--tg-text-tertiary)">Loading platform connections...</div>';
 
-  // Safe JSON parse helper
   function safeJson(r) {
     var ct = r.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
-      return r.text().then(function(t) { throw new Error('API returned non-JSON (status ' + r.status + '): ' + t.substring(0, 100)); });
+      return r.text().then(function(t) { throw new Error('Non-JSON response (status ' + r.status + ')'); });
     }
     return r.json();
   }
@@ -794,7 +793,6 @@ function renderPlatforms() {
   }).then(safeJson).then(function(companyData) {
     if (!companyData.success) { el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error: ' + (companyData.error || 'Unknown') + '</p>'; return; }
 
-    // If B2B with personal account, fetch that too
     var personalPromise = hasPersonal ?
       fetch('/api/connections', {
         method: 'POST',
@@ -804,28 +802,64 @@ function renderPlatforms() {
       Promise.resolve(null);
 
     personalPromise.then(function(personalData) {
-      var h = '<div style="max-width:640px;margin:0 auto">';
+      var h = '';
 
-      // Company connections
-      var compLabel = hasPersonal ? 'Company Platforms' : 'Connected Platforms';
-      var compSub = hasPersonal ? 'Platforms connected to the Travelgenix company accounts.' : 'Connect your social media accounts so Luna can publish content directly to your channels.';
-      h += '<div style="margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">' + compLabel + '</h2>';
-      h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">' + compSub + '</p></div>';
-      h += renderPlatformList(companyData.connectedPlatforms || [], companyData.connectionUrl);
+      if (hasPersonal) {
+        // ── B2B: Side-by-side layout ──
+        h += '<div class="plat-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-bottom:var(--space-6)">';
 
-      // Personal connections (B2B only)
-      if (hasPersonal && personalData && personalData.success) {
-        h += '<div style="margin-top:var(--space-8);margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Personal Platforms</h2>';
-        h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Platforms connected to Andy Speight\'s personal accounts (LinkedIn Personal posts).</p></div>';
-        h += renderPlatformList(personalData.connectedPlatforms || [], personalData.connectionUrl);
-      } else if (hasPersonal) {
-        h += '<div style="margin-top:var(--space-8);margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Personal Platforms</h2>';
-        h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Personal account connections could not be loaded.</p></div>';
+        // Company column
+        h += '<div>';
+        h += '<div style="margin-bottom:var(--space-4)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-1)">Company Platforms</h2>';
+        h += '<p style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin:0">Travelgenix brand page accounts</p></div>';
+        h += renderPlatformList(companyData.connectedPlatforms || [], companyData.connectionUrl);
+        h += '</div>';
+
+        // Personal column
+        h += '<div>';
+        h += '<div style="margin-bottom:var(--space-4)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-1)">Personal Platforms</h2>';
+        h += '<p style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin:0">Andy Speight personal accounts</p></div>';
+        if (personalData && personalData.success) {
+          h += renderPlatformList(personalData.connectedPlatforms || [], personalData.connectionUrl);
+        } else {
+          h += '<div style="padding:var(--space-6);text-align:center;border:1px dashed var(--tg-border);border-radius:var(--radius-lg);color:var(--tg-text-tertiary);font-size:var(--text-sm)">Could not load personal connections</div>';
+        }
+        h += '</div>';
+
+        h += '</div>'; // close grid
+
+        // ── Duda Blog Connection ──
+        h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-lg);padding:var(--space-5);margin-bottom:var(--space-6)">';
+        h += '<div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3)">';
+        h += '<div style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,0.08);flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg></div>';
+        h += '<div style="flex:1"><div style="font-weight:600;font-size:var(--text-sm);color:var(--tg-text-primary)">Travelgenix Blog (Duda)</div>';
+        h += '<div style="font-size:var(--text-xs);color:var(--tg-success)">Connected via API</div></div>';
+        h += '<div style="width:10px;height:10px;border-radius:50%;background:var(--tg-success)"></div>';
+        h += '</div>';
+        h += '<p style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin:0;line-height:1.5">Luna publishes a weekly blog article directly to the Travelgenix website via the Duda API. Blog posts are generated alongside your social content and published as drafts for review.</p>';
+        h += '</div>';
+
+        // Responsive: stack on mobile (handled by platGridStyle)
+
+      } else {
+        // ── B2C: Single centred column ──
+        h += '<div style="max-width:640px;margin:0 auto">';
+        h += '<div style="margin-bottom:var(--space-6)"><h2 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Connected Platforms</h2>';
+        h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0">Connect your social media accounts so Luna can publish content directly to your channels.</p></div>';
+        h += renderPlatformList(companyData.connectedPlatforms || [], companyData.connectionUrl);
+        h += '</div>';
       }
 
       h += '<div style="margin-top:var(--space-4)"><button onclick="renderPlatforms()" style="height:44px;padding:0 var(--space-5);border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-weight:500;font-size:var(--text-sm);cursor:pointer;font-family:var(--tg-font-body)">Refresh Status</button></div>';
-      h += '</div>';
+
       el.innerHTML = h;
+      // Inject responsive style once
+      if (!document.getElementById('platGridStyle')) {
+        var s = document.createElement('style');
+        s.id = 'platGridStyle';
+        s.textContent = '@media(max-width:768px){.plat-grid-2col{grid-template-columns:1fr !important}}';
+        document.head.appendChild(s);
+      }
     });
   }).catch(function(e) {
     el.innerHTML = '<p style="color:var(--tg-error);padding:var(--space-4)">Error loading platforms: ' + e.message + '</p>';
@@ -833,20 +867,20 @@ function renderPlatforms() {
 }
 
 function renderPlatformList(connected, connUrl) {
-  var h = '<div style="display:flex;flex-direction:column;gap:var(--space-3)">';
+  var h = '<div style="display:flex;flex-direction:column;gap:var(--space-2)">';
   PLAT_INFO.forEach(function(p) {
     var isConn = connected.indexOf(p.key) !== -1;
-    h += '<div style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--tg-border);border-radius:var(--radius-lg);background:var(--tg-bg-primary)">';
-    h += '<div style="width:44px;height:44px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:' + p.color + ';background:' + p.color + '10;flex-shrink:0">' + p.icon + '</div>';
+    h += '<div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary)">';
+    h += '<div style="width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:' + p.color + ';background:' + p.color + '10;flex-shrink:0">' + p.icon + '</div>';
     h += '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:var(--text-sm);color:var(--tg-text-primary)">' + p.key + '</div>';
     h += isConn ? '<div style="font-size:var(--text-xs);color:var(--tg-success)">Connected</div>' : '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Not connected</div>';
     h += '</div>';
-    h += '<div style="width:10px;height:10px;border-radius:50%;background:' + (isConn ? 'var(--tg-success)' : 'var(--tg-text-tertiary)') + ';opacity:' + (isConn ? '1' : '0.3') + '"></div>';
+    h += '<div style="width:8px;height:8px;border-radius:50%;background:' + (isConn ? 'var(--tg-success)' : 'var(--tg-text-tertiary)') + ';opacity:' + (isConn ? '1' : '0.3') + '"></div>';
     h += '</div>';
   });
   h += '</div>';
   if (connUrl) {
-    h += '<div style="margin-top:var(--space-4)"><a href="' + connUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-weight:600;font-size:var(--text-sm);text-decoration:none;font-family:var(--tg-font-body)">Connect / Manage Platforms</a></div>';
+    h += '<div style="margin-top:var(--space-3)"><a href="' + connUrl + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-weight:600;font-size:var(--text-xs);text-decoration:none;font-family:var(--tg-font-body)">Connect / Manage</a></div>';
   }
   return h;
 }

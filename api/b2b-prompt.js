@@ -184,6 +184,7 @@ Each object:
   "captionLinkedIn": "Full LinkedIn caption...",
   "captionFacebook": "Facebook version (max 500)...",
   "captionInstagram": "Instagram version (max 500)...",
+  "captionTwitter": "Max 200 chars, punchy, no hashtags",
   "captionGBP": "Google Business Profile version (max 1500)...",
   "hashtags": "#traveltech #smetravel",
   "firstComment": "Suggested first comment to seed engagement...",

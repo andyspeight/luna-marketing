@@ -146,6 +146,35 @@ async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
 }
 
 /* ── Handler ── */
+
+// Target Channel → Metricool network mapping (for B2B single-platform routing)
+var TARGET_CHANNEL_MAP = {
+  "LinkedIn Personal": "linkedin",
+  "LinkedIn Company": "linkedin",
+  "Facebook": "facebook",
+  "Instagram": "instagram",
+  "Twitter/X": "twitter",
+  "TikTok": "tiktok",
+  "Pinterest": "pinterest",
+  "Google Business Profile": "google"
+};
+
+// Resolve blogId and target network for a post
+function resolvePublishTarget(post, client) {
+  var tc = post.fields["Target Channel"];
+  var targetChannel = typeof tc === "object" ? (tc || {}).name || "" : tc || "";
+  var isPersonal = targetChannel === "LinkedIn Personal";
+  var blogId = isPersonal && client.fields["Metricool Blog ID - Personal"]
+    ? client.fields["Metricool Blog ID - Personal"]
+    : client.fields["Metricool Blog ID"];
+  var targetNetwork = TARGET_CHANNEL_MAP[targetChannel] || null;
+  // For personal, use personal connected platforms field
+  var connField = isPersonal ? "Connected Platforms Personal" : "Connected Platforms";
+  var connRaw = client.fields[connField] || [];
+  var connNetworks = connRaw.map(function(p) { return PLATFORM_MAP[typeof p === "string" ? p : p.name]; }).filter(Boolean);
+  return { blogId: blogId, targetChannel: targetChannel, targetNetwork: targetNetwork, connNetworks: connNetworks, isPersonal: isPersonal };
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -168,27 +197,34 @@ module.exports = async function handler(req, res) {
       if (!clientId) return res.status(400).json({ error: "Post has no client" });
 
       var client = await atGet(CLIENTS, clientId);
-      var blogId = client.fields["Metricool Blog ID"];
-      if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Get connected platforms and convert to Metricool network names
-      var connRaw = client.fields["Connected Platforms"] || [];
-      var connNetworks = connRaw.map(function(p) { return PLATFORM_MAP[typeof p === "string" ? p : p.name]; }).filter(Boolean);
-      if (!connNetworks.length) return res.status(400).json({ error: "Client has no Connected Platforms set in Airtable" });
+      // Resolve blogId and target platform(s) based on Target Channel
+      var target = resolvePublishTarget(post, client);
+      if (!target.blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      // Pass image URL directly — saveExternalMediaFiles tells Metricool to download it
+      // If post has a target channel (B2B), publish to ONLY that platform
+      // Otherwise (B2C), publish to ALL connected platforms
+      var publishNetworks;
+      if (target.targetNetwork) {
+        publishNetworks = [target.targetNetwork];
+      } else {
+        publishNetworks = target.connNetworks;
+      }
+      if (!publishNetworks.length) return res.status(400).json({ error: "No platforms to publish to" });
+
       var imgUrl = post.fields["Image URL"] || "";
 
-      // Schedule across connected platforms only
-      var results = await schedulePost(blogId, post, imgUrl || null, connNetworks);
+      // Schedule across target platforms
+      var results = await schedulePost(target.blogId, post, imgUrl || null, publishNetworks);
       var succeeded = results.filter(function(r) { return r.ok; });
       var failed = results.filter(function(r) { return !r.ok; });
 
-      // Update Airtable status
       await atPatch(QUEUE, postId, { Status: "Published" });
 
       return res.status(200).json({
         success: true, postId: postId,
+        targetChannel: target.targetChannel || "all",
+        blogId: target.blogId,
         platforms: { total: results.length, succeeded: succeeded.length, failed: failed.length },
         results: results,
         imageUrl: imgUrl || null
@@ -201,12 +237,7 @@ module.exports = async function handler(req, res) {
       if (!clientId) return res.status(400).json({ error: "clientId required" });
 
       var client = await atGet(CLIENTS, clientId);
-      var blogId = client.fields["Metricool Blog ID"];
-      if (!blogId) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
-
-      var connRaw2 = client.fields["Connected Platforms"] || [];
-      var connNetworks2 = connRaw2.map(function(p) { return PLATFORM_MAP[typeof p === "string" ? p : p.name]; }).filter(Boolean);
-      if (!connNetworks2.length) return res.status(400).json({ error: "Client has no Connected Platforms" });
+      if (!client.fields["Metricool Blog ID"]) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
       var allPosts = await atList(QUEUE, "AND({Status}='Queued',RECORD_ID()!='')");
       var clientPosts = allPosts.filter(function(p) { return (p.fields.Client || [])[0] === clientId; });
@@ -215,9 +246,14 @@ module.exports = async function handler(req, res) {
       var published = 0, errors = [];
       for (var i = 0; i < clientPosts.length; i++) {
         try {
-          var postImgUrl = clientPosts[i].fields["Image URL"] || null;
-          await schedulePost(blogId, clientPosts[i], postImgUrl, connNetworks2);
-          await atPatch(QUEUE, clientPosts[i].id, { Status: "Published" });
+          var p = clientPosts[i];
+          var target = resolvePublishTarget(p, client);
+          var publishNets = target.targetNetwork ? [target.targetNetwork] : target.connNetworks;
+          if (!publishNets.length) { errors.push({ postId: p.id, error: "No platforms" }); continue; }
+
+          var postImgUrl = p.fields["Image URL"] || null;
+          await schedulePost(target.blogId, p, postImgUrl, publishNets);
+          await atPatch(QUEUE, p.id, { Status: "Published" });
           published++;
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });
         } catch (e) { errors.push({ postId: clientPosts[i].id, error: e.message }); }

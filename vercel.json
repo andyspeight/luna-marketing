@@ -7,6 +7,7 @@
   ],
   "functions": {
     "api/generate.js": { "maxDuration": 120 },
+    "api/generate-blog.js": { "maxDuration": 120 },
     "api/cron-generate.js": { "maxDuration": 300 },
     "api/scan-website.js": { "maxDuration": 60 },
     "api/prompt-post.js": { "maxDuration": 60 },

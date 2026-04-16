@@ -239,7 +239,7 @@ module.exports = async function handler(req, res) {
       var client = await atGet(CLIENTS, clientId);
       if (!client.fields["Metricool Blog ID"]) return res.status(400).json({ error: "Client has no Metricool Blog ID" });
 
-      var allPosts = await atList(QUEUE, "AND({Status}='Queued',RECORD_ID()!='')");
+      var allPosts = await atList(QUEUE, "AND({Status}='Approved',RECORD_ID()!='')");
       var clientPosts = allPosts.filter(function(p) { return (p.fields.Client || [])[0] === clientId; });
       if (!clientPosts.length) return res.status(200).json({ success: true, published: 0, message: "No approved posts" });
 

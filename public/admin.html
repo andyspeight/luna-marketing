@@ -517,7 +517,7 @@ function renderStats() {
 function clientHealth(c) {
   if (c.status === 'Error') return 'red';
   var issues = 0;
-  if (!c.fb_connected && !c.ig_connected && !c.li_connected) issues += 2;
+  if (!c.fb_connected && !c.ig_connected && !c.li_connected && !(c.connected_platforms_personal && c.connected_platforms_personal.length)) issues += 2;
   if (!c.primary_colour || c.primary_colour === '#333333') issues++;
   if (!c.tone) issues++;
   if (!c.destinations) issues++;
@@ -533,7 +533,7 @@ function onboardingChecks(c) {
     { label: 'Brand colours set', done: !!(c.primary_colour && c.primary_colour !== '#333333') },
     { label: 'Tone configured', done: !!(c.tone) },
     { label: 'Destinations set', done: !!(c.destinations) },
-    { label: 'Platforms connected', done: !!(c.fb_connected || c.ig_connected || c.li_connected) },
+    { label: 'Platforms connected', done: !!(c.fb_connected || c.ig_connected || c.li_connected || (c.connected_platforms_personal && c.connected_platforms_personal.length)) },
     { label: 'Auto-publish enabled', done: !!c.auto_publish }
   ];
 }
@@ -542,7 +542,7 @@ function onboardingChecks(c) {
 function renderAlerts() {
   var h = '';
   var errs = state.clients.filter(function(c) { return c.status === 'Error'; });
-  var noPlat = state.clients.filter(function(c) { return c.status === 'Active' && !c.fb_connected && !c.ig_connected && !c.li_connected; });
+  var noPlat = state.clients.filter(function(c) { return c.status === 'Active' && !c.fb_connected && !c.ig_connected && !c.li_connected && !(c.connected_platforms_personal && c.connected_platforms_personal.length); });
 
   if (errs.length) {
     h += '<div class="alert alert-red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><strong>' + errs.length + '</strong>&nbsp;client' + (errs.length > 1 ? 's' : '') + ' with errors — ' + errs.map(function(c) { return esc(c.trading_name || c.business_name); }).join(', ') + '</div>';
@@ -667,7 +667,25 @@ function renderClients() {
       if (on) html += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
       html += '</div>';
     });
-    html += '</div></div>';
+    html += '</div>';
+    // Personal accounts (only show if client has any)
+    if (c.connected_platforms_personal && c.connected_platforms_personal.length) {
+      html += '<div style="margin-top:var(--space-3)"><div class="detail-label" style="margin-bottom:var(--space-2)">Personal Accounts</div>';
+      html += '<div class="platforms-row">';
+      c.connected_platforms_personal.forEach(function(pName) {
+        var color = '#0A66C2';
+        if (pName.indexOf('Facebook') !== -1) color = '#1877F2';
+        else if (pName.indexOf('Instagram') !== -1) color = '#E1306C';
+        else if (pName.indexOf('TikTok') !== -1) color = '#010101';
+        html += '<div class="plat-badge connected">';
+        html += '<span class="plat-dot" style="background:' + color + '"></span>';
+        html += '<span>' + esc(pName) + ' (Personal)</span>';
+        html += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
 
     // 4. Brand profile
     var pc = c.primary_colour || '#333333';

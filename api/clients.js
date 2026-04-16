@@ -132,6 +132,10 @@ module.exports = async function handler(req, res) {
           tt_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "TikTok"; }),
           gbp_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { var n = typeof p === "object" ? p.name : p; return n === "Google Business" || n === "Google Business Profile" || n === "GBP"; }),
           metricool_blog_id: f["Metricool Blog ID"] || "",
+          metricool_blog_id_personal: f["Metricool Blog ID - Personal"] || "",
+          connected_platforms_personal: Array.isArray(f["Connected Platforms Personal"]) ? f["Connected Platforms Personal"].map(function(p) { return typeof p === "object" ? p.name : p; }) : [],
+          client_type: getStatusName(f["Client Type"]),
+          target_channels: Array.isArray(f["Target Channels"]) ? f["Target Channels"].map(function(p) { return typeof p === "object" ? p.name : p; }) : [],
           stats: stats
         };
       });

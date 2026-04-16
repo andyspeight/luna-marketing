@@ -64,6 +64,7 @@ module.exports = async function handler(req, res) {
       if (body.primaryColour) fields["Primary Colour"] = body.primaryColour;
       if (body.secondaryColour) fields["Secondary Colour"] = body.secondaryColour;
       if (body.destinations) fields["Destinations"] = body.destinations;
+      if (typeof body.notes === "string") fields["Notes"] = body.notes;
       if (body.specialisms) fields["Specialisms"] = body.specialisms.split ? body.specialisms.split(", ") : body.specialisms;
 
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: "No valid fields to update" });
@@ -118,9 +119,19 @@ module.exports = async function handler(req, res) {
           sentence_style: getStatusName(f["Sentence Style"]),
           cta_style: getStatusName(f["CTA Style"]),
           auto_publish: !!f["Auto Publish"],
-          fb_connected: !!f["FB Page ID"],
-          ig_connected: !!f["IG Account ID"],
-          li_connected: !!f["LinkedIn Page ID"],
+          primary_colour: f["Primary Colour"] || "",
+          secondary_colour: f["Secondary Colour"] || "",
+          example_phrases: f["Example Phrases"] || "",
+          notes: f["Notes"] || "",
+          connected_platforms: Array.isArray(f["Connected Platforms"]) ? f["Connected Platforms"].map(function(p) { return typeof p === "object" ? p.name : p; }) : [],
+          fb_connected: !!f["FB Page ID"] || (Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "Facebook"; })),
+          ig_connected: !!f["IG Account ID"] || (Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "Instagram"; })),
+          li_connected: !!f["LinkedIn Page ID"] || (Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "LinkedIn"; })),
+          tw_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { var n = typeof p === "object" ? p.name : p; return n === "Twitter" || n === "X" || n === "X/Twitter"; }),
+          pin_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "Pinterest"; }),
+          tt_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "TikTok"; }),
+          gbp_connected: Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { var n = typeof p === "object" ? p.name : p; return n === "Google Business" || n === "Google Business Profile" || n === "GBP"; }),
+          metricool_blog_id: f["Metricool Blog ID"] || "",
           stats: stats
         };
       });

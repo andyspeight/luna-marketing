@@ -8,6 +8,7 @@
 // Body params:
 //   - emailQueueId: Airtable record ID of the email to send (required)
 //   - sendNow: boolean, default true. If false, schedules for the Scheduled Send time.
+//   - recipientEmail (optional): for transactional sends
 //
 // Auth: Bearer CRON_SECRET (called from approval UI or cron)
 
@@ -15,8 +16,6 @@ const {
   sendTransactional,
   createCampaign,
   sendCampaignNow,
-  upsertContact,
-  listLists,
 } = require("./brevo-helper.js");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
@@ -24,13 +23,34 @@ const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const EMAIL_QUEUE_TABLE = "Email Queue";
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Map Audience Segment → Brevo list ID
-// Set these as env vars to avoid hardcoding numeric IDs that may differ per Brevo account
-const LIST_IDS = {
-  "Travelgenix Clients": parseInt(process.env.BREVO_LIST_TG_CLIENTS || "0", 10),
-  "Inbound Leads": parseInt(process.env.BREVO_LIST_INBOUND || "0", 10),
-  "Demo Requested": parseInt(process.env.BREVO_LIST_DEMO_REQUESTED || "0", 10),
-};
+// Resolve a Brevo list ID for a given Audience Segment.
+// Accepts multiple env var naming conventions for safety:
+//   - BREVO_LIST_TG_CLIENTS (short)
+//   - BREVO_LIST_TRAVELGENIX_CLIENTS (full segment name expanded)
+// Returns the first non-empty value found.
+function resolveListId(segment) {
+  const envCandidates = [];
+  
+  if (segment === "Travelgenix Clients") {
+    envCandidates.push("BREVO_LIST_TG_CLIENTS", "BREVO_LIST_TRAVELGENIX_CLIENTS");
+  } else if (segment === "Inbound Leads") {
+    envCandidates.push("BREVO_LIST_INBOUND", "BREVO_LIST_INBOUND_LEADS");
+  } else if (segment === "Demo Requested") {
+    envCandidates.push("BREVO_LIST_DEMO_REQUESTED");
+  }
+  
+  // Always also try the auto-derived name (uppercase, underscored)
+  const auto = "BREVO_LIST_" + segment.toUpperCase().replace(/\s+/g, "_");
+  if (!envCandidates.includes(auto)) envCandidates.push(auto);
+  
+  for (const name of envCandidates) {
+    const value = process.env[name];
+    if (value && parseInt(value, 10) > 0) {
+      return { listId: parseInt(value, 10), envVar: name };
+    }
+  }
+  return { listId: 0, envVar: null, attempted: envCandidates };
+}
 
 // ── Airtable ──
 
@@ -67,42 +87,46 @@ async function airtablePatch(table, id, fields) {
 async function sendCampaign(emailRecord) {
   const f = emailRecord.fields;
   const segment = f["Audience Segment"];
-  const listId = LIST_IDS[segment];
+  const resolved = resolveListId(segment);
 
-  if (!listId) {
-    throw new Error(`No Brevo list ID configured for segment "${segment}". Set BREVO_LIST_${segment.toUpperCase().replace(/\s+/g, "_")} env var.`);
+  if (!resolved.listId) {
+    throw new Error(
+      `No Brevo list ID configured for segment "${segment}". Tried env vars: ${(resolved.attempted || []).join(", ")}.`
+    );
   }
 
-  // 1. Create the Brevo campaign
   const campaign = await createCampaign({
     name: `Luna ${f["Email Type"] || "Email"} ${new Date().toISOString().split("T")[0]} - ${(f["Subject"] || "").slice(0, 40)}`,
     subject: f["Subject"] || "",
     htmlContent: f["Body HTML"] || "",
     previewText: f["Preview Text"] || "",
-    listIds: [listId],
+    listIds: [resolved.listId],
   });
 
-  console.log(`Brevo campaign created: ${campaign.id}`);
+  console.log(`Brevo campaign created: ${campaign.id} (list ${resolved.listId} via ${resolved.envVar})`);
 
-  // 2. Trigger send
   await sendCampaignNow(campaign.id);
 
   return {
     method: "campaign",
     brevoCampaignId: campaign.id,
-    listId,
+    listId: resolved.listId,
+    envVarUsed: resolved.envVar,
   };
 }
 
 async function sendDrip(emailRecord, recipientEmail, recipientName) {
   const f = emailRecord.fields;
 
-  if (!recipientEmail) {
-    throw new Error("Drip send requires recipient email (pass recipientEmail in body)");
+  // Prefer recipientEmail param, fall back to Recipient Email field on the record (added in Day 5 patch)
+  const email = recipientEmail || f["Recipient Email"];
+  if (!email) {
+    throw new Error("Drip send requires recipient email (pass recipientEmail in body or set Recipient Email field on the record)");
   }
+  const name = recipientName || f["Recipient Name"] || "";
 
   const result = await sendTransactional({
-    to: [{ email: recipientEmail, name: recipientName || "" }],
+    to: [{ email, name }],
     subject: f["Subject"] || "",
     htmlContent: f["Body HTML"] || "",
     textContent: f["Body Plain"] || "",
@@ -112,7 +136,7 @@ async function sendDrip(emailRecord, recipientEmail, recipientName) {
   return {
     method: "transactional",
     brevoMessageId: result.messageId,
-    recipient: recipientEmail,
+    recipient: email,
   };
 }
 
@@ -135,18 +159,15 @@ module.exports = async (req, res) => {
     const emailQueueId = body.emailQueueId;
     if (!emailQueueId) return res.status(400).json({ error: "emailQueueId required" });
 
-    // 1. Load the email
     const record = await airtableGet(EMAIL_QUEUE_TABLE, emailQueueId);
     const f = record.fields;
 
-    // Safety: only send Approved emails
     if (f["Status"] !== "Approved") {
       return res.status(400).json({
         error: `Email status is "${f["Status"]}" — must be "Approved" to send`,
       });
     }
 
-    // 2. Decide send method based on Email Type
     const emailType = f["Email Type"] || "";
     const isCampaign = emailType === "Newsletter" || emailType === "One-off Broadcast";
 
@@ -154,11 +175,9 @@ module.exports = async (req, res) => {
     if (isCampaign) {
       sendResult = await sendCampaign(record);
     } else {
-      // Drip / behavioural — caller must provide recipient
       sendResult = await sendDrip(record, body.recipientEmail, body.recipientName);
     }
 
-    // 3. Update the Email Queue record with send status
     await airtablePatch(EMAIL_QUEUE_TABLE, emailQueueId, {
       "Status": "Sent",
       "Sent At": new Date().toISOString(),
@@ -173,7 +192,6 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error("Email send failed:", e);
 
-    // Try to mark the record as Failed so we don't get stuck
     if (req.body && req.body.emailQueueId) {
       try {
         await airtablePatch(EMAIL_QUEUE_TABLE, req.body.emailQueueId, {

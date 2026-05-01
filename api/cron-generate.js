@@ -1,7 +1,8 @@
 // api/cron-generate.js
 // Weekly batch content generation for ALL active clients
 // Routes to B2C (travel) or B2B (SaaS) prompt based on Client Type field
-// Triggered by Vercel cron: Sunday 18:00 UTC
+// B2B clients now get research sparks injected from the daily research feed
+// Triggered by Vercel cron: Mon/Wed/Fri 06:00 UTC
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { buildB2BSystemPrompt } = require("./b2b-prompt.js");
@@ -13,6 +14,7 @@ const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const CLIENTS_TABLE = "tblUkzvBujc94Yali";
 const QUEUE_TABLE = "tblbhyiuULvedva0K";
 const EVENTS_TABLE = "tblQxIYrbzd6YlJYV";
+const SPARKS_TABLE = "Research Sparks"; // NEW
 const CRON_SECRET = process.env.CRON_SECRET;
 
 // ── Helpers ──
@@ -33,10 +35,10 @@ function getDateInWeeks(weeks) {
 function stripCitations(text) {
   if (!text) return "";
   return text
-    .replace(/<\/?cite[^>]*>/gi, "")  // remove <cite ...> and </cite>
-    .replace(/<\/?antml:cite[^>]*>/gi, "")  // remove namespaced variants
-    .replace(/\[source[^\]]*\]/gi, "")  // remove [source] references
-    .replace(/\s{2,}/g, " ")  // collapse double spaces
+    .replace(/<\/?cite[^>]*>/gi, "")
+    .replace(/<\/?antml:cite[^>]*>/gi, "")
+    .replace(/\[source[^\]]*\]/gi, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
@@ -84,6 +86,54 @@ async function getUpcomingEvents(weeksAhead = 4) {
   return (data.records || []).map((r) => r.fields);
 }
 
+// NEW: fetch top open research sparks
+async function getOpenSparks(limit = 10) {
+  const formula = encodeURIComponent(`AND({Status}='Open', {Score}>=6)`);
+  const sortQuery = "&sort%5B0%5D%5Bfield%5D=Score&sort%5B0%5D%5Bdirection%5D=desc";
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(SPARKS_TABLE)}?filterByFormula=${formula}${sortQuery}&maxRecords=${limit}`;
+  try {
+    const data = await airtableFetch(url);
+    return (data.records || []).map((r) => ({
+      id: r.id,
+      source: r.fields.Source || "Unknown",
+      headline: r.fields.Headline || "",
+      url: r.fields.URL || "",
+      summary: r.fields.Summary || "",
+      score: r.fields.Score || 0,
+      angle: r.fields["Suggested Angle"] || "",
+    }));
+  } catch (e) {
+    console.error("Sparks fetch failed:", e.message);
+    return [];
+  }
+}
+
+// NEW: mark sparks as Used after generation
+async function markSparksUsed(sparkIds) {
+  if (!sparkIds || sparkIds.length === 0) return;
+  const unique = [...new Set(sparkIds)];
+  for (const sparkId of unique) {
+    try {
+      await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(SPARKS_TABLE)}/${sparkId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fields: { Status: "Used" },
+            typecast: true,
+          }),
+        }
+      );
+    } catch (e) {
+      console.error(`Mark spark used failed (${sparkId}):`, e.message);
+    }
+  }
+}
+
 async function searchPexelsImage(query) {
   const PEXELS_KEY = process.env.PEXELS_KEY;
   if (!PEXELS_KEY) return null;
@@ -103,7 +153,6 @@ async function searchPexelsImage(query) {
 }
 
 async function writeToQueue(records) {
-  // Batch in groups of 10
   for (let i = 0; i < records.length; i += 10) {
     const batch = records.slice(i, i + 10);
     const res = await fetch(
@@ -124,7 +173,7 @@ async function writeToQueue(records) {
   }
 }
 
-// ── B2C Prompt Builder (existing travel content) ──
+// ── B2C Prompt Builder (unchanged) ──
 
 function buildB2CSystemPrompt(f) {
   return `You are Luna, the automated social media content engine for travel agents. You generate social media posts that will be published to Facebook, Instagram, LinkedIn, Twitter/X, Pinterest, TikTok and Google Business Profile without human review. Because no human checks your output before it goes live, accuracy and brand safety are paramount.
@@ -224,24 +273,27 @@ async function processClient(record, events) {
     `Processing ${f["Business Name"]} (${clientType}, ${f["Posting Frequency"] || (isB2B ? 12 : 3)} posts)`
   );
 
+  // NEW: load research sparks for B2B clients
+  const sparks = isB2B ? await getOpenSparks(10) : [];
+  if (isB2B) console.log(`  loaded ${sparks.length} open sparks (score >= 6)`);
+
   // Build the appropriate prompt
   const systemPrompt = isB2B
-    ? buildB2BSystemPrompt(f, events)
+    ? buildB2BSystemPrompt(f, events, sparks)
     : buildB2CSystemPrompt(f);
 
-  // Call Claude API — B2B gets web search for news intelligence
+  // Tools: B2B still gets web search as a fallback for non-spark coverage
   const tools = isB2B
     ? [{ type: "web_search_20250305", name: "web_search" }]
     : [];
 
-  const messages = [
-    {
-      role: "user",
-      content: isB2B
-        ? "Generate this week's B2B content. Search for current UK travel industry news first, then generate all posts. Return ONLY a JSON array."
-        : "Generate this week's social media posts. Return ONLY a JSON array.",
-    },
-  ];
+  const userMessage = isB2B
+    ? (sparks.length > 0
+        ? "Generate this week's B2B content. Use the Research Sparks above as your primary factual foundation for Industry Commentary posts. Search the web only if you need supplementary detail. Return ONLY a JSON array."
+        : "Generate this week's B2B content. No fresh sparks today, so search the web for current UK travel industry news first, then generate all posts. Return ONLY a JSON array.")
+    : "Generate this week's social media posts. Return ONLY a JSON array.";
+
+  const messages = [{ role: "user", content: userMessage }];
 
   const apiParams = {
     model: "claude-sonnet-4-20250514",
@@ -290,9 +342,18 @@ async function processClient(record, events) {
   const weekLabel = `${new Date().getFullYear()}-W${String(Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 / 7)).padStart(2, "0")}`;
 
   const queueRecords = [];
+  const usedSparkIds = []; // NEW: track which sparks got used
 
   for (let i = 0; i < posts.length; i++) {
     const post = posts[i];
+
+    // NEW: capture spark reference if present
+    if (isB2B && post.sparkRef && Number.isInteger(post.sparkRef)) {
+      const sparkIdx = post.sparkRef - 1;
+      if (sparks[sparkIdx]) {
+        usedSparkIds.push(sparks[sparkIdx].id);
+      }
+    }
 
     // Get image from Pexels
     let imageUrl = null;
@@ -338,24 +399,19 @@ async function processClient(record, events) {
       fldFWP2Zkppxipo9U: weekLabel, // Generated Week
     };
 
-    // Add image URL if found
     if (imageUrl) {
-      fields.fldNjzWAIj9eknEWS = imageUrl; // Image URL
+      fields.fldNjzWAIj9eknEWS = imageUrl;
     }
 
-    // B2B-specific fields
     if (isB2B) {
-      fields.fldYHX5rR7f0Dgsnu = normaliseChannel(post.targetChannel); // Target Channel
-      fields.fldZyrr9DTA6mQvxH = post.pillar || "Education"; // Content Pillar
-      fields.fldkOeFJLYsjhZ9KZ = stripCitations(post.firstComment); // First Comment
-      fields.fldrDRwNKnOQrl5lx = "Thought Leadership"; // Content Type
-      if (post.captionGBP) fields.fld39pPTqpajLLpnX = stripCitations(post.captionGBP); // Caption - GBP
+      fields.fldYHX5rR7f0Dgsnu = normaliseChannel(post.targetChannel);
+      fields.fldZyrr9DTA6mQvxH = post.pillar || "Education";
+      fields.fldkOeFJLYsjhZ9KZ = stripCitations(post.firstComment);
+      fields.fldrDRwNKnOQrl5lx = "Thought Leadership";
+      if (post.captionGBP) fields.fld39pPTqpajLLpnX = stripCitations(post.captionGBP);
     } else {
-      // B2C-specific fields
       fields.fldrDRwNKnOQrl5lx = post.contentType || "Destination Inspiration";
-      fields.flduL1WMpt4do8C4I = post.destination || ""; // Destination
-
-      // B2C platform captions
+      fields.flduL1WMpt4do8C4I = post.destination || "";
       if (post.captionPinterest) fields.fldCfdS6ByrofDtkE = post.captionPinterest;
       if (post.captionTikTok) fields.fldyVawF0JrCLb9n5 = post.captionTikTok;
       if (post.captionGBP) fields.fld39pPTqpajLLpnX = post.captionGBP;
@@ -367,6 +423,12 @@ async function processClient(record, events) {
   // Write to Airtable queue
   await writeToQueue(queueRecords);
 
+  // NEW: mark used sparks
+  if (usedSparkIds.length > 0) {
+    await markSparksUsed(usedSparkIds);
+    console.log(`  marked ${usedSparkIds.length} sparks as Used`);
+  }
+
   console.log(
     `✓ ${f["Business Name"]}: ${queueRecords.length} posts queued (${clientType})`
   );
@@ -376,6 +438,7 @@ async function processClient(record, events) {
     status: "success",
     posts: queueRecords.length,
     type: clientType,
+    sparksUsed: usedSparkIds.length,
   };
 }
 
@@ -387,28 +450,18 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // Optional: restrict to Sundays only in production
-  // Uncomment for production:
-  // const today = new Date().getDay();
-  // if (today !== 0) {
-  //   return res.status(200).json({ message: "Not Sunday, skipping" });
-  // }
-
   try {
-    // Fetch all active clients
     const clients = await getActiveClients();
     if (clients.length === 0) {
       return res.status(200).json({ message: "No active clients found" });
     }
 
-    // Fetch upcoming events (for B2B clients)
     const events = await getUpcomingEvents(4);
 
     console.log(
       `Starting batch generation: ${clients.length} clients, ${events.length} upcoming events`
     );
 
-    // Process each client
     const results = [];
     for (const record of clients) {
       try {
@@ -423,7 +476,6 @@ module.exports = async (req, res) => {
         });
       }
 
-      // Brief pause between clients to respect API limits
       await new Promise((r) => setTimeout(r, 2000));
     }
 

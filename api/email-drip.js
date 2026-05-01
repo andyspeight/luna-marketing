@@ -1,0 +1,321 @@
+// api/email-drip.js
+// Drip sequence handler
+// Kicks off a 5-email drip when someone fills an inbound form on travelgenix.co.uk
+//
+// On receipt of a lead:
+//   1. Add contact to Brevo "Inbound Leads" list with attributes
+//   2. Send "Welcome" email immediately
+//   3. Generate 4 follow-up drafts (Day 3, Day 7, Day 14, Day 28) in Email Queue with status Awaiting Approval
+//      → Andy reviews and approves them; cron-driven sender fires them at the right time
+//
+// POST body:
+//   - email (required)
+//   - firstName (recommended)
+//   - lastName (optional)
+//   - company (optional)
+//   - source: where they came from (e.g. "demo-request", "blog-cta", "newsletter-signup")
+//   - utmSource, utmMedium, utmCampaign, utmContent (from form, optional)
+//   - notes (optional - what they said / asked)
+//
+// Auth: Bearer CRON_SECRET (called from website JS that proxies through to keep secret server-side)
+
+const Anthropic = require("@anthropic-ai/sdk").default;
+const { upsertContact, sendTransactional } = require("./brevo-helper.js");
+const { wrapEmail, plainToHtml, htmlToPlain } = require("./email-template.js");
+const { addUtm } = require("./utm-helper.js");
+
+const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
+const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
+const EMAIL_QUEUE_TABLE = "Email Queue";
+const ATTRIBUTION_TABLE = "Attribution";
+const CRON_SECRET = process.env.CRON_SECRET;
+
+const INBOUND_LIST_ID = parseInt(process.env.BREVO_LIST_INBOUND || "0", 10);
+
+// ── Drip sequence definition ──
+
+const DRIP_SEQUENCE = [
+  {
+    type: "Drip - Welcome",
+    delayDays: 0,
+    sendImmediately: true,
+    purpose: "Welcome them, set expectations, deliver the value they asked for. Confirm their request was received. Include a soft CTA to book a call if relevant.",
+    ctaText: "Book a 15-minute call",
+    ctaUrl: "https://travelgenix.io/demo",
+  },
+  {
+    type: "Drip - Day 3",
+    delayDays: 3,
+    purpose: "Share a relevant insight or case study about UK travel agencies. Position Andy as someone who understands their world. Don't pitch yet.",
+    ctaText: "Read the full article",
+    ctaUrl: "https://travelgenix.io/insights",
+  },
+  {
+    type: "Drip - Day 7",
+    delayDays: 7,
+    purpose: "Soft product introduction. Show one specific thing Travelgenix does that solves a real problem. Include one client outcome (vague, no specific stats).",
+    ctaText: "See it in action",
+    ctaUrl: "https://travelgenix.io/demo",
+  },
+  {
+    type: "Drip - Day 14",
+    delayDays: 14,
+    purpose: "Address a common objection (price, complexity, switching cost, time). Andy speaking honestly about how Travelgenix handles it.",
+    ctaText: "Have a quick chat",
+    ctaUrl: "https://travelgenix.io/demo",
+  },
+  {
+    type: "Drip - Day 28",
+    delayDays: 28,
+    purpose: "Final nudge. Acknowledge they're busy. One specific reason to act now. Offer a no-pressure 15-min call. After this, they exit the sequence.",
+    ctaText: "Book a 15-min call",
+    ctaUrl: "https://travelgenix.io/demo",
+  },
+];
+
+// ── Airtable ──
+
+async function airtableCreate(table, fields) {
+  const r = await fetch(
+    `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(table)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ records: [{ fields }], typecast: true }),
+    }
+  );
+  if (!r.ok) {
+    const err = await r.text();
+    throw new Error(`Airtable create failed: ${r.status} ${err}`);
+  }
+  return r.json();
+}
+
+// ── Generate a drip email body ──
+
+async function generateDripBody(stepConfig, leadContext) {
+  const systemPrompt = `You write a single email in a 5-email drip sequence for Travelgenix, a UK B2B travel-tech SaaS company. The email goes to someone who recently filled an inbound form on travelgenix.io.
+
+Voice: Andy Speight (CEO). Warm, direct, knowledgeable, never pushy. UK English. NO em dashes. NO Oxford commas.
+
+BANNED: leverage, utilize, synergy, game-changer, innovative, cutting-edge, delve, in today's digital landscape, robust, empower, harness, unlock, seamless.
+
+LEAD CONTEXT:
+- First name: ${leadContext.firstName || "(not provided)"}
+- Company: ${leadContext.company || "(not provided)"}
+- They came from: ${leadContext.source || "(unknown)"}
+- They said: ${leadContext.notes || "(no message)"}
+
+EMAIL PURPOSE: ${stepConfig.purpose}
+
+LENGTH: 80-180 words. Keep it short. One idea per email.
+
+STRUCTURE:
+1. Personal greeting (use first name if available, otherwise "Hi there,")
+2. Body: 2-3 short paragraphs. Specific, useful, no fluff.
+3. Sign-off: "Andy" only
+
+CTA: ONE clear call to action at the end. Plain text — we'll wrap it as a button automatically.
+
+OUTPUT FORMAT — return ONLY a valid JSON object, no preamble, no markdown fences:
+
+{
+  "subject": "Subject under 60 chars, personal not corporate",
+  "previewText": "Preview under 130 chars, complements subject",
+  "bodyMarkdown": "Hi {first_name},\\n\\nParagraph 1...\\n\\nParagraph 2...\\n\\nAndy"
+}
+
+Use \\n\\n for paragraph breaks. Do NOT include the CTA button text in bodyMarkdown — that's added separately.`;
+
+  const response = await aiClient.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    temperature: 0.7,
+    system: systemPrompt,
+    messages: [{
+      role: "user",
+      content: `Write the ${stepConfig.type} email. Return ONLY the JSON.`,
+    }],
+  });
+
+  let text = "";
+  for (const block of response.content) {
+    if (block.type === "text") text += block.text;
+  }
+  const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  return JSON.parse(cleaned);
+}
+
+// ── Main handler ──
+
+module.exports = async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
+  const auth = req.headers.authorization || "";
+  if (auth !== `Bearer ${CRON_SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    const body = req.body || {};
+    const email = (body.email || "").trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Valid email required" });
+    }
+
+    const leadContext = {
+      email,
+      firstName: body.firstName || "",
+      lastName: body.lastName || "",
+      company: body.company || "",
+      source: body.source || "",
+      notes: body.notes || "",
+    };
+
+    const created = [];
+
+    // 1. Add to Brevo Inbound Leads list (will create or update if exists)
+    if (INBOUND_LIST_ID > 0) {
+      try {
+        await upsertContact(
+          email,
+          {
+            FIRSTNAME: leadContext.firstName,
+            LASTNAME: leadContext.lastName,
+            COMPANY: leadContext.company,
+            LEAD_SOURCE: leadContext.source,
+          },
+          [INBOUND_LIST_ID]
+        );
+      } catch (e) {
+        console.error("Brevo upsertContact failed:", e.message);
+        // Don't block the rest — Brevo may already have them
+      }
+    }
+
+    // 2. Log the form fill in Attribution
+    try {
+      await airtableCreate(ATTRIBUTION_TABLE, {
+        "Event ID": `lead-${email}-${Date.now()}`,
+        "Event Type": "KB Conversation", // closest match for now; could add "Lead Captured" later
+        "Event Date": new Date().toISOString(),
+        "UTM Source": body.utmSource || "",
+        "UTM Medium": body.utmMedium || "",
+        "UTM Campaign": body.utmCampaign || "",
+        "UTM Content": body.utmContent || "",
+        "Identifier": email,
+        "Notes": `Form fill from ${leadContext.source}. ${leadContext.notes}`.slice(0, 500),
+      });
+    } catch (e) {
+      console.error("Attribution log failed:", e.message);
+    }
+
+    // 3. Generate all 5 drip emails. The first sends now; the rest save as drafts.
+    const now = new Date();
+
+    for (const step of DRIP_SEQUENCE) {
+      try {
+        const draft = await generateDripBody(step, leadContext);
+
+        const ctaUrl = addUtm(step.ctaUrl, {
+          source: "email",
+          medium: "drip",
+          campaign: "luna_marketing",
+          content: step.type.toLowerCase().replace(/\s+/g, "_"),
+        });
+
+        // Replace {first_name} placeholder
+        const bodyMd = (draft.bodyMarkdown || "")
+          .replace(/\{first_name\}/g, leadContext.firstName || "there");
+
+        const html = wrapEmail({
+          subject: draft.subject,
+          previewText: draft.previewText,
+          bodyHtml: plainToHtml(bodyMd),
+          ctaText: step.ctaText,
+          ctaUrl,
+        });
+
+        const plain = htmlToPlain(html);
+
+        // Calculate scheduled send
+        const scheduled = new Date(now);
+        scheduled.setDate(scheduled.getDate() + step.delayDays);
+
+        if (step.sendImmediately) {
+          // Send the welcome email NOW via transactional
+          try {
+            await sendTransactional({
+              to: [{ email, name: `${leadContext.firstName} ${leadContext.lastName}`.trim() || email }],
+              subject: draft.subject,
+              htmlContent: html,
+              textContent: plain,
+              tags: ["luna-marketing", step.type],
+            });
+            
+            // Log it as Sent in Email Queue too, for record-keeping
+            const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
+              "Subject": draft.subject,
+              "Email Type": step.type,
+              "Audience Segment": "Specific Person",
+              "Body HTML": html,
+              "Body Plain": plain,
+              "Preview Text": draft.previewText || "",
+              "Status": "Sent",
+              "Sent At": now.toISOString(),
+            });
+            created.push({ step: step.type, status: "sent", recordId: saved.records[0].id });
+          } catch (e) {
+            console.error(`Welcome send failed for ${email}:`, e.message);
+            const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
+              "Subject": draft.subject,
+              "Email Type": step.type,
+              "Audience Segment": "Specific Person",
+              "Body HTML": html,
+              "Body Plain": plain,
+              "Preview Text": draft.previewText || "",
+              "Status": "Failed",
+              "Rejection Reason": `Welcome send error: ${e.message}`.slice(0, 500),
+            });
+            created.push({ step: step.type, status: "failed", recordId: saved.records[0].id, error: e.message });
+          }
+        } else {
+          // Save as Awaiting Approval, scheduled for the right day
+          const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
+            "Subject": draft.subject,
+            "Email Type": step.type,
+            "Audience Segment": "Specific Person",
+            "Body HTML": html,
+            "Body Plain": plain,
+            "Preview Text": draft.previewText || "",
+            "Status": "Awaiting Approval",
+            "Scheduled Send": scheduled.toISOString(),
+          });
+          created.push({ step: step.type, status: "drafted", recordId: saved.records[0].id, scheduledSend: scheduled.toISOString() });
+        }
+      } catch (e) {
+        console.error(`Drip step ${step.type} failed:`, e.message);
+        created.push({ step: step.type, status: "error", error: e.message });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      email,
+      sequence: created,
+      message: `Drip sequence kicked off for ${email}. Welcome sent. ${created.filter(c => c.status === "drafted").length} follow-ups awaiting approval in Email Queue.`,
+    });
+  } catch (e) {
+    console.error("Drip handler failed:", e);
+    return res.status(500).json({ error: e.message });
+  }
+};

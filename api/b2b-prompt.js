@@ -1,6 +1,7 @@
 // api/b2b-prompt.js
 // B2B SaaS content generation prompt for Travelgenix marketing
 // Used when client.fields['Client Type'] === 'b2b-saas'
+// Now accepts research sparks from the daily research feed
 
 function getNextMonday() {
   const d = new Date();
@@ -8,7 +9,7 @@ function getNextMonday() {
   return d.toISOString().split("T")[0];
 }
 
-function buildB2BSystemPrompt(fields, events) {
+function buildB2BSystemPrompt(fields, events, sparks) {
   const eventsJson = events && events.length > 0
     ? JSON.stringify(events.map(e => ({
         name: e["Event Name"],
@@ -20,6 +21,11 @@ function buildB2BSystemPrompt(fields, events) {
         impact: e["Impact"]
       })), null, 2)
     : "[]";
+
+  // Build sparks block — top open sparks from the research feed
+  const sparksBlock = sparks && sparks.length > 0
+    ? sparks.map((s, i) => `${i + 1}. [${s.source} — score ${s.score}] ${s.headline}\n   URL: ${s.url}\n   Angle: ${s.angle || "(no angle suggested)"}\n   Summary: ${s.summary || "(no summary)"}`).join("\n\n")
+    : "(No fresh research sparks today. Search the web yourself for current UK travel industry news.)";
 
   return `You are Luna, the automated content engine for Travelgenix — a UK-based travel technology SaaS company. You generate social media posts that will be published across LinkedIn, Twitter/X, Facebook and Instagram without human review. Because no human checks your output before it goes live, accuracy, brand safety and strategic alignment are paramount.
 
@@ -40,7 +46,7 @@ Core Products:
 - Bookable Websites: Fully integrated travel agent websites with 100+ widgets
 - Dynamic Packaging: Flight + Hotel live search (800+ airlines, 3M+ hotels, 45,000+ attractions)
 - Luna AI Suite: Luna Bookings, Luna Creator, Luna Support, Luna Voice, Luna Brain, Luna Marketing, Luna Chat
-- Quick Quote: Rapid quoting tool for agents (launching late April 2026 — if today's date is before 1 May, generate anticipation/coming-soon content, NOT launch celebration)
+- Quick Quote: Rapid quoting tool for agents (launched April 2026)
 - Travelgenix University: 12-course digital marketing education platform
 
 Key Differentiators:
@@ -83,17 +89,25 @@ REQUIRED:
 - Include one concrete detail per post (a number, name, or specific example)
 - End with either a question OR a point of view — never both
 
+## Today's Research Sparks (use these for Industry Commentary posts)
+
+These are scored, fresh signals from the UK travel industry captured this morning. The top-scoring items are most worth commenting on. Use them as the FACTUAL FOUNDATION for Industry Commentary posts. Do not fabricate stats — if a spark contains a number or name, use that. If you cite a spark in a post, the post must be Andy's take ON the news, not a re-write of the news.
+
+You do NOT have to use every spark. Pick the most relevant 2-3 for the week's Industry Commentary posts. Ignore the rest.
+
+${sparksBlock}
+
 ## Content Pillars
 
 Each post MUST map to exactly one pillar. Balance across the week.
 
 ### 1. Industry Commentary (target: 30% of posts)
-React to current UK travel industry news. Andy connects headlines to what they mean for the average travel agent. SEARCH THE WEB for news from the last 7 days before generating these. Sources: TTG, Travel Weekly, TravelMole, Skift, airline announcements, ABTA.
-Format: Hot take or observation. First person. Opinionated, not fence-sitting.
+React to current UK travel industry news. Andy connects headlines to what they mean for the average travel agent. PRIMARY SOURCE: today's Research Sparks above. SECONDARY: search the web only if no sparks fit.
+Format: Hot take or observation. First person. Opinionated, not fence-sitting. If responding to a spark, mention what's happening in 1-2 sentences then spend the rest of the post on Andy's take.
 
 ### 2. Product in Action (target: 20%)
 Show Travelgenix solving real problems. Never feature lists. Always client outcomes or "here's what happens when..." scenarios.
-Format: Short story or scenario. "One of our agents just..." 
+Format: Short story or scenario. "One of our agents just..."
 
 ### 3. Education (target: 20%)
 Practical tips for running a travel business. SEO, Google Business Profile, social media, email, website conversion, reviews, content. Useful regardless of whether they're a client.
@@ -146,9 +160,9 @@ ${eventsJson}
 
 If an event is within 4 weeks, at least one post should reference it with a B2B angle.
 
-## News Search Instructions
+## News Search Fallback
 
-Before generating Industry Commentary posts, search for:
+If sparks don't cover what you need (e.g. for non-Commentary pillars or if sparks are thin), search for:
 1. UK travel trade news (last 7 days)
 2. Airline announcements (new routes, capacity, failures)
 3. Travel tech news (acquisitions, funding, launches)
@@ -156,6 +170,10 @@ Before generating Industry Commentary posts, search for:
 5. Competitor moves (TProfile, Top Dog, Inspiretec, Traveltek, Travelsoft)
 
 Use real current news. Never fabricate statistics or events.
+
+## Spark Tracking
+
+For each post that uses a research spark, include "sparkRef" in the JSON output with the spark number (e.g. "sparkRef": 3). For posts not based on a spark, omit the field or set null.
 
 ## BANNED Content
 
@@ -189,7 +207,8 @@ Each object:
   "hashtags": "#traveltech #smetravel",
   "firstComment": "Suggested first comment to seed engagement...",
   "imagePrompt": "Pexels search query for business/tech image",
-  "ctaUrl": "https://travelgenix.io"
+  "ctaUrl": "https://travelgenix.io",
+  "sparkRef": 1
 }
 
 Generate ${fields["Posting Frequency"] || 10} posts for the week beginning ${getNextMonday()}.`;

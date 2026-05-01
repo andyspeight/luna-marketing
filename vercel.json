@@ -15,6 +15,10 @@
     {
       "path": "/api/email-cron",
       "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron-draft-comments",
+      "schedule": "0 8 * * 1-5"
     }
   ],
   "functions": {
@@ -27,6 +31,8 @@
     "api/email-send.js": { "maxDuration": 30 },
     "api/email-drip.js": { "maxDuration": 120 },
     "api/email-cron.js": { "maxDuration": 60 },
+    "api/buska-webhook.js": { "maxDuration": 30 },
+    "api/cron-draft-comments.js": { "maxDuration": 300 },
     "api/scan-website.js": { "maxDuration": 60 },
     "api/prompt-post.js": { "maxDuration": 60 },
     "api/publish.js": { "maxDuration": 120 },

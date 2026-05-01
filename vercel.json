@@ -2,13 +2,18 @@
   "crons": [
     {
       "path": "/api/cron-generate",
-      "schedule": "0 6 * * 1,3,5"
+      "schedule": "0 7 * * 1,3,5"
+    },
+    {
+      "path": "/api/research-feed",
+      "schedule": "0 6 * * *"
     }
   ],
   "functions": {
     "api/generate.js": { "maxDuration": 120 },
     "api/generate-blog.js": { "maxDuration": 120 },
     "api/cron-generate.js": { "maxDuration": 300 },
+    "api/research-feed.js": { "maxDuration": 120 },
     "api/scan-website.js": { "maxDuration": 60 },
     "api/prompt-post.js": { "maxDuration": 60 },
     "api/publish.js": { "maxDuration": 120 },

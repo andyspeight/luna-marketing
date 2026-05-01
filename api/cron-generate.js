@@ -1,11 +1,13 @@
 // api/cron-generate.js
 // Weekly batch content generation for ALL active clients
 // Routes to B2C (travel) or B2B (SaaS) prompt based on Client Type field
-// B2B clients now get research sparks injected from the daily research feed
-// Triggered by Vercel cron: Mon/Wed/Fri 06:00 UTC
+// Day 2: B2B clients get research sparks injected
+// Day 3: All posts get UTM tags auto-injected after queue write
+// Triggered by Vercel cron: Mon/Wed/Fri 07:00 UTC
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { buildB2BSystemPrompt } = require("./b2b-prompt.js");
+const { tagPostUrls, channelToUtmSource, postUtmContent, addUtm, replaceUrlsInText } = require("./utm-helper.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -14,7 +16,7 @@ const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const CLIENTS_TABLE = "tblUkzvBujc94Yali";
 const QUEUE_TABLE = "tblbhyiuULvedva0K";
 const EVENTS_TABLE = "tblQxIYrbzd6YlJYV";
-const SPARKS_TABLE = "Research Sparks"; // NEW
+const SPARKS_TABLE = "Research Sparks";
 const CRON_SECRET = process.env.CRON_SECRET;
 
 // ── Helpers ──
@@ -31,7 +33,6 @@ function getDateInWeeks(weeks) {
   return d.toISOString().split("T")[0];
 }
 
-// Strip citation tags that leak from web search (e.g. <cite index="2-7">text</cite>)
 function stripCitations(text) {
   if (!text) return "";
   return text
@@ -42,7 +43,6 @@ function stripCitations(text) {
     .trim();
 }
 
-// Normalise channel names to match Airtable select options exactly
 function normaliseChannel(channel) {
   const map = {
     "twitter": "Twitter/X",
@@ -86,7 +86,6 @@ async function getUpcomingEvents(weeksAhead = 4) {
   return (data.records || []).map((r) => r.fields);
 }
 
-// NEW: fetch top open research sparks
 async function getOpenSparks(limit = 10) {
   const formula = encodeURIComponent(`AND({Status}='Open', {Score}>=6)`);
   const sortQuery = "&sort%5B0%5D%5Bfield%5D=Score&sort%5B0%5D%5Bdirection%5D=desc";
@@ -108,7 +107,6 @@ async function getOpenSparks(limit = 10) {
   }
 }
 
-// NEW: mark sparks as Used after generation
 async function markSparksUsed(sparkIds) {
   if (!sparkIds || sparkIds.length === 0) return;
   const unique = [...new Set(sparkIds)];
@@ -122,10 +120,7 @@ async function markSparksUsed(sparkIds) {
             Authorization: `Bearer ${AIRTABLE_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            fields: { Status: "Used" },
-            typecast: true,
-          }),
+          body: JSON.stringify({ fields: { Status: "Used" }, typecast: true }),
         }
       );
     } catch (e) {
@@ -152,23 +147,75 @@ async function searchPexelsImage(query) {
   return null;
 }
 
-async function writeToQueue(records) {
+// Write batch and RETURN the records with their new IDs (so we can UTM-tag them)
+async function writeToQueueAndReturnIds(records) {
+  const created = [];
   for (let i = 0; i < records.length; i += 10) {
     const batch = records.slice(i, i + 10);
-    const res = await fetch(
-      `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${AIRTABLE_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ records: batch, typecast: true }),
+    try {
+      const res = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ records: batch, typecast: true }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        created.push(...(data.records || []));
+      } else {
+        const err = await res.text();
+        console.error(`Queue write error (batch ${i}):`, err);
       }
-    );
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`Queue write error (batch ${i}):`, err);
+    } catch (e) {
+      console.error(`Queue write exception (batch ${i}):`, e.message);
+    }
+  }
+  return created;
+}
+
+// PATCH each created record with UTM-tagged URLs now we have the recordId
+async function tagRecordUrls(createdRecords, postsByIndex) {
+  for (let i = 0; i < createdRecords.length; i++) {
+    const rec = createdRecords[i];
+    const post = postsByIndex[i];
+    if (!post) continue;
+    
+    // Tag the post object (mutates a copy) using the now-known recordId for utm_content
+    const tagged = tagPostUrls(post, rec.id);
+    
+    // Build PATCH body with the tagged caption fields
+    const patchFields = {};
+    if (tagged.captionFacebook !== undefined) patchFields.fldWe3d6ec4pu9jcZ = tagged.captionFacebook;
+    if (tagged.captionInstagram !== undefined) patchFields.fldpAenBNwgJMFs7k = tagged.captionInstagram;
+    if (tagged.captionLinkedIn !== undefined) patchFields.fldJKPHgL0U9ZZAuX = tagged.captionLinkedIn;
+    if (tagged.captionTwitter !== undefined) patchFields.fldYQsiw65rcd2X2B = tagged.captionTwitter;
+    if (tagged.captionPinterest !== undefined) patchFields.fldCfdS6ByrofDtkE = tagged.captionPinterest;
+    if (tagged.captionTikTok !== undefined) patchFields.fldyVawF0JrCLb9n5 = tagged.captionTikTok;
+    if (tagged.captionGBP !== undefined) patchFields.fld39pPTqpajLLpnX = tagged.captionGBP;
+    if (tagged.firstComment !== undefined) patchFields.fldkOeFJLYsjhZ9KZ = tagged.firstComment;
+    if (tagged.ctaUrl !== undefined) patchFields.fld8s5QVemJ4plhzs = tagged.ctaUrl;
+    
+    if (Object.keys(patchFields).length === 0) continue;
+    
+    try {
+      await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}/${rec.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ fields: patchFields, typecast: true }),
+        }
+      );
+    } catch (e) {
+      console.error(`UTM tag PATCH failed (${rec.id}):`, e.message);
     }
   }
 }
@@ -248,13 +295,7 @@ const B2B_SCHEDULE = [
 
 function getScheduledDate(dayName) {
   const monday = new Date(getNextMonday());
-  const dayMap = {
-    Monday: 0,
-    Tuesday: 1,
-    Wednesday: 2,
-    Thursday: 3,
-    Friday: 4,
-  };
+  const dayMap = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4 };
   const offset = dayMap[dayName] || 0;
   const d = new Date(monday);
   d.setDate(d.getDate() + offset);
@@ -273,16 +314,13 @@ async function processClient(record, events) {
     `Processing ${f["Business Name"]} (${clientType}, ${f["Posting Frequency"] || (isB2B ? 12 : 3)} posts)`
   );
 
-  // NEW: load research sparks for B2B clients
   const sparks = isB2B ? await getOpenSparks(10) : [];
-  if (isB2B) console.log(`  loaded ${sparks.length} open sparks (score >= 6)`);
+  if (isB2B) console.log(`  loaded ${sparks.length} open sparks`);
 
-  // Build the appropriate prompt
   const systemPrompt = isB2B
     ? buildB2BSystemPrompt(f, events, sparks)
     : buildB2CSystemPrompt(f);
 
-  // Tools: B2B still gets web search as a fallback for non-spark coverage
   const tools = isB2B
     ? [{ type: "web_search_20250305", name: "web_search" }]
     : [];
@@ -303,65 +341,46 @@ async function processClient(record, events) {
     messages,
   };
 
-  if (tools.length > 0) {
-    apiParams.tools = tools;
-  }
+  if (tools.length > 0) apiParams.tools = tools;
 
   const response = await client.messages.create(apiParams);
 
-  // Extract text content from response (may have multiple blocks if web search used)
   let textContent = "";
   for (const block of response.content) {
-    if (block.type === "text") {
-      textContent += block.text;
-    }
+    if (block.type === "text") textContent += block.text;
   }
 
-  // Parse JSON from response
-  const jsonStr = textContent
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+  const jsonStr = textContent.replace(/```json/g, "").replace(/```/g, "").trim();
   
   let posts;
   try {
     posts = JSON.parse(jsonStr);
   } catch (e) {
     console.error(`JSON parse failed for ${f["Business Name"]}:`, e.message);
-    console.error("Raw response:", textContent.slice(0, 500));
     return { client: f["Business Name"], status: "error", error: "JSON parse failed" };
   }
 
   if (!Array.isArray(posts)) {
-    console.error(`Response not an array for ${f["Business Name"]}`);
     return { client: f["Business Name"], status: "error", error: "Not an array" };
   }
-
-  // ── Post-Processing ──
 
   const weekLabel = `${new Date().getFullYear()}-W${String(Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 / 7)).padStart(2, "0")}`;
 
   const queueRecords = [];
-  const usedSparkIds = []; // NEW: track which sparks got used
+  const postsByIndex = []; // we keep the original posts to UTM-tag them after write
+  const usedSparkIds = [];
 
   for (let i = 0; i < posts.length; i++) {
     const post = posts[i];
 
-    // NEW: capture spark reference if present
     if (isB2B && post.sparkRef && Number.isInteger(post.sparkRef)) {
       const sparkIdx = post.sparkRef - 1;
-      if (sparks[sparkIdx]) {
-        usedSparkIds.push(sparks[sparkIdx].id);
-      }
+      if (sparks[sparkIdx]) usedSparkIds.push(sparks[sparkIdx].id);
     }
 
-    // Get image from Pexels
     let imageUrl = null;
-    if (post.imagePrompt) {
-      imageUrl = await searchPexelsImage(post.imagePrompt);
-    }
+    if (post.imagePrompt) imageUrl = await searchPexelsImage(post.imagePrompt);
 
-    // Calculate scheduled date
     let scheduledDate = null;
     let scheduledTime = null;
 
@@ -372,7 +391,6 @@ async function processClient(record, events) {
       scheduledDate = getScheduledDate(B2B_SCHEDULE[i].day);
       scheduledTime = B2B_SCHEDULE[i].time;
     } else {
-      // B2C: distribute across posting days
       const days = (f["Posting Days"] || "Mon,Wed,Fri").split(",");
       const dayMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
       const dayIndex = i % days.length;
@@ -383,25 +401,23 @@ async function processClient(record, events) {
       scheduledTime = "09:00";
     }
 
-    // Build queue record
+    // Build queue record (UTM-untagged - we tag after write when we have recordId)
     const fields = {
-      fldGRsU5pWRoAN34s: post.postTitle || `Post ${i + 1}`, // Post Title
-      fldVteQRAcqE2n1lV: [clientId], // Client link
-      fldWe3d6ec4pu9jcZ: stripCitations(post.captionFacebook), // Caption - Facebook
-      fldpAenBNwgJMFs7k: stripCitations(post.captionInstagram), // Caption - Instagram
-      fldJKPHgL0U9ZZAuX: stripCitations(post.captionLinkedIn), // Caption - LinkedIn
-      fldYQsiw65rcd2X2B: stripCitations(post.captionTwitter), // Caption - Twitter
-      fld1cSSlrKuA1SXp5: post.hashtags || "", // Hashtags
-      fld8s5QVemJ4plhzs: post.ctaUrl || f["Website URL"] || "", // CTA URL
-      fld1a2lxyXPC71UtQ: scheduledDate, // Scheduled Date
-      fld2zaXYmEXQHTua8: scheduledTime, // Scheduled Time
-      fldDmTOSTSlkObab7: "Queued", // Status
-      fldFWP2Zkppxipo9U: weekLabel, // Generated Week
+      fldGRsU5pWRoAN34s: post.postTitle || `Post ${i + 1}`,
+      fldVteQRAcqE2n1lV: [clientId],
+      fldWe3d6ec4pu9jcZ: stripCitations(post.captionFacebook),
+      fldpAenBNwgJMFs7k: stripCitations(post.captionInstagram),
+      fldJKPHgL0U9ZZAuX: stripCitations(post.captionLinkedIn),
+      fldYQsiw65rcd2X2B: stripCitations(post.captionTwitter),
+      fld1cSSlrKuA1SXp5: post.hashtags || "",
+      fld8s5QVemJ4plhzs: post.ctaUrl || f["Website URL"] || "",
+      fld1a2lxyXPC71UtQ: scheduledDate,
+      fld2zaXYmEXQHTua8: scheduledTime,
+      fldDmTOSTSlkObab7: "Queued",
+      fldFWP2Zkppxipo9U: weekLabel,
     };
 
-    if (imageUrl) {
-      fields.fldNjzWAIj9eknEWS = imageUrl;
-    }
+    if (imageUrl) fields.fldNjzWAIj9eknEWS = imageUrl;
 
     if (isB2B) {
       fields.fldYHX5rR7f0Dgsnu = normaliseChannel(post.targetChannel);
@@ -418,25 +434,45 @@ async function processClient(record, events) {
     }
 
     queueRecords.push({ fields });
+    
+    // Keep a clean copy of the original post for UTM tagging.
+    // We strip citations on the captions to match what's stored.
+    postsByIndex.push({
+      postTitle: post.postTitle,
+      targetChannel: isB2B ? normaliseChannel(post.targetChannel) : null,
+      ctaUrl: post.ctaUrl || f["Website URL"] || "",
+      captionFacebook: stripCitations(post.captionFacebook),
+      captionInstagram: stripCitations(post.captionInstagram),
+      captionLinkedIn: stripCitations(post.captionLinkedIn),
+      captionTwitter: stripCitations(post.captionTwitter),
+      captionPinterest: post.captionPinterest || "",
+      captionTikTok: post.captionTikTok || "",
+      captionGBP: stripCitations(post.captionGBP),
+      firstComment: isB2B ? stripCitations(post.firstComment) : "",
+    });
   }
 
-  // Write to Airtable queue
-  await writeToQueue(queueRecords);
+  // Write to Airtable queue and get the created records back
+  const created = await writeToQueueAndReturnIds(queueRecords);
+  console.log(`  ${created.length}/${queueRecords.length} records written`);
 
-  // NEW: mark used sparks
+  // Now UTM-tag the URLs in each record using the recordId for utm_content
+  if (created.length > 0) {
+    await tagRecordUrls(created, postsByIndex);
+    console.log(`  UTM tags applied to ${created.length} records`);
+  }
+
   if (usedSparkIds.length > 0) {
     await markSparksUsed(usedSparkIds);
     console.log(`  marked ${usedSparkIds.length} sparks as Used`);
   }
 
-  console.log(
-    `✓ ${f["Business Name"]}: ${queueRecords.length} posts queued (${clientType})`
-  );
+  console.log(`✓ ${f["Business Name"]}: ${created.length} posts queued`);
 
   return {
     client: f["Business Name"],
     status: "success",
-    posts: queueRecords.length,
+    posts: created.length,
     type: clientType,
     sparksUsed: usedSparkIds.length,
   };
@@ -445,7 +481,6 @@ async function processClient(record, events) {
 // ── Main Handler ──
 
 module.exports = async (req, res) => {
-  // Verify cron secret
   if (req.headers.authorization !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -458,9 +493,7 @@ module.exports = async (req, res) => {
 
     const events = await getUpcomingEvents(4);
 
-    console.log(
-      `Starting batch generation: ${clients.length} clients, ${events.length} upcoming events`
-    );
+    console.log(`Starting batch generation: ${clients.length} clients, ${events.length} upcoming events`);
 
     const results = [];
     for (const record of clients) {
@@ -469,13 +502,8 @@ module.exports = async (req, res) => {
         results.push(result);
       } catch (e) {
         console.error(`Error processing ${record.fields["Business Name"]}:`, e);
-        results.push({
-          client: record.fields["Business Name"],
-          status: "error",
-          error: e.message,
-        });
+        results.push({ client: record.fields["Business Name"], status: "error", error: e.message });
       }
-
       await new Promise((r) => setTimeout(r, 2000));
     }
 

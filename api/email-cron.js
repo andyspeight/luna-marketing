@@ -1,12 +1,10 @@
 // api/email-cron.js
 // Hourly cron — finds approved emails ready to send and fires them
-// Runs via Vercel cron at minute 5 of every hour
+// Day 5 patch: drip sends now use Recipient Email field on the record
 //
 // Picks up Email Queue records where:
 //   - Status = "Approved"
 //   - Scheduled Send <= NOW (or Scheduled Send is empty, meaning send ASAP)
-//
-// For each, calls Brevo to send. Updates record status to Sent or Failed.
 
 const { sendTransactional, createCampaign, sendCampaignNow } = require("./brevo-helper.js");
 
@@ -15,13 +13,19 @@ const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const EMAIL_QUEUE_TABLE = "Email Queue";
 const CRON_SECRET = process.env.CRON_SECRET;
 
-const LIST_IDS = {
-  "Travelgenix Clients": parseInt(process.env.BREVO_LIST_TG_CLIENTS || "0", 10),
-  "Inbound Leads": parseInt(process.env.BREVO_LIST_INBOUND || "0", 10),
-  "Demo Requested": parseInt(process.env.BREVO_LIST_DEMO_REQUESTED || "0", 10),
-};
-
-// ── Airtable ──
+// Resolve list ID with fallback naming (matches email-send.js)
+function resolveListId(segment) {
+  const candidates = [];
+  if (segment === "Travelgenix Clients") candidates.push("BREVO_LIST_TG_CLIENTS", "BREVO_LIST_TRAVELGENIX_CLIENTS");
+  else if (segment === "Inbound Leads") candidates.push("BREVO_LIST_INBOUND", "BREVO_LIST_INBOUND_LEADS");
+  else if (segment === "Demo Requested") candidates.push("BREVO_LIST_DEMO_REQUESTED");
+  candidates.push("BREVO_LIST_" + segment.toUpperCase().replace(/\s+/g, "_"));
+  for (const name of candidates) {
+    const v = process.env[name];
+    if (v && parseInt(v, 10) > 0) return parseInt(v, 10);
+  }
+  return 0;
+}
 
 async function airtableFetch(url) {
   const r = await fetch(url, {
@@ -51,7 +55,6 @@ async function airtablePatch(table, id, fields) {
 }
 
 async function getDueEmails() {
-  // Find approved emails whose Scheduled Send is in the past (or null)
   const formula = encodeURIComponent(
     `AND({Status}='Approved', OR({Scheduled Send}='', IS_BEFORE({Scheduled Send}, NOW())))`
   );
@@ -60,8 +63,6 @@ async function getDueEmails() {
   return data.records || [];
 }
 
-// ── Send ──
-
 async function sendOne(record) {
   const f = record.fields;
   const segment = f["Audience Segment"];
@@ -69,10 +70,9 @@ async function sendOne(record) {
   const isCampaign = emailType === "Newsletter" || emailType === "One-off Broadcast";
 
   if (isCampaign) {
-    const listId = LIST_IDS[segment];
-    if (!listId) {
-      throw new Error(`No Brevo list ID configured for segment "${segment}"`);
-    }
+    const listId = resolveListId(segment);
+    if (!listId) throw new Error(`No Brevo list ID for segment "${segment}"`);
+    
     const campaign = await createCampaign({
       name: `Luna ${emailType} ${new Date().toISOString().split("T")[0]} - ${(f["Subject"] || "").slice(0, 40)}`,
       subject: f["Subject"] || "",
@@ -83,28 +83,25 @@ async function sendOne(record) {
     await sendCampaignNow(campaign.id);
     return { method: "campaign", brevoId: campaign.id };
   } else {
-    // Drip — but for drip emails we don't have a recipient on the record yet
-    // (this version of the system stores the recipient implicitly via the welcome flow).
-    // For Day 4 MVP, drips are scheduled per-recipient as separate Email Queue rows.
-    // The recipient needs to be retrievable. Since we don't have a "Recipient Email" field,
-    // we extract it from a tag in the body. Future improvement: add field.
-    
-    // For now: extract first email-like address from Body Plain (which we set on creation)
-    const bodyPlain = f["Body Plain"] || "";
-    const emailMatch = bodyPlain.match(/[\w.-]+@[\w.-]+\.\w+/);
-    if (!emailMatch) {
-      throw new Error("Drip email has no recoverable recipient. Add a 'Recipient Email' field to Email Queue table for v2.");
+    // Drip / behavioural — use Recipient Email field
+    const recipientEmail = f["Recipient Email"];
+    if (!recipientEmail) {
+      throw new Error("Drip email has no Recipient Email field set");
     }
-    // ABORT — this is a known v1 limitation. Recommend you add Recipient Email field
-    // and extend email-drip.js to populate it.
-    throw new Error("Drip cron send needs Recipient Email field. See limitations note.");
+    const recipientName = f["Recipient Name"] || "";
+    
+    const result = await sendTransactional({
+      to: [{ email: recipientEmail, name: recipientName }],
+      subject: f["Subject"] || "",
+      htmlContent: f["Body HTML"] || "",
+      textContent: f["Body Plain"] || "",
+      tags: ["luna-marketing", emailType],
+    });
+    return { method: "transactional", brevoId: result.messageId, recipient: recipientEmail };
   }
 }
 
-// ── Main handler ──
-
 module.exports = async (req, res) => {
-  // Cron auth
   if (req.headers.authorization !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -131,7 +128,6 @@ module.exports = async (req, res) => {
         });
         results.push({ id: record.id, status: "failed", error: e.message });
       }
-      // Rate limit: 1s between sends
       await new Promise((r) => setTimeout(r, 1000));
     }
 

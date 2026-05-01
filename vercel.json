@@ -14,6 +14,7 @@
     "api/generate-blog.js": { "maxDuration": 120 },
     "api/cron-generate.js": { "maxDuration": 300 },
     "api/research-feed.js": { "maxDuration": 120 },
+    "api/attribution.js": { "maxDuration": 30 },
     "api/scan-website.js": { "maxDuration": 60 },
     "api/prompt-post.js": { "maxDuration": 60 },
     "api/publish.js": { "maxDuration": 120 },

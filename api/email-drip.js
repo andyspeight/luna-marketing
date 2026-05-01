@@ -1,23 +1,10 @@
 // api/email-drip.js
-// Drip sequence handler
-// Kicks off a 5-email drip when someone fills an inbound form on travelgenix.co.uk
+// Drip sequence handler — Day 5 patch: writes Recipient Email to Email Queue
 //
-// On receipt of a lead:
-//   1. Add contact to Brevo "Inbound Leads" list with attributes
-//   2. Send "Welcome" email immediately
-//   3. Generate 4 follow-up drafts (Day 3, Day 7, Day 14, Day 28) in Email Queue with status Awaiting Approval
-//      → Andy reviews and approves them; cron-driven sender fires them at the right time
-//
-// POST body:
-//   - email (required)
-//   - firstName (recommended)
-//   - lastName (optional)
-//   - company (optional)
-//   - source: where they came from (e.g. "demo-request", "blog-cta", "newsletter-signup")
-//   - utmSource, utmMedium, utmCampaign, utmContent (from form, optional)
-//   - notes (optional - what they said / asked)
-//
-// Auth: Bearer CRON_SECRET (called from website JS that proxies through to keep secret server-side)
+// Triggered by inbound form fills on travelgenix.co.uk
+// Welcome email sends instantly via transactional
+// Day 3/7/14/28 follow-ups saved as Awaiting Approval drafts WITH Recipient Email set
+// so the hourly cron can fire them when scheduled
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { upsertContact, sendTransactional } = require("./brevo-helper.js");
@@ -32,9 +19,7 @@ const EMAIL_QUEUE_TABLE = "Email Queue";
 const ATTRIBUTION_TABLE = "Attribution";
 const CRON_SECRET = process.env.CRON_SECRET;
 
-const INBOUND_LIST_ID = parseInt(process.env.BREVO_LIST_INBOUND || "0", 10);
-
-// ── Drip sequence definition ──
+const INBOUND_LIST_ID = parseInt(process.env.BREVO_LIST_INBOUND || process.env.BREVO_LIST_INBOUND_LEADS || "0", 10);
 
 const DRIP_SEQUENCE = [
   {
@@ -75,8 +60,6 @@ const DRIP_SEQUENCE = [
   },
 ];
 
-// ── Airtable ──
-
 async function airtableCreate(table, fields) {
   const r = await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(table)}`,
@@ -95,8 +78,6 @@ async function airtableCreate(table, fields) {
   }
   return r.json();
 }
-
-// ── Generate a drip email body ──
 
 async function generateDripBody(stepConfig, leadContext) {
   const systemPrompt = `You write a single email in a 5-email drip sequence for Travelgenix, a UK B2B travel-tech SaaS company. The email goes to someone who recently filled an inbound form on travelgenix.io.
@@ -130,28 +111,22 @@ OUTPUT FORMAT — return ONLY a valid JSON object, no preamble, no markdown fenc
   "bodyMarkdown": "Hi {first_name},\\n\\nParagraph 1...\\n\\nParagraph 2...\\n\\nAndy"
 }
 
-Use \\n\\n for paragraph breaks. Do NOT include the CTA button text in bodyMarkdown — that's added separately.`;
+Use \\n\\n for paragraph breaks. Do NOT include the CTA button text in bodyMarkdown.`;
 
   const response = await aiClient.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1500,
     temperature: 0.7,
     system: systemPrompt,
-    messages: [{
-      role: "user",
-      content: `Write the ${stepConfig.type} email. Return ONLY the JSON.`,
-    }],
+    messages: [{ role: "user", content: `Write the ${stepConfig.type} email. Return ONLY the JSON.` }],
   });
 
   let text = "";
   for (const block of response.content) {
     if (block.type === "text") text += block.text;
   }
-  const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
-  return JSON.parse(cleaned);
+  return JSON.parse(text.replace(/```json/g, "").replace(/```/g, "").trim());
 }
-
-// ── Main handler ──
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -182,8 +157,9 @@ module.exports = async (req, res) => {
     };
 
     const created = [];
+    const fullName = `${leadContext.firstName} ${leadContext.lastName}`.trim() || "";
 
-    // 1. Add to Brevo Inbound Leads list (will create or update if exists)
+    // 1. Add to Brevo Inbound Leads list
     if (INBOUND_LIST_ID > 0) {
       try {
         await upsertContact(
@@ -198,7 +174,6 @@ module.exports = async (req, res) => {
         );
       } catch (e) {
         console.error("Brevo upsertContact failed:", e.message);
-        // Don't block the rest — Brevo may already have them
       }
     }
 
@@ -206,7 +181,7 @@ module.exports = async (req, res) => {
     try {
       await airtableCreate(ATTRIBUTION_TABLE, {
         "Event ID": `lead-${email}-${Date.now()}`,
-        "Event Type": "KB Conversation", // closest match for now; could add "Lead Captured" later
+        "Event Type": "KB Conversation",
         "Event Date": new Date().toISOString(),
         "UTM Source": body.utmSource || "",
         "UTM Medium": body.utmMedium || "",
@@ -219,7 +194,7 @@ module.exports = async (req, res) => {
       console.error("Attribution log failed:", e.message);
     }
 
-    // 3. Generate all 5 drip emails. The first sends now; the rest save as drafts.
+    // 3. Generate all 5 drip emails
     const now = new Date();
 
     for (const step of DRIP_SEQUENCE) {
@@ -233,7 +208,6 @@ module.exports = async (req, res) => {
           content: step.type.toLowerCase().replace(/\s+/g, "_"),
         });
 
-        // Replace {first_name} placeholder
         const bodyMd = (draft.bodyMarkdown || "")
           .replace(/\{first_name\}/g, leadContext.firstName || "there");
 
@@ -241,28 +215,27 @@ module.exports = async (req, res) => {
           subject: draft.subject,
           previewText: draft.previewText,
           bodyHtml: plainToHtml(bodyMd),
+          headline: draft.subject,
           ctaText: step.ctaText,
           ctaUrl,
         });
 
         const plain = htmlToPlain(html);
 
-        // Calculate scheduled send
         const scheduled = new Date(now);
         scheduled.setDate(scheduled.getDate() + step.delayDays);
 
         if (step.sendImmediately) {
-          // Send the welcome email NOW via transactional
+          // Send Welcome email NOW via transactional
           try {
             await sendTransactional({
-              to: [{ email, name: `${leadContext.firstName} ${leadContext.lastName}`.trim() || email }],
+              to: [{ email, name: fullName || email }],
               subject: draft.subject,
               htmlContent: html,
               textContent: plain,
               tags: ["luna-marketing", step.type],
             });
-            
-            // Log it as Sent in Email Queue too, for record-keeping
+
             const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
               "Subject": draft.subject,
               "Email Type": step.type,
@@ -272,6 +245,8 @@ module.exports = async (req, res) => {
               "Preview Text": draft.previewText || "",
               "Status": "Sent",
               "Sent At": now.toISOString(),
+              "Recipient Email": email,
+              "Recipient Name": fullName,
             });
             created.push({ step: step.type, status: "sent", recordId: saved.records[0].id });
           } catch (e) {
@@ -284,12 +259,14 @@ module.exports = async (req, res) => {
               "Body Plain": plain,
               "Preview Text": draft.previewText || "",
               "Status": "Failed",
+              "Recipient Email": email,
+              "Recipient Name": fullName,
               "Rejection Reason": `Welcome send error: ${e.message}`.slice(0, 500),
             });
             created.push({ step: step.type, status: "failed", recordId: saved.records[0].id, error: e.message });
           }
         } else {
-          // Save as Awaiting Approval, scheduled for the right day
+          // Save as Awaiting Approval, with Recipient Email set so cron can send it
           const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
             "Subject": draft.subject,
             "Email Type": step.type,
@@ -299,6 +276,8 @@ module.exports = async (req, res) => {
             "Preview Text": draft.previewText || "",
             "Status": "Awaiting Approval",
             "Scheduled Send": scheduled.toISOString(),
+            "Recipient Email": email,
+            "Recipient Name": fullName,
           });
           created.push({ step: step.type, status: "drafted", recordId: saved.records[0].id, scheduledSend: scheduled.toISOString() });
         }
@@ -312,7 +291,7 @@ module.exports = async (req, res) => {
       success: true,
       email,
       sequence: created,
-      message: `Drip sequence kicked off for ${email}. Welcome sent. ${created.filter(c => c.status === "drafted").length} follow-ups awaiting approval in Email Queue.`,
+      message: `Drip sequence kicked off for ${email}. Welcome sent. ${created.filter(c => c.status === "drafted").length} follow-ups awaiting approval.`,
     });
   } catch (e) {
     console.error("Drip handler failed:", e);

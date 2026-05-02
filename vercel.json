@@ -33,8 +33,6 @@
     "api/email-cron.js": { "maxDuration": 60 },
     "api/buska-webhook.js": { "maxDuration": 30 },
     "api/cron-draft-comments.js": { "maxDuration": 300 },
-    "api/dashboard-data.js": { "maxDuration": 30 },
-    "api/dashboard-action.js": { "maxDuration": 15 },
     "api/quality-admin.js": { "maxDuration": 120 },
     "api/scan-website.js": { "maxDuration": 60 },
     "api/prompt-post.js": { "maxDuration": 60 },

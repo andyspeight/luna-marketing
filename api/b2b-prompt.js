@@ -15,6 +15,13 @@
 //   5. Expanded the banned words list to match the skills source of truth.
 //   6. The cron-generate.js patch ALSO prepends BRAND_GUARDRAILS on top
 //      of this prompt, so anti-fabrication appears twice for safety.
+//
+// PATCHED 2 May 2026 (post-fix):
+//   7. One caption per post. Schema and rules now require the model to
+//      populate ONLY the caption field matching targetChannel and leave
+//      all others as empty strings. Stops the over-generation problem
+//      where LinkedIn-only posts ended up with FB/IG/Twitter/GBP
+//      captions too.
 
 function getNextMonday() {
   const d = new Date();
@@ -355,6 +362,30 @@ Never generate content that:
 
 Return ONLY a valid JSON array. No markdown fences. No preamble. No explanation.
 
+### CRITICAL: One caption per post
+
+Each post is published to ONE channel only — the value in "targetChannel". You
+must populate ONLY the caption field that matches that channel. Leave every
+other caption field as an empty string "".
+
+This is the channel → caption mapping:
+
+  targetChannel = "LinkedIn Personal"        → populate captionLinkedIn  + firstComment
+  targetChannel = "LinkedIn Company"         → populate captionLinkedIn  + firstComment
+  targetChannel = "Facebook"                 → populate captionFacebook
+  targetChannel = "Instagram"                → populate captionInstagram
+  targetChannel = "Google Business Profile"  → populate captionGBP
+
+Do NOT generate captions for channels the post is not targeting. The Twitter
+caption field exists in the schema but should remain "" unless explicitly
+requested. Any caption field not listed above for the given targetChannel
+must be the empty string "".
+
+This rule is non-negotiable. Generating extra captions wastes tokens, confuses
+the review UI, and risks publishing wrong content. One channel, one caption.
+
+### Schema
+
 Each object:
 {
   "pillar": "Industry Commentary",
@@ -362,17 +393,25 @@ Each object:
   "postTitle": "Short internal title",
   "day": "Monday",
   "time": "08:30",
-  "captionLinkedIn": "Full LinkedIn caption...",
-  "captionFacebook": "Facebook version (max 500)...",
-  "captionInstagram": "Instagram version (max 500)...",
-  "captionTwitter": "Max 200 chars, punchy, no hashtags",
-  "captionGBP": "Google Business Profile version (max 1500)...",
+  "captionLinkedIn": "Populate ONLY if targetChannel is LinkedIn Personal or LinkedIn Company. Otherwise empty string.",
+  "captionFacebook": "Populate ONLY if targetChannel is Facebook. Otherwise empty string.",
+  "captionInstagram": "Populate ONLY if targetChannel is Instagram. Otherwise empty string.",
+  "captionTwitter": "Leave empty string unless the post explicitly targets Twitter.",
+  "captionGBP": "Populate ONLY if targetChannel is Google Business Profile. Otherwise empty string.",
   "hashtags": "#traveltech #smetravel",
-  "firstComment": "Suggested first comment to seed engagement...",
+  "firstComment": "Required ONLY for LinkedIn Personal and LinkedIn Company. Empty string for all other channels.",
   "imagePrompt": "Pexels search query for business/tech image",
   "ctaUrl": "https://travelgenix.io",
   "sparkRef": 1
 }
+
+### Caption length guidance (for the channel you ARE populating)
+
+LinkedIn Personal: 600-1000 chars, conversational, line breaks for scannability
+LinkedIn Company: 500-800 chars, more polished, product-aware
+Facebook: 200-500 chars, friendly, can include emojis sparingly
+Instagram: 150-400 chars, hook in first line, hashtags at end
+Google Business Profile: 300-1500 chars, local SEO-aware, includes CTA
 
 Generate ${fields["Posting Frequency"] || 10} posts for the week beginning ${getNextMonday()}.`;
 }

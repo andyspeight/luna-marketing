@@ -43,9 +43,11 @@ async function getClient(clientId) {
   return r;
 }
 
-async function getPostsForClient(clientId) {
+async function getPostsByBusinessName(businessName) {
+  if (!businessName) return [];
+  const safeName = businessName.replace(/'/g, "\\'");
   const formula = encodeURIComponent(
-    `FIND('${clientId}', ARRAYJOIN({Client}, ','))`
+    `FIND('${safeName}', ARRAYJOIN({Client}, ','))`
   );
   return listAll(POST_QUEUE_TABLE, `filterByFormula=${formula}&pageSize=100`);
 }
@@ -102,20 +104,22 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Valid clientId is required" });
     }
 
-    // Load all in parallel where possible
-    const [client, posts, leads, attribution] = await Promise.all([
-      getClient(clientId).catch(() => null),
-      getPostsForClient(clientId).catch(() => []),
-      getRecentLeads(10).catch(() => []),
-      getRecentAttribution(50).catch(() => []),
-    ]);
-
+    // Load client first to get the business name (primary field).
+    // We need it before querying posts because Airtable's ARRAYJOIN on
+    // multipleRecordLinks returns primary field VALUES, not record IDs.
+    const client = await getClient(clientId).catch(() => null);
     if (!client) {
       return res.status(404).json({ error: "Client not found" });
     }
-
     const clientFields = client.fields || {};
     const businessName = clientFields["Business Name"] || "Client";
+
+    // Now load the rest in parallel
+    const [posts, leads, attribution] = await Promise.all([
+      getPostsByBusinessName(businessName).catch(() => []),
+      getRecentLeads(10).catch(() => []),
+      getRecentAttribution(50).catch(() => []),
+    ]);
 
     // ── KPIs ──
     const now = new Date();

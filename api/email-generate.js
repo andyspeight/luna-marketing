@@ -1,7 +1,7 @@
 // api/email-generate.js
 // Newsletter draft generator
 // Pulls top open Research Sparks and drafts a weekly newsletter using Andy's voice
-// Saves to Email Queue with status "Awaiting Approval"
+// Saves to Email Queue with status "Awaiting Approval" (or "Quality Hold" if validator fails)
 //
 // Triggered by:
 //   - Cron (Mondays 06:30 UTC) - automatic weekly newsletter draft
@@ -12,10 +12,14 @@
 //   - emailType: "Newsletter" (default), "One-off Broadcast"
 //   - includeSparks: true (default) - whether to use research sparks
 //   - subjectHint: optional string to guide subject line
+//
+// PATCHED 1 May 2026 (Day 6.5): brand guardrails + content validator wired in.
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { wrapEmail, plainToHtml, htmlToPlain } = require("./email-template.js");
 const { addUtm } = require("./utm-helper.js");
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validateContent } = require("./validate-content.js");
 
 const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -86,36 +90,38 @@ async function getOpenSparks(limit = 8) {
 async function generateNewsletterDraft(clientFields, sparks, options = {}) {
   const businessName = clientFields["Business Name"] || "Travelgenix";
   const websiteUrl = clientFields["Website URL"] || "https://travelgenix.io";
-  
+
   const sparksBlock = sparks.length > 0
     ? sparks.map((s, i) => `${i + 1}. [${s.source} — score ${s.score}]
    Headline: ${s.headline}
    URL: ${s.url}
    Angle: ${s.angle || "(no angle)"}
    Summary: ${(s.summary || "").slice(0, 250)}`).join("\n\n")
-    : "(No fresh sparks. Generate a Travelgenix product/feature update or thought leadership piece instead.)";
+    : "(No fresh sparks. Generate a Travelgenix product/feature update or thought leadership piece instead. Do NOT invent product features that have not been launched.)";
 
   const today = new Date();
   const monthName = today.toLocaleString("en-GB", { month: "long", year: "numeric" });
 
-  const systemPrompt = `You write a weekly B2B email newsletter for ${businessName}, a UK travel-tech SaaS company. The audience is travel agency owners, tour operators, and travel industry leaders.
+  // Travelgenix-specific newsletter prompt. The BRAND_GUARDRAILS prepended above
+  // already covers anti-fabrication, banned competitor names, banned words, etc.
+  const newsletterPrompt = `You write a weekly B2B email newsletter for ${businessName}, a UK travel-tech SaaS company. The audience is travel agency owners, tour operators, and travel industry leaders.
 
 Voice: Andy Speight (CEO). Warm, direct, knowledgeable, opinionated. Talks like a smart industry friend, not a corporate marketer.
 
-UK English. NO em dashes (use commas, full stops, or en dashes). NO Oxford commas. NO corporate jargon.
-
-BANNED WORDS: leverage, utilize, synergy, game-changer, innovative, cutting-edge, delve, navigate, in today's digital landscape, robust, empower, harness, nestled, embark, tapestry, hidden gem, bucket list, unlock.
+UK English.
 
 NEWSLETTER STRUCTURE (target 350-500 words total):
 
-1. **Subject line** — under 60 chars. Specific, curiosity-driving, no clickbait. Example: "TProfile's NJT deal and what it means for SMEs"
-2. **Preview text** — under 130 chars. Complements subject, sells the open. Different from subject.
-3. **Opening** — 2-3 sentences. Andy speaking directly. Hook the reader.
-4. **Main content** — 2-3 short sections, each with an H2 heading. Use the Research Sparks as factual foundation. Don't summarise the news — give Andy's TAKE.
-5. **One actionable tip OR product callout** — short section. Practical value.
-6. **Sign-off** — "Andy" (just first name).
+1. Subject line — under 60 chars. Specific, curiosity-driving, no clickbait. Make it about an industry trend or insight (do NOT name any competitor in the subject).
+2. Preview text — under 130 chars. Complements subject, sells the open. Different from subject.
+3. Opening — 2-3 sentences. Andy speaking directly. Hook the reader.
+4. Main content — 2-3 short sections, each with an H2 heading. Use the Research Sparks as factual foundation. Don't summarise the news — give Andy's TAKE on what it means for UK SME travel agents.
+5. One actionable tip OR product callout — short section. Practical value. Only mention Travelgenix product features that genuinely exist (Travelify mid-office, Luna AI suite, widgets, bookable websites). Do NOT invent feature names or version numbers.
+6. Sign-off — "Andy" (just first name).
 
 CTA: include ONE primary CTA URL pointing to ${websiteUrl} or a relevant page. We'll add UTM params automatically.
+
+CRITICAL — when the sparks reference a competitor name, paraphrase the news WITHOUT naming the competitor. Example: instead of "TProfile's deal with NJT shows..." write "the latest consolidator deal in the homeworking space shows...". The brand guardrails above explain how to handle this.
 
 Today's research sparks (use the most relevant 2-3):
 
@@ -135,6 +141,9 @@ OUTPUT FORMAT — return ONLY a valid JSON object, no preamble, no markdown fenc
 Newsletter date: ${monthName}.
 
 ${options.subjectHint ? `Subject hint from sender: ${options.subjectHint}` : ""}`;
+
+  // Prepend brand guardrails — single source of truth for anti-fabrication etc.
+  const systemPrompt = BRAND_GUARDRAILS + "\n\n" + newsletterPrompt;
 
   const response = await aiClient.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -189,25 +198,47 @@ module.exports = async (req, res) => {
     const body = req.body || {};
     const clientId = body.clientId || TRAVELGENIX_CLIENT_ID;
     const emailType = body.emailType || "Newsletter";
-    const includeSparks = body.includeSparks !== false; // default true
+    const includeSparks = body.includeSparks !== false;
     const subjectHint = body.subjectHint || "";
 
     // 1. Load client
     const client = await getClient(clientId);
     const clientFields = client.fields || {};
+    const isTravelgenix = clientId === TRAVELGENIX_CLIENT_ID;
 
     // 2. Load sparks
     const sparks = includeSparks ? await getOpenSparks(8) : [];
     console.log(`Generating ${emailType} for ${clientFields["Business Name"]} with ${sparks.length} sparks`);
 
-    // 3. Generate the draft
+    // 3. Generate the draft (with brand guardrails prepended to system prompt)
     const draft = await generateNewsletterDraft(clientFields, sparks, { subjectHint });
 
     // 4. Compose final HTML
     const html = composeEmailHtml(draft);
     const plain = htmlToPlain(html);
 
-    // 5. Save to Email Queue (status: Awaiting Approval)
+    // 5. VALIDATE before saving (Travelgenix only — per Day 6.5 scope decision)
+    let status = "Awaiting Approval";
+    let qualityIssues = "";
+
+    if (isTravelgenix) {
+      const validationText = `${draft.subject || ""}\n\n${plain}`;
+      const validation = validateContent(validationText);
+      if (validation.severity === "fail") {
+        status = "Quality Hold";
+        qualityIssues = "FAIL (blocked from approval):\n" +
+          validation.issues.filter(i => i.severity === "fail")
+            .map(i => `  • ${i.code}: ${i.detail}`).join("\n");
+        console.warn(`[VALIDATOR] Newsletter draft blocked: ${qualityIssues}`);
+      } else if (validation.severity === "warn") {
+        // Warnings: still saves as Awaiting Approval but log issues
+        qualityIssues = "WARNINGS (review recommended):\n" +
+          validation.issues.filter(i => i.severity === "warn")
+            .map(i => `  • ${i.code}: ${i.detail}`).join("\n");
+      }
+    }
+
+    // 6. Save to Email Queue
     const fields = {
       "Subject": draft.subject || "Travelgenix Newsletter",
       "Email Type": emailType,
@@ -215,10 +246,15 @@ module.exports = async (req, res) => {
       "Body HTML": html,
       "Body Plain": plain,
       "Preview Text": draft.previewText || "",
-      "Status": "Awaiting Approval",
+      "Status": status,
     };
 
-    // Link source sparks if returned
+    if (qualityIssues) {
+      // Use Rejection Reason field to surface quality issues — if you've added
+      // a 'Quality Issues' field on Email Queue, this writes there too.
+      fields["Rejection Reason"] = qualityIssues.slice(0, 1000);
+    }
+
     if (draft.sourceSparkIds && Array.isArray(draft.sourceSparkIds) && draft.sourceSparkIds.length > 0) {
       fields["Source Sparks"] = draft.sourceSparkIds.filter((id) => typeof id === "string" && id.startsWith("rec"));
     }
@@ -233,7 +269,11 @@ module.exports = async (req, res) => {
       previewText: draft.previewText,
       sparkCount: sparks.length,
       ctaUrl: draft.ctaUrl,
-      message: "Newsletter draft saved with status Awaiting Approval. Review in the Email Queue table.",
+      status,
+      qualityIssues: qualityIssues || null,
+      message: status === "Quality Hold"
+        ? "Newsletter draft saved with Quality Hold status — validator flagged issues. Review before approving."
+        : "Newsletter draft saved with status Awaiting Approval. Review in the Email Queue table.",
     });
   } catch (e) {
     console.error("Newsletter generation failed:", e);

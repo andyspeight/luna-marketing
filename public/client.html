@@ -172,6 +172,24 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 .dash-drawer-close svg { width:20px; height:20px; }
 .dash-drawer-body { padding:var(--space-5); }
 
+/* Bloomberg-style ticker */
+.dash-ticker { position:relative; display:flex; align-items:center; height:44px; background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-md); overflow:hidden; margin-bottom:var(--space-6); }
+.dash-ticker::before { content:'LIVE'; position:absolute; top:0; left:0; bottom:0; display:flex; align-items:center; padding:0 var(--space-3); background:var(--tg-accent-dark); color:#fff; font-family:var(--tg-font-mono); font-size:10px; font-weight:700; letter-spacing:1.5px; z-index:2; }
+[data-theme="dark"] .dash-ticker::before { background:var(--tg-accent); color:#000; }
+.dash-ticker::after { content:''; position:absolute; top:0; left:48px; bottom:0; width:24px; background:linear-gradient(90deg, var(--tg-bg-primary), transparent); z-index:2; pointer-events:none; }
+.dash-ticker-track { display:flex; align-items:center; padding-left:48px; animation:tickerScroll 90s linear infinite; white-space:nowrap; will-change:transform; }
+.dash-ticker:hover .dash-ticker-track { animation-play-state:paused; }
+.dash-ticker-item { display:inline-flex; align-items:center; gap:var(--space-2); padding:0 var(--space-5); font-family:var(--tg-font-mono); font-size:var(--text-sm); }
+.dash-ticker-label { color:var(--tg-text-tertiary); font-weight:600; letter-spacing:0.8px; text-transform:uppercase; font-size:11px; }
+.dash-ticker-value { color:var(--tg-text-primary); font-weight:700; font-variant-numeric:tabular-nums; }
+.dash-ticker-delta { font-weight:700; font-size:11px; padding:2px 6px; border-radius:3px; font-variant-numeric:tabular-nums; }
+.dash-ticker-delta.up { color:var(--tg-success); background:rgba(16,185,129,0.08); }
+.dash-ticker-delta.down { color:var(--tg-error); background:rgba(239,68,68,0.08); }
+.dash-ticker-delta.flat { color:var(--tg-text-tertiary); background:var(--tg-bg-tertiary); }
+.dash-ticker-sep { color:var(--tg-border); font-size:14px; padding:0 var(--space-1); user-select:none; }
+@keyframes tickerScroll { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
+@media (prefers-reduced-motion:reduce) { .dash-ticker-track { animation:none; padding-left:48px; } }
+
 /* ══════════════════════════════════════════
    CARDS & SHARED
    ══════════════════════════════════════════ */
@@ -1141,13 +1159,17 @@ async function renderDashboard() {
 }
 
 function dashboardSkeletonHTML() {
-  return '<div class="dash-section"><div class="dash-skeleton" style="height:80px"></div></div>' +
+  return '<div class="dash-skeleton" style="height:44px;margin-bottom:24px"></div>' +
+    '<div class="dash-section"><div class="dash-skeleton" style="height:80px"></div></div>' +
     '<div class="dash-section"><div class="dash-skeleton" style="height:72px;margin-bottom:8px"></div><div class="dash-skeleton" style="height:72px;margin-bottom:8px"></div><div class="dash-skeleton" style="height:72px"></div></div>' +
     '<div class="dash-section"><div class="dash-skeleton" style="height:120px"></div></div>';
 }
 
 function drawDashboard(el, d) {
   var h = '';
+
+  // ── Live ticker ──
+  h += tickerHTML(d.kpis);
 
   // ── Lede ──
   h += '<div class="dash-section">';
@@ -1279,6 +1301,42 @@ function kpiStripHTML(k) {
     '<div class="dash-kpi"><div class="dash-kpi-label">Demos booked</div><div class="dash-kpi-value">' + k.demoBookings + '</div>' + delta(k.demoBookingsDelta) + '</div>' +
     '<div class="dash-kpi"><div class="dash-kpi-label">Reach</div><div class="dash-kpi-value">' + formatBig(k.postReach) + '</div>' + delta(k.postReachDelta) + '</div>' +
     '<div class="dash-kpi"><div class="dash-kpi-label">Site clicks</div><div class="dash-kpi-value">' + k.websiteClicks + '</div>' + delta(k.websiteClicksDelta) + '</div>' +
+    '</div>';
+}
+
+function tickerHTML(k) {
+  function deltaPill(d) {
+    if (!d) return '<span class="dash-ticker-delta flat">\u2013</span>';
+    var ch = d.charAt(0);
+    var up = ch === '+';
+    var down = ch === '-';
+    var cls = up ? 'up' : (down ? 'down' : 'flat');
+    var arrow = up ? '\u25B2' : (down ? '\u25BC' : '\u2013');
+    return '<span class="dash-ticker-delta ' + cls + '">' + arrow + ' ' + d.replace(/^[+\-]/, '') + '</span>';
+  }
+  function pct(s) {
+    if (!s) return '0%';
+    return s;
+  }
+  function item(label, value, deltaStr) {
+    var d = (deltaStr === undefined || deltaStr === null) ? '' : deltaPill(deltaStr);
+    return '<div class="dash-ticker-item"><span class="dash-ticker-label">' + label + '</span><span class="dash-ticker-value">' + value + '</span>' + d + '</div>';
+  }
+  // Build the ticker payload once
+  var items = [
+    item('POSTS PUB', String(k.postsPublished || 0), k.postsPublishedDelta),
+    item('REACH', formatBig(k.postReach || 0), k.postReachDelta),
+    item('CLICKS', String(k.websiteClicks || 0), k.websiteClicksDelta),
+    item('DEMOS', String(k.demoBookings || 0), k.demoBookingsDelta),
+    item('VISITS', String(k.profileVisits || 0), k.profileVisitsDelta),
+    item('EMAIL OPEN', pct(k.emailOpenRate)),
+    item('EMAIL CLICK', pct(k.emailClickRate))
+  ];
+  var sep = '<span class="dash-ticker-sep">\u25CF</span>';
+  var oneLoop = items.join(sep);
+  // Duplicate the loop so the scroll wraps seamlessly (the keyframe translates -50%)
+  return '<div class="dash-ticker" role="region" aria-label="Live metrics ticker">' +
+    '<div class="dash-ticker-track">' + oneLoop + sep + oneLoop + sep + '</div>' +
     '</div>';
 }
 

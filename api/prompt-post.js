@@ -1,9 +1,23 @@
+// api/prompt-post.js
+// Single post generator from a user prompt. Used by the "Create Post from Prompt"
+// flow in the client portal.
+//
+// PATCHED 1 May 2026 (Day 6.5):
+//   - Brand guardrails prepended to system prompt
+//   - Content validator wired in before saving
+//   - Auto Publish DISABLED for Travelgenix (b2b-saas) regardless of client setting
+//   - If validator fails, status flips to 'Quality Hold' instead of Approved/Queued
+
 const Anthropic = require("@anthropic-ai/sdk").default;
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validatePost } = require("./validate-content.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const PEXELS_KEY = process.env.PEXELS_KEY;
+
+const TRAVELGENIX_CLIENT_ID = "recFXQY7be6gMr4In";
 
 async function getClient(clientId) {
   var res = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali/" + clientId, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
@@ -53,9 +67,25 @@ module.exports = async function handler(req, res) {
 
     var clientRecord = await getClient(clientId);
     var f = clientRecord.fields;
-    var autoPublish = !!f["Auto Publish"];
+    var clientType = (f["Client Type"] || "").toLowerCase();
+    var isTravelgenix = clientId === TRAVELGENIX_CLIENT_ID || clientType === "b2b-saas";
 
-    var systemPrompt = "You are Luna, the automated social media content engine for travel agents. Generate exactly ONE social media post based on the user's request below.\n\nYou are writing on behalf of this travel agent:\nBusiness: " + (f["Business Name"] || "") + "\nTrading Name: " + (f["Trading Name"] || "") + "\nWebsite: " + (f["Website URL"] || "") + "\nTone: " + (f["Tone Keywords"] || "warm, professional") + "\nEmoji: " + (f["Emoji Usage"] || "Light") + "\nFormality: " + (f["Formality"] || "Balanced") + "\nSentence style: " + (f["Sentence Style"] || "Short and punchy") + "\nCTA style: " + (f["CTA Style"] || "Question-based") + "\n\nRules:\n- UK English only. No em dashes. No Oxford comma.\n- Never use: leverage, seamless, game-changer, deep dive, elevate, unlock, navigate, landscape, robust, cutting-edge, empower, harness, delve, nestled, embark, tapestry, picture this, there's something for everyone, the world is waiting, adventure awaits, escape the ordinary, hidden gem, bucket list, sun-kissed\n- No political, religious, or controversial content.\n- No pricing unless the user provides specific prices in their prompt.\n- No competitor mentions.\n- Every post must include a call-to-action.\n- Facebook caption: 50-200 words. Instagram: 50-150 words. LinkedIn: 50-250 words. Twitter/X: 200 chars max, punchy. Pinterest: 300 chars max, SEO-rich. TikTok: 100 words max, casual hook-first. GBP: 100 words max, local SEO.\n- Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.\n- Be specific to the destination. Reference actual places, beaches, dishes, experiences.\n\nCTA link format: " + (f["Website URL"] || "") + "/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing\n\nReturn ONLY valid JSON with no markdown fences. One object with these fields:\ncontent_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3 specific search terms), image_orientation, suggested_day, suggested_time";
+    // Auto Publish disabled for B2B SaaS clients regardless of their setting.
+    // Travelgenix's reputational risk from a fabricated post is too high to
+    // ever skip manual review. Client can still toggle Auto Publish in their
+    // settings, but for B2B it is silently overridden here.
+    var autoPublish = isTravelgenix ? false : !!f["Auto Publish"];
+
+    // Build the per-client base prompt (kept similar to original for parity)
+    var basePrompt = "You are Luna, the automated social media content engine for travel agents. Generate exactly ONE social media post based on the user's request below.\n\nYou are writing on behalf of this travel agent:\nBusiness: " + (f["Business Name"] || "") + "\nTrading Name: " + (f["Trading Name"] || "") + "\nWebsite: " + (f["Website URL"] || "") + "\nTone: " + (f["Tone Keywords"] || "warm, professional") + "\nEmoji: " + (f["Emoji Usage"] || "Light") + "\nFormality: " + (f["Formality"] || "Balanced") + "\nSentence style: " + (f["Sentence Style"] || "Short and punchy") + "\nCTA style: " + (f["CTA Style"] || "Question-based") + "\n\nRules:\n- UK English only.\n- No political, religious, or controversial content.\n- No pricing unless the user provides specific prices in their prompt.\n- Every post must include a call-to-action.\n- Facebook caption: 50-200 words. Instagram: 50-150 words. LinkedIn: 50-250 words. Twitter/X: 200 chars max, punchy. Pinterest: 300 chars max, SEO-rich. TikTok: 100 words max, casual hook-first. GBP: 100 words max, local SEO.\n- Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.\n- Be specific to the destination. Reference actual places, beaches, dishes, experiences.\n\nCTA link format: " + (f["Website URL"] || "") + "/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing\n\nReturn ONLY valid JSON with no markdown fences. One object with these fields:\ncontent_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3 specific search terms), image_orientation, suggested_day, suggested_time";
+
+    // Travelgenix gets the full brand guardrails prepended.
+    // B2C clients still keep their original lighter ruleset for now (per scope
+    // decision: Just Travelgenix in Day 6.5). When scope expands, add guardrails
+    // to all clients.
+    var systemPrompt = isTravelgenix
+      ? BRAND_GUARDRAILS + "\n\n" + basePrompt
+      : basePrompt;
 
     var response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -80,7 +110,43 @@ module.exports = async function handler(req, res) {
 
     // FCDO check
     var fcdo = await checkFCDO(post.destination);
-    var status = !fcdo.safe ? "Suppressed" : (autoPublish ? "Approved" : "Queued");
+
+    // Build draft fields object for validation (mirrors what we'll save)
+    var draftFields = {
+      "Caption - Facebook": post.caption_facebook || "",
+      "Caption - Instagram": post.caption_instagram || "",
+      "Caption - LinkedIn": post.caption_linkedin || "",
+      "Caption - Twitter": post.caption_twitter || "",
+      "Caption - Pinterest": post.caption_pinterest || "",
+      "Caption - TikTok": post.caption_tiktok || "",
+      "Caption - GBP": post.caption_gbp || ""
+    };
+
+    // VALIDATE before deciding status (Travelgenix only)
+    var validation = null;
+    var qualityIssues = "";
+    if (isTravelgenix) {
+      validation = validatePost(draftFields);
+      if (validation.severity === "fail") {
+        qualityIssues = validation.formattedReport;
+        console.warn("[VALIDATOR] Prompt-post BLOCKED: " + qualityIssues);
+      } else if (validation.severity === "warn") {
+        qualityIssues = validation.formattedReport;
+      }
+    }
+
+    // Determine final status
+    var status;
+    if (!fcdo.safe) {
+      status = "Suppressed";
+    } else if (validation && validation.severity === "fail") {
+      // Validator blocks — never publish
+      status = "Quality Hold";
+    } else if (autoPublish) {
+      status = "Approved";
+    } else {
+      status = "Queued";
+    }
 
     // Save to Airtable
     var savedRecord = null;
@@ -108,6 +174,13 @@ module.exports = async function handler(req, res) {
           "Image Position": "50% 50%"
         }
       };
+
+      // If validator flagged issues, write them to Quality Issues field.
+      // (Field must exist on Post Queue table — added during Day 6.5 setup.)
+      if (qualityIssues) {
+        record.fields["Quality Issues"] = qualityIssues.slice(0, 50000);
+      }
+
       var aRes = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblbhyiuULvedva0K", {
         method: "POST",
         headers: { Authorization: "Bearer " + AIRTABLE_KEY, "Content-Type": "application/json" },
@@ -122,6 +195,11 @@ module.exports = async function handler(req, res) {
       image_url: imageUrl,
       fcdo_safe: fcdo.safe,
       status: status,
+      validation: validation ? {
+        severity: validation.severity,
+        issueCount: validation.issues.length,
+        report: validation.formattedReport,
+      } : null,
       saved: !!savedRecord,
       record_id: savedRecord ? savedRecord.id : null,
       client: f["Business Name"],

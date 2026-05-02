@@ -2,13 +2,15 @@
 // Daily cron — drafts LinkedIn comments for top "New" Hot Leads
 // Triggered by Vercel cron Mon-Fri 08:00 UTC
 //
-// What it does:
-//   1. Pull all Hot Leads with Status=New AND Score >= 6
-//   2. For each, draft a LinkedIn comment in Andy's voice
-//   3. Write the draft into Suggested Comment field, set Status=Drafted
-//   4. Andy reviews in Airtable, copy-pastes manually onto LinkedIn
+// PATCHED 1 May 2026 (Day 6.5):
+//   - BRAND_GUARDRAILS prepended to system prompt
+//   - validateContent called on each comment before saving
+//   - Failed comments are NOT saved; lead stays in 'New' status with notes
+//     explaining why so the next run can retry
 
 const Anthropic = require("@anthropic-ai/sdk").default;
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validateContent } = require("./validate-content.js");
 
 const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -16,8 +18,6 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const HOT_LEADS_TABLE = "Hot Leads";
 const CRON_SECRET = process.env.CRON_SECRET;
-
-// ── Airtable ──
 
 async function airtableFetch(url) {
   const r = await fetch(url, {
@@ -54,10 +54,8 @@ async function getNewLeads() {
   return (data.records || []).map((r) => ({ id: r.id, ...r.fields }));
 }
 
-// ── Comment drafting ──
-
 async function draftComment(lead) {
-  const systemPrompt = `You write LinkedIn comments on behalf of Andy Speight, CEO of Travelgenix (a UK B2B travel-tech SaaS company).
+  const commentPrompt = `You write LinkedIn comments on behalf of Andy Speight, CEO of Travelgenix (a UK B2B travel-tech SaaS company).
 
 Your comments must sound EXACTLY like Andy:
 - Warm but direct. Conversational. UK English.
@@ -67,22 +65,17 @@ Your comments must sound EXACTLY like Andy:
 - Never sales-y. Never starts with "Great post!" or similar fluff.
 - 2-4 sentences max. Mobile-readable.
 
-BANNED: leverage, utilize, synergy, game-changer, innovative, cutting-edge, delve, unlock, navigate (as in "navigate the landscape"), em dashes, Oxford commas.
-
-CONTEXT — what Andy/Travelgenix does (use sparingly, only when natural):
-- Travelgenix sells travel-tech SaaS to travel agencies and tour operators
-- Mid-office (Travelify), AI suite (Luna Brain, Chat, Marketing), 100+ widgets
-- Premium suppliers via direct API: RateHawk, WebBeds, Hotelbeds, Jet2 Holidays, TUI
-- Andy is opinionated about: AI replacing OTAs, post-sale client success, value over price
-
-LEAD TYPE TO HANDLE: ${lead["Lead Type"]}
+LEAD TYPE: ${lead["Lead Type"]}
 
 ${lead["Lead Type"] === "Brand Mention" ? "→ Travelgenix was mentioned. Thank graciously, add value, never just 'thanks'." : ""}
-${lead["Lead Type"] === "Competitor Mention" ? "→ Competitor was mentioned. Don't slag them off. Be magnanimous, then highlight a different angle Travelgenix takes (without saying 'we're better')." : ""}
-${lead["Lead Type"] === "Buying Intent" ? "→ Someone's asking about travel software. Don't pitch. Ask a useful clarifying question or share an insight. Build rapport first." : ""}
+${lead["Lead Type"] === "Competitor Mention" ? "→ A competitor was mentioned. The brand guardrails above explain how to handle this — speak generally about industry trends or how clients have moved over to Travelgenix from various other systems." : ""}
+${lead["Lead Type"] === "Buying Intent" ? "→ Someone's asking about travel software. Don't pitch. Ask a useful clarifying question or share an insight. Build rapport first. If they named a competitor they're using, refer to it generically as 'your current setup' or 'what you've got now'." : ""}
 ${lead["Lead Type"] === "Industry Discussion" ? "→ A travel industry discussion. Add a genuinely useful perspective. Andy as a knowledgeable peer." : ""}
 
 OUTPUT — return ONLY the comment text. No preamble, no quotes, no explanations.`;
+
+  // Prepend brand guardrails (anti-fabrication, anti-competitor-naming, banned words, etc.)
+  const systemPrompt = BRAND_GUARDRAILS + "\n\n" + commentPrompt;
 
   const userMessage = `LinkedIn post by ${lead["Author Name"] || "(unknown)"} (${lead["Author Title"] || "no title"} at ${lead["Author Company"] || "unknown"}):
 
@@ -105,8 +98,6 @@ Draft Andy's comment.`;
   return text.trim().replace(/^["']|["']$/g, "");
 }
 
-// ── Main handler ──
-
 module.exports = async (req, res) => {
   if (req.headers.authorization !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -120,12 +111,42 @@ module.exports = async (req, res) => {
     for (const lead of leads) {
       try {
         const comment = await draftComment(lead);
-        await airtablePatch(HOT_LEADS_TABLE, lead.id, {
-          "Suggested Comment": comment,
-          "Comment Drafted At": new Date().toISOString(),
-          "Status": "Drafted",
-        });
-        results.push({ id: lead.id, status: "drafted", commentLength: comment.length });
+
+        // VALIDATE the generated comment
+        const validation = validateContent(comment);
+
+        if (validation.severity === "fail") {
+          // Don't save the bad comment. Add a note so we can see why it was rejected.
+          // Status stays 'New' so the next run can retry (different temperature).
+          const issuesShort = validation.issues
+            .filter(i => i.severity === "fail")
+            .map(i => i.code).join(", ");
+          await airtablePatch(HOT_LEADS_TABLE, lead.id, {
+            "Notes": `[${new Date().toISOString().slice(0, 16)}] Comment generation produced flagged content (${issuesShort}) and was discarded. Will retry on next run.`,
+          });
+          console.warn(`[VALIDATOR] Comment for ${lead.id} blocked: ${issuesShort}`);
+          results.push({ id: lead.id, status: "rejected_by_validator", issues: issuesShort });
+        } else {
+          // Comment passed (warn or pass) — save it
+          const fields = {
+            "Suggested Comment": comment,
+            "Comment Drafted At": new Date().toISOString(),
+            "Status": "Drafted",
+          };
+          if (validation.severity === "warn") {
+            const warnNote = validation.issues
+              .filter(i => i.severity === "warn")
+              .map(i => i.code).join(", ");
+            fields["Notes"] = `Comment passed with warnings: ${warnNote}`;
+          }
+          await airtablePatch(HOT_LEADS_TABLE, lead.id, fields);
+          results.push({
+            id: lead.id,
+            status: "drafted",
+            commentLength: comment.length,
+            severity: validation.severity,
+          });
+        }
       } catch (e) {
         console.error(`Comment draft failed for ${lead.id}:`, e.message);
         results.push({ id: lead.id, status: "failed", error: e.message });
@@ -137,6 +158,7 @@ module.exports = async (req, res) => {
       success: true,
       processed: results.length,
       drafted: results.filter((r) => r.status === "drafted").length,
+      rejectedByValidator: results.filter((r) => r.status === "rejected_by_validator").length,
       failed: results.filter((r) => r.status === "failed").length,
       results,
     });

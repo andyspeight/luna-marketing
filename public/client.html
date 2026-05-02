@@ -508,6 +508,35 @@ var PLATS=[
   {key:'gbp',icon:'GBP',ratio:'1.91/1',img:'image_url',cls:'plat-gbp',name:'Google Business',color:'#4285F4',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> View on Maps</span>'}
 ];
 
+// Map a post's target_channel to the platform key(s) it should display.
+// Returns null when there's no specific channel set — caller should fall
+// back to "show every populated caption" (legacy multi-channel behaviour).
+var CHANNEL_TO_PLAT_KEYS = {
+  'LinkedIn Personal': ['linkedin'],
+  'LinkedIn Company': ['linkedin'],
+  'Facebook': ['facebook'],
+  'Instagram': ['instagram'],
+  'Twitter/X': ['twitter'],
+  'Twitter': ['twitter'],
+  'Pinterest': ['pinterest'],
+  'TikTok': ['tiktok'],
+  'Google Business Profile': ['gbp'],
+  'GBP': ['gbp']
+};
+function platformKeysForPost(p) {
+  if (!p) return null;
+  var ch = p.target_channel;
+  if (ch && CHANNEL_TO_PLAT_KEYS[ch]) return CHANNEL_TO_PLAT_KEYS[ch];
+  return null; // fall back to legacy behaviour
+}
+function shouldShowPlat(p, platKey) {
+  var keys = platformKeysForPost(p);
+  if (keys) return keys.indexOf(platKey) !== -1;
+  // legacy: show whichever captions are populated
+  var cap = p['caption_' + platKey] || '';
+  return !!cap.trim();
+}
+
 // Channel icon SVGs for B2B target channel pills
 var CHANNEL_ICONS = {
   'LinkedIn Personal': '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>',
@@ -548,11 +577,15 @@ function renderPosts(){
     var sel=!!state.selected[p.id];
     h+='<div class="post-card" id="cp-'+p.id+'">';
     h+='<div style="padding:var(--space-3) var(--space-3) 0;display:flex;align-items:center;gap:var(--space-2)"><input type="checkbox" '+(sel?'checked':'')+' onchange="C.sel(\''+p.id+'\',this.checked)" style="flex-shrink:0;width:16px;height:16px"><div class="plat-tabs" style="flex:1">';
-    PLATS.forEach(function(pl,i){var cap=p['caption_'+pl.key]||'';if(!cap&&pl.key!=='facebook')return;h+='<button class="plat-tab'+(i===0?' active':'')+'" onclick="C.showPlat(this,\''+p.id+'-'+pl.key+'\')">'+pl.icon+'</button>'});
+    var firstTabSet=false;
+    PLATS.forEach(function(pl,i){if(!shouldShowPlat(p,pl.key))return;var isActive=!firstTabSet;if(isActive)firstTabSet=true;h+='<button class="plat-tab'+(isActive?' active':'')+'" onclick="C.showPlat(this,\''+p.id+'-'+pl.key+'\')">'+pl.icon+'</button>'});
     h+='</div></div>';
+    var firstActiveSet=false;
     PLATS.forEach(function(pl,i){
-      var cap=p['caption_'+pl.key]||p.caption_facebook||'';var imgSrc=p[pl.img]||p.image_url||'';var wc=cap.split(/\s+/).filter(Boolean).length;
-      h+='<div class="plat-content'+(i===0?' active':'')+'" id="pc-'+p.id+'-'+pl.key+'"><div class="plat-frame" style="margin:var(--space-2) var(--space-3) 0">';
+      if(!shouldShowPlat(p,pl.key))return;
+      var isActive=!firstActiveSet;if(isActive)firstActiveSet=true;
+      var cap=p['caption_'+pl.key]||'';var imgSrc=p[pl.img]||p.image_url||'';var wc=cap.split(/\s+/).filter(Boolean).length;
+      h+='<div class="plat-content'+(isActive?' active':'')+'" id="pc-'+p.id+'-'+pl.key+'"><div class="plat-frame" style="margin:var(--space-2) var(--space-3) 0">';
       h+='<div class="plat-header" style="background:'+pl.color+'08"><div class="plat-avatar">'+cName.charAt(0)+'</div><div><div class="plat-author">'+cName+'</div><div class="plat-author-sub">'+pl.name+' &middot; Just now</div></div><span class="post-wc" style="margin-left:auto">'+wc+' words</span></div>';
       if(pl.vid&&p.video_url)h+='<video src="'+p.video_url+'" style="width:100%;aspect-ratio:'+pl.ratio+';object-fit:cover;display:block;background:var(--tg-primary)" muted loop onmouseenter="this.play()" onmouseleave="this.pause()"></video>';
       else if(imgSrc)h+='<img class="post-img" src="'+imgSrc+'" style="aspect-ratio:'+pl.ratio+';object-position:'+(p.image_position||'50% 50%')+'" onclick="C.reposition(event,\''+p.id+'\')" id="pimg-'+p.id+'-'+pl.key+'" alt="Post image">';
@@ -571,6 +604,13 @@ function renderPosts(){
       }
       h+='<div class="plat-footer">'+pl.actions+'</div></div></div>';
     });
+    // Safety: if no platform matched (target_channel set but caption missing for it)
+    if(!firstActiveSet){
+      h+='<div style="margin:var(--space-3);padding:var(--space-4);background:rgba(239,68,68,0.06);border:1px dashed var(--tg-error);border-radius:var(--radius-md);color:var(--tg-error);font-size:var(--text-sm);text-align:center">';
+      h+='<strong>No content for this post yet.</strong><br>';
+      h+='<span style="color:var(--tg-text-tertiary);font-size:var(--text-xs)">Target channel: '+esc(p.target_channel||'(not set)')+'. Caption is empty. Reject this post or wait for re-generation.</span>';
+      h+='</div>';
+    }
     h+='<div class="img-search-panel"><input placeholder="Search for a new image..." id="imgq-'+p.id+'" onkeydown="if(event.key===\'Enter\')C.searchImg(\''+p.id+'\')"><button class="btn btn-ghost btn-sm" onclick="C.searchImg(\''+p.id+'\')">Search</button><div id="imgr-'+p.id+'" style="display:flex;gap:var(--space-1);margin-top:var(--space-2);overflow-x:auto;width:100%"></div></div>';
     // Meta row with B2B badges (Target Channel + Content Pillar)
     h+='<div style="padding:var(--space-2) var(--space-3);display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">';
@@ -1080,7 +1120,7 @@ window.C={
   showPlat:function(btn,panelId){var card=btn.closest('.post-card');card.querySelectorAll('.plat-tab').forEach(function(t){t.classList.remove('active')});btn.classList.add('active');card.querySelectorAll('.plat-content').forEach(function(p){p.classList.remove('active')});var panel=$('pc-'+panelId);if(panel)panel.classList.add('active')},
   editCaption:function(pid,platform){var el=$('cap-'+pid+'-'+platform);if(!el||el.querySelector('.cap-edit'))return;var current=el.textContent;el.innerHTML='<textarea class="cap-edit" id="captext-'+pid+'-'+platform+'">'+esc(current)+'</textarea><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="cap-save" onclick="C.saveCaption(\''+pid+'\',\''+platform+'\')">Save</button><button class="cap-cancel" onclick="C.cancelEdit(\''+pid+'\',\''+platform+'\')">Cancel</button></div>';var ta=el.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)},
   saveCaption:async function(pid,platform){var ta=$('captext-'+pid+'-'+platform);if(!ta)return;var newCap=ta.value;var el=$('cap-'+pid+'-'+platform);var body={recordId:pid,action:'update_caption'};body[platform]=newCap;try{var r=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error((await r.json()).error);var post=state.posts.find(function(p){return p.id===pid});if(post)post['caption_'+platform]=newCap;el.innerHTML=esc(newCap);var wc=newCap.split(/\s+/).filter(Boolean).length;var frame=el.closest('.plat-frame');if(frame){var wcEl=frame.querySelector('.post-wc');if(wcEl)wcEl.textContent=wc+' words'}}catch(e){alert('Save failed: '+e.message)}},
-  cancelEdit:function(pid,platform){var el=$('cap-'+pid+'-'+platform);if(!el)return;var post=state.posts.find(function(p){return p.id===pid});var cap=post?post['caption_'+platform]||post.caption_facebook||'':'';el.innerHTML=esc(cap)},
+  cancelEdit:function(pid,platform){var el=$('cap-'+pid+'-'+platform);if(!el)return;var post=state.posts.find(function(p){return p.id===pid});var cap=post?post['caption_'+platform]||'':'';el.innerHTML=esc(cap)},
   // First Comment toggle + edit
   toggleFirstComment:function(btn,bodyId){var body=$(bodyId);if(!body)return;var expanded=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',expanded?'false':'true');body.classList.toggle('open',!expanded)},
   editFirstComment:function(pid,platform){var fcId='fc-'+pid+'-'+platform;var el=$(fcId);if(!el||el.querySelector('.cap-edit'))return;var current=el.textContent;el.innerHTML='<textarea class="cap-edit" id="fctext-'+pid+'">'+esc(current)+'</textarea><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="cap-save" onclick="C.saveFirstComment(\''+pid+'\',\''+platform+'\')">Save</button><button class="cap-cancel" onclick="C.cancelFirstComment(\''+pid+'\',\''+platform+'\')">Cancel</button></div>';var ta=el.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)},
@@ -1101,7 +1141,7 @@ window.C={
   calDragOver:function(e,col){e.preventDefault();col.classList.add('drop-target');var rect=col.getBoundingClientRect();var y=e.clientY-rect.top;var rawMin=Math.round((y/CAL_H+CAL_S)*60);var snapped=Math.round(rawMin/30)*30;var h=Math.floor(snapped/60);var m=snapped%60;var line=col.querySelector('.cal-drop-time');if(!line){line=document.createElement('div');line.className='cal-drop-time';col.appendChild(line)}line.style.display='block';line.style.top=timeTop(h,m)+'px';line.setAttribute('data-time',pad2(h)+':'+pad2(m))},
   calDragLeave:function(col){col.classList.remove('drop-target');var line=col.querySelector('.cal-drop-time');if(line)line.style.display='none'},
   calDrop:async function(e,dayIdx){e.preventDefault();var col=e.currentTarget;col.classList.remove('drop-target');var line=col.querySelector('.cal-drop-time');var newTime=line?line.getAttribute('data-time'):'09:00';if(line)line.style.display='none';if(!state.dragPid)return;var days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];var post=state.allPosts.find(function(p){return p.id===state.dragPid});if(post){var oldTitle=(post.title||'');var newTitle=oldTitle.replace(/monday|tuesday|wednesday|thursday|friday|saturday|sunday/gi,'')+' '+days[dayIdx];await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:state.dragPid,scheduledTime:newTime,title:newTitle.trim()})});await loadPosts();renderCalendar()}state.dragPid=null},
-  calShowPopup:function(e,pid){var p=state.allPosts.find(function(x){return x.id===pid});if(!p)return;var popup=$('calPopup');popup.innerHTML=(p.image_url?'<img class="cal-popup-img" src="'+p.image_url+'" alt="">':'')+'<div class="cal-popup-body"><div style="font-weight:600;margin-bottom:var(--space-1)">'+esc(p.destination||'')+'</div><div style="font-size:var(--text-xs);color:var(--tg-text-secondary);max-height:80px;overflow:hidden">'+esc((p.caption_facebook||'').substring(0,200))+'</div></div>';popup.classList.add('visible');popup.style.left=(e.clientX+16)+'px';popup.style.top=(e.clientY-20)+'px'},
+  calShowPopup:function(e,pid){var p=state.allPosts.find(function(x){return x.id===pid});if(!p)return;var popup=$('calPopup');var calCap='';var keys=platformKeysForPost(p);if(keys&&keys.length){calCap=p['caption_'+keys[0]]||'';}if(!calCap){calCap=p.caption_facebook||p.caption_linkedin||p.caption_instagram||p.caption_gbp||p.caption_twitter||p.caption_tiktok||'';}popup.innerHTML=(p.image_url?'<img class="cal-popup-img" src="'+p.image_url+'" alt="">':'')+'<div class="cal-popup-body"><div style="font-weight:600;margin-bottom:var(--space-1)">'+esc(p.destination||p.title||'')+'</div><div style="font-size:var(--text-xs);color:var(--tg-text-secondary);max-height:80px;overflow:hidden">'+esc(calCap.substring(0,200))+'</div></div>';popup.classList.add('visible');popup.style.left=(e.clientX+16)+'px';popup.style.top=(e.clientY-20)+'px'},
   calMovePopup:function(e){var p=$('calPopup');p.style.left=(e.clientX+16)+'px';p.style.top=(e.clientY-20)+'px'},
   calHidePopup:function(){$('calPopup').classList.remove('visible')},
   toggleTone:function(btn,t){btn.classList.toggle('active');var ts=[];btn.parentElement.querySelectorAll('.ps-btn.active').forEach(function(p){ts.push(p.textContent.trim())});var v=ts.join(', ');state.profile.tone=v;save({toneKeywords:v})},

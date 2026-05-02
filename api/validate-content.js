@@ -6,54 +6,43 @@
 // If severity === 'fail', the post MUST be saved with Status='Quality Hold' and the
 // issues written to Quality Issues field. Andy reviews manually.
 //
-// Updated: 1 May 2026 — Day 6.5 quality fix.
+// v2 — 2 May 2026 — Day 6.5 stress-test fix.
+// Closes 10 gaps found during adversarial testing:
+//   - First-name + verb fake testimonials ("Sarah told us...")
+//   - Anonymous-but-specific case studies ("A homeworker in Manchester doubled bookings")
+//   - "We saved them N hours" pattern (different verb order)
+//   - Award fabrication ("Won Best Travel Tech 2026")
+//   - Partnership fabrication ("Our partnership with American Express")
+//   - "As Andy Speight always says..." fabricated quotes
+//   - "X% of our clients" / "most clients" patterns
+//   - Banned openers escalated from warn to fail
+//   - Vague client outcome claims ("doubled their bookings")
+//   - Expanded competitor list
 
 // ─────────────────────────────────────────────────
-// RULE LISTS — keep in sync with brand-guardrails.js
+// RULE LISTS
 // ─────────────────────────────────────────────────
 
 const BANNED_WORDS = [
-  // From travelgenix-blog/linkedin/humanizer skills
   "leverage", "holistic", "robust", "seamless", "game-changer", "game changer",
   "paradigm", "delve", "delves", "delving", "tapestry", "unlock", "unlocks", "unlocking",
   "cutting-edge", "cutting edge", "groundbreaking", "nestled", "vibrant", "profound",
   "pivotal", "testament", "underscores", "underscore", "fostering", "foster",
   "garner", "garners", "garnering", "showcase", "showcases", "showcasing",
-  "interplay", "intricate", "intricacies", "enduring",
-  // Banned phrases (lowercased, will substring-match)
+  "interplay", "intricate", "intricacies", "enduring", "utilize", "synergy", "innovative",
 ];
 
 const BANNED_PHRASES = [
-  "in conclusion",
-  "to summarise",
-  "to summarize",
-  "as we've seen",
-  "as we have seen",
-  "at the end of the day",
-  "moving the needle",
-  "circle back",
-  "deep dive",
-  "in today's",
-  "in today\u2019s",
-  "in an era of",
-  "now more than ever",
-  "in the ever-evolving",
-  "it's important to note",
-  "let me explain why",
-  "here's the thing",
-  "and that got me thinking",
-  "let that sink in",
-  "read that again",
-  "hot take",
-  "unpopular opinion",
-  "this is the way",
+  "in conclusion", "to summarise", "to summarize", "as we've seen", "as we have seen",
+  "at the end of the day", "moving the needle", "circle back", "deep dive",
+  "in today's", "in today\u2019s", "in an era of", "now more than ever",
+  "in the ever-evolving", "in the ever evolving",
+  "it's important to note", "let me explain why", "here's the thing",
+  "and that got me thinking", "let that sink in", "read that again",
+  "hot take", "unpopular opinion", "this is the way",
   "i'll say it louder for the people in the back",
-  "picture this",
-  "imagine if",
-  "what if i told you",
-  "great question",
-  "you're absolutely right",
-  "i hope this helps",
+  "picture this", "imagine if", "what if i told you",
+  "great question", "you're absolutely right", "i hope this helps",
 ];
 
 const COMPETITOR_NAMES = [
@@ -65,30 +54,76 @@ const COMPETITOR_NAMES = [
   "moonstride",
   "tr10",
   "travelsoft",
-  "juniper", // careful: 'juniper' could appear in destination context. We'll
-             // require word boundary. The check below uses regex with \b.
+  "juniper",
   "constellation",
   "atcore",
+  "open destinations",
+  "reservation group",
+  "comtec",
+];
+
+// Common UK first names that AI loves to invent fake testimonials with
+const COMMON_FIRST_NAMES = [
+  "sarah", "jane", "rachel", "emma", "kate", "katie", "claire", "lucy", "rebecca", "hannah",
+  "michelle", "lauren", "amy", "becky", "helen", "sophie", "charlotte", "victoria", "anna",
+  "louise", "fiona", "karen", "linda", "tracy", "tracey", "samantha", "sam",
+  "joe", "john", "james", "david", "mark", "paul", "tom", "tony", "chris", "matt", "matthew",
+  "steve", "stephen", "andrew", "richard", "rick", "mike", "michael", "rob", "robert",
+  "dave", "phil", "philip", "simon", "ian", "alan", "neil", "gary", "kevin", "peter", "pete",
 ];
 
 const FABRICATED_NAME_PATTERNS = [
-  // "Sarah from Coastal Travel" / "Joe at Atlas Tours" / etc.
-  // Matches: <Capitalised first name> + (from|at) + <Capitalised company name>
+  // "Sarah from Coastal Travel" / "Joe at Atlas Tours"
   /\b[A-Z][a-z]+\s+(from|at)\s+[A-Z][A-Za-z0-9& ]{2,40}\b(?:\s+(Travel|Tours|Holidays|Agency|Co\.?))?/g,
-  // "<Person> said" / "<Person> told us" with a capitalised first name + surname
-  /\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+said|\s+told\s+us|\s+says)/g,
+  // "<First> <Last> said|told us|says"
+  /\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+said|\s+told\s+us|\s+says|\s+mentioned|\s+shared|\s+commented)/g,
 ];
+
+// First-name-only testimonials (NEW v2 — closes the "Sarah told us" gap)
+function buildFirstNameTestimonialRegex() {
+  const namesPattern = COMMON_FIRST_NAMES.join("|");
+  return new RegExp(
+    `\\b(${namesPattern})\\s+(told\\s+(us|me)|said|says|mentioned|shared|reckons|reckoned)\\b`,
+    "gi"
+  );
+}
+
+// Anonymous case studies (NEW v2 — closes the "A homeworker in Manchester" gap)
+const ANONYMOUS_CASE_STUDY_PATTERNS = [
+  /\b(a|an)\s+(homeworker|agent|operator|owner|consultant|founder|director|manager)\s+(in|from|based\s+in)\s+[A-Z][a-z]+(?:[\s-][A-Z][a-z]+)?\s+(?:has\s+|just\s+)?(doubled|tripled|quadrupled|halved|grew|grown|saved|increased|cut|reduced|boosted|lifted|hit|smashed|exceeded|achieved|landed|secured|won|booked)/gi,
+  /\b(one\s+of\s+our|one\s+of\s+the)\s+(agents?|operators?|clients?|customers?)\s+(?:in\s+[A-Z][a-z]+\s+)?(doubled|tripled|saved\s+\d|grew\s+by|grew\s+\d|increased\s+\d|cut\s+\d|reduced\s+\d|booked\s+\d)/gi,
+];
+
+// Andy Speight fake quote (NEW v2)
+const ANDY_QUOTE_PATTERN = /\b(as\s+)?andy\s+speight\s+(always\s+)?(says|said|told|tells|likes\s+to\s+say|puts\s+it)\b/gi;
 
 const FABRICATED_STAT_PATTERNS = [
-  // "saved 40 hours a month" / "saved 12 hours per week" — invented time savings
-  /\bsaved\s+\d+\s*(\+|plus)?\s+(hours?|days?|minutes?)\s*(a|per)\s+(week|month|day|year)/gi,
+  // "saved [them] 40 hours a month" — broader pattern (v2 fix)
+  /\bsaved\s+(?:them\s+|us\s+|me\s+|her\s+|him\s+|the(?:m|ir)\s+)?\d+\s*(\+|plus)?\s*(hours?|days?|minutes?)\s*(a|per)?\s*(week|month|day|year)?/gi,
   // "increased X by Y%" without citation
-  /\b(increased|improved|boosted|grew|reduced|cut|saved|lifted)\s+(?:[a-z]+\s+){0,3}by\s+\d+%/gi,
+  /\b(increased|improved|boosted|grew|reduced|cut|saved|lifted|doubled|tripled)\s+(?:[a-z]+\s+){0,3}by\s+\d+%?/gi,
   // "X% increase in" / "X% improvement"
   /\b\d+%\s+(increase|improvement|uplift|boost|reduction|saving)/gi,
+  // "X% of our clients" (NEW v2)
+  /\b\d+%\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\b/gi,
+  // "most/many of our clients see results..." (NEW v2)
+  /\b(most|majority|three\s+quarters|two\s+thirds|nine\s+out\s+of\s+ten)\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\s+\w+/gi,
+  // "doubled/tripled their <thing>" (NEW v2)
+  /\b(doubled|tripled|quadrupled|halved)\s+(?:their|her|his|the)\s+\w+/gi,
 ];
 
-// Throat-clearing openers (check if post STARTS with these)
+// Award fabrication (NEW v2)
+const AWARD_PATTERNS = [
+  /\b(won|winning|winner\s+of|awarded|received|named)\s+(?:the\s+)?(best|leading|top|number\s+one|#1)\s+[a-z\s]{3,40}\s+(award|prize|recognition|accolade)\b/gi,
+  /\b(best|leading)\s+[a-z\s]{3,30}\s+(20\d\d|of\s+the\s+year)\s+at\s+the\s+\w+/gi,
+];
+
+// Partnership fabrication (NEW v2)
+const PARTNERSHIP_PATTERNS = [
+  /\b(our|new|exclusive|recent)\s+partnership\s+with\s+([A-Z][\w]+(?:\s+[A-Z][\w]+)*)/gi,
+  /\btravelgenix\s+(has\s+)?(just\s+)?(partnered|teamed\s+up|joined\s+forces)\s+with\s+([A-Z][\w]+(?:\s+[A-Z][\w]+)*)/gi,
+];
+
 const BANNED_OPENER_PATTERNS = [
   /^in today'?s/i,
   /^in an era of/i,
@@ -97,7 +132,19 @@ const BANNED_OPENER_PATTERNS = [
   /^picture this/i,
   /^imagine if/i,
   /^what if i told you/i,
-  /^\?/,         // starts with a question mark? (shouldn't happen but defensive)
+];
+
+// Real partnerships from brand-guardrails — these are allowed
+const ALLOWED_PARTNERSHIPS = [
+  "pts", "protected trust services",
+  "tng", "the networking group",
+  "holiday extras",
+  "advantage travel",
+  "ratehawk", "webbeds", "hotelbeds",
+  "jet2", "gold medal", "aerticket",
+  "tui", "etihad",
+  "holiday taxis", "flexible autos", "faremine",
+  "agendas group",
 ];
 
 // ─────────────────────────────────────────────────
@@ -105,15 +152,11 @@ const BANNED_OPENER_PATTERNS = [
 // ─────────────────────────────────────────────────
 
 function checkEmDashes(text) {
-  // Matches em dash (—) and en dash (–) used in place of em dashes
   const matches = text.match(/[\u2014\u2013]/g);
-  return matches ? { count: matches.length, examples: ["—"] } : null;
+  return matches ? { count: matches.length } : null;
 }
 
 function checkOxfordCommas(text) {
-  // Pattern: ", and " preceded by another comma in the same clause.
-  // We look for "X, Y, and Z" — comma+space+word+comma+space+and
-  // This is approximate. False positives possible on lists with subordinate clauses.
   const matches = text.match(/,\s+\w[\w\s'"-]{0,40},\s+and\s+/g);
   return matches ? { count: matches.length, examples: matches.slice(0, 3) } : null;
 }
@@ -127,7 +170,6 @@ function checkBannedWords(text) {
   const lower = " " + text.toLowerCase() + " ";
   const found = [];
   for (const word of BANNED_WORDS) {
-    // Word boundary match
     const regex = new RegExp(`\\b${word.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
     if (regex.test(lower)) found.push(word);
   }
@@ -147,7 +189,6 @@ function checkCompetitors(text) {
   const lower = text.toLowerCase();
   const found = [];
   for (const name of COMPETITOR_NAMES) {
-    // Word boundary match to avoid e.g. 'Juniper Park' false positives
     const regex = new RegExp(`\\b${name.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
     if (regex.test(lower)) found.push(name);
   }
@@ -156,18 +197,45 @@ function checkCompetitors(text) {
 
 function checkFabricatedNames(text) {
   const found = [];
+  
+  // Pattern 1: "Sarah from/at Company"
   for (const pattern of FABRICATED_NAME_PATTERNS) {
     const matches = text.match(pattern);
     if (matches) {
       for (const m of matches) {
-        // Filter out obviously legitimate phrases
         const lower = m.toLowerCase();
         if (lower.includes("andy speight") || lower.includes("darren swan")) continue;
-        // "Booking from London" — geographical, not a fabricated client. Allow common cities.
         if (/^[A-Z][a-z]+\s+from\s+(London|Paris|Dubai|Manchester|Birmingham|Edinburgh|Bristol|Leeds|Liverpool|Glasgow|UK|US|USA)\b/.test(m)) continue;
         found.push(m);
       }
     }
+  }
+  
+  // Pattern 2: First name only + testimonial verb (NEW v2)
+  const firstNameRegex = buildFirstNameTestimonialRegex();
+  const firstNameMatches = text.match(firstNameRegex);
+  if (firstNameMatches) {
+    for (const m of firstNameMatches) {
+      const lower = m.toLowerCase();
+      if (lower.startsWith("andy") || lower.startsWith("darren")) continue;
+      found.push(m);
+    }
+  }
+  
+  // Pattern 3: Andy Speight fake quote (NEW v2)
+  const andyMatches = text.match(ANDY_QUOTE_PATTERN);
+  if (andyMatches) {
+    found.push(...andyMatches);
+  }
+  
+  return found.length ? { matches: found.slice(0, 5) } : null;
+}
+
+function checkAnonymousCaseStudies(text) {
+  const found = [];
+  for (const pattern of ANONYMOUS_CASE_STUDY_PATTERNS) {
+    const matches = text.match(pattern);
+    if (matches) found.push(...matches);
   }
   return found.length ? { matches: found.slice(0, 5) } : null;
 }
@@ -178,17 +246,40 @@ function checkFabricatedStats(text) {
     const matches = text.match(pattern);
     if (matches) {
       for (const m of matches) {
-        // Allow if the stat appears alongside a clear citation marker
         const lower = m.toLowerCase();
-        // Check if the surrounding 100 chars contain a citation
         const idx = text.toLowerCase().indexOf(lower);
         const context = text.slice(Math.max(0, idx - 100), idx + m.length + 100).toLowerCase();
-        if (context.match(/(according to|abta|phocuswright|skift|travolution|ttg|travel weekly|google|reuters|study by|research by|report by)/)) continue;
+        if (context.match(/(according to|abta|phocuswright|skift|travolution|ttg|travel weekly|google|reuters|study by|research by|report by|atol|aito|advantage)/)) continue;
         found.push(m);
       }
     }
   }
   return found.length ? { matches: found.slice(0, 5) } : null;
+}
+
+function checkAwards(text) {
+  const found = [];
+  for (const pattern of AWARD_PATTERNS) {
+    const matches = text.match(pattern);
+    if (matches) found.push(...matches);
+  }
+  return found.length ? { matches: found.slice(0, 3) } : null;
+}
+
+function checkPartnerships(text) {
+  const found = [];
+  for (const pattern of PARTNERSHIP_PATTERNS) {
+    const matches = text.match(pattern);
+    if (matches) {
+      for (const m of matches) {
+        const lower = m.toLowerCase();
+        // Allow real partnerships
+        if (ALLOWED_PARTNERSHIPS.some(allowed => lower.includes(allowed))) continue;
+        found.push(m);
+      }
+    }
+  }
+  return found.length ? { matches: found.slice(0, 3) } : null;
 }
 
 function checkBannedOpener(text) {
@@ -205,13 +296,6 @@ function checkBannedOpener(text) {
 // MAIN VALIDATOR
 // ─────────────────────────────────────────────────
 
-/**
- * Validate one piece of content (caption, blog body, email body, comment).
- *
- * @param {string} text - the content to check
- * @param {object} opts - { allowBenchmarkStats?: bool, fieldName?: string }
- * @returns {object} { passed, issues, severity, summary }
- */
 function validateContent(text, opts = {}) {
   if (!text || typeof text !== "string" || !text.trim()) {
     return { passed: true, issues: [], severity: "pass", summary: "(empty)" };
@@ -219,23 +303,34 @@ function validateContent(text, opts = {}) {
 
   const issues = [];
 
-  // SEVERITY: FAIL — these always block publishing
+  // SEVERITY: FAIL
   const competitors = checkCompetitors(text);
   if (competitors) issues.push({ severity: "fail", code: "COMPETITOR_NAMED", detail: `Named competitors: ${competitors.competitors.join(", ")}` });
 
   const fabNames = checkFabricatedNames(text);
   if (fabNames) issues.push({ severity: "fail", code: "FABRICATED_CLIENT", detail: `Possible invented client/person reference: ${fabNames.matches.join(" / ")}` });
 
+  const anonCases = checkAnonymousCaseStudies(text);
+  if (anonCases) issues.push({ severity: "fail", code: "FABRICATED_CASE_STUDY", detail: `Specific anonymous case study (likely invented): ${anonCases.matches.join(" / ")}` });
+
   if (!opts.allowBenchmarkStats) {
     const fabStats = checkFabricatedStats(text);
     if (fabStats) issues.push({ severity: "fail", code: "FABRICATED_STAT", detail: `Possible invented statistic: ${fabStats.matches.join(" / ")}` });
   }
 
-  // SEVERITY: FAIL — formatting issues that should block
-  const emDashes = checkEmDashes(text);
-  if (emDashes) issues.push({ severity: "fail", code: "EM_DASH", detail: `Em dashes found (${emDashes.count})` });
+  const awards = checkAwards(text);
+  if (awards) issues.push({ severity: "fail", code: "FABRICATED_AWARD", detail: `Possible invented award: ${awards.matches.join(" / ")}` });
 
-  // SEVERITY: WARN — fixable but not necessarily a publishing blocker
+  const partnerships = checkPartnerships(text);
+  if (partnerships) issues.push({ severity: "fail", code: "FABRICATED_PARTNERSHIP", detail: `Possible invented partnership: ${partnerships.matches.join(" / ")}` });
+
+  const emDashes = checkEmDashes(text);
+  if (emDashes) issues.push({ severity: "fail", code: "EM_DASH", detail: `Em/en dashes found (${emDashes.count})` });
+
+  const opener = checkBannedOpener(text);
+  if (opener) issues.push({ severity: "fail", code: "BANNED_OPENER", detail: `Throat-clearing opener: "${opener.opener}"` });
+
+  // SEVERITY: WARN
   const oxford = checkOxfordCommas(text);
   if (oxford) issues.push({ severity: "warn", code: "OXFORD_COMMA", detail: `Possible Oxford comma usage (${oxford.count}): ${oxford.examples.join(", ")}` });
 
@@ -248,10 +343,6 @@ function validateContent(text, opts = {}) {
   const phrases = checkBannedPhrases(text);
   if (phrases) issues.push({ severity: "warn", code: "BANNED_PHRASE", detail: `Banned phrases: ${phrases.phrases.join(" | ")}` });
 
-  const opener = checkBannedOpener(text);
-  if (opener) issues.push({ severity: "warn", code: "BANNED_OPENER", detail: `Throat-clearing opener: "${opener.opener}"` });
-
-  // Determine overall severity
   const hasFail = issues.some(i => i.severity === "fail");
   const hasWarn = issues.some(i => i.severity === "warn");
   const severity = hasFail ? "fail" : hasWarn ? "warn" : "pass";
@@ -266,13 +357,6 @@ function validateContent(text, opts = {}) {
   };
 }
 
-/**
- * Validate a full post (multiple captions + blog content).
- * Returns one combined result.
- *
- * @param {object} fields - the Post Queue fields object
- * @returns {object} { passed, severity, issues, formattedReport }
- */
 function validatePost(fields) {
   const checks = [
     { name: "LinkedIn caption", text: fields["Caption - LinkedIn"] },
@@ -293,16 +377,12 @@ function validatePost(fields) {
     if (!check.text) continue;
     const result = validateContent(check.text);
     for (const issue of result.issues) {
-      allIssues.push({
-        ...issue,
-        field: check.name,
-      });
+      allIssues.push({ ...issue, field: check.name });
     }
     if (result.severity === "fail") highestSeverity = "fail";
     else if (result.severity === "warn" && highestSeverity !== "fail") highestSeverity = "warn";
   }
 
-  // Build formatted report for Quality Issues field
   const failIssues = allIssues.filter(i => i.severity === "fail");
   const warnIssues = allIssues.filter(i => i.severity === "warn");
   let report = "";

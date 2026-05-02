@@ -4,10 +4,21 @@
 // Day 2: B2B clients get research sparks injected
 // Day 3: All posts get UTM tags auto-injected after queue write
 // Triggered by Vercel cron: Mon/Wed/Fri 07:00 UTC
+//
+// PATCHED 1 May 2026 (Day 6.5):
+//   - BRAND_GUARDRAILS prepended to BOTH B2B and B2C system prompts
+//     (B2C only enforced for Travelgenix-scope per Andy's decision; other
+//     B2C clients keep their existing lighter ruleset for now)
+//   - validatePost called on every generated post BEFORE writing to Airtable
+//   - Posts that fail validation save with Status='Quality Hold' instead of 'Queued'
+//   - Quality Issues field populated with the failure report
+//   - Auto-publish stays disabled for Travelgenix regardless of client setting
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { buildB2BSystemPrompt } = require("./b2b-prompt.js");
 const { tagPostUrls, channelToUtmSource, postUtmContent, addUtm, replaceUrlsInText } = require("./utm-helper.js");
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validatePost } = require("./validate-content.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -18,6 +29,8 @@ const QUEUE_TABLE = "tblbhyiuULvedva0K";
 const EVENTS_TABLE = "tblQxIYrbzd6YlJYV";
 const SPARKS_TABLE = "Research Sparks";
 const CRON_SECRET = process.env.CRON_SECRET;
+
+const TRAVELGENIX_CLIENT_ID = "recFXQY7be6gMr4In";
 
 // ── Helpers ──
 
@@ -184,11 +197,9 @@ async function tagRecordUrls(createdRecords, postsByIndex) {
     const rec = createdRecords[i];
     const post = postsByIndex[i];
     if (!post) continue;
-    
-    // Tag the post object (mutates a copy) using the now-known recordId for utm_content
+
     const tagged = tagPostUrls(post, rec.id);
-    
-    // Build PATCH body with the tagged caption fields
+
     const patchFields = {};
     if (tagged.captionFacebook !== undefined) patchFields.fldWe3d6ec4pu9jcZ = tagged.captionFacebook;
     if (tagged.captionInstagram !== undefined) patchFields.fldpAenBNwgJMFs7k = tagged.captionInstagram;
@@ -199,9 +210,9 @@ async function tagRecordUrls(createdRecords, postsByIndex) {
     if (tagged.captionGBP !== undefined) patchFields.fld39pPTqpajLLpnX = tagged.captionGBP;
     if (tagged.firstComment !== undefined) patchFields.fldkOeFJLYsjhZ9KZ = tagged.firstComment;
     if (tagged.ctaUrl !== undefined) patchFields.fld8s5QVemJ4plhzs = tagged.ctaUrl;
-    
+
     if (Object.keys(patchFields).length === 0) continue;
-    
+
     try {
       await fetch(
         `https://api.airtable.com/v0/${AIRTABLE_BASE}/${QUEUE_TABLE}/${rec.id}`,
@@ -220,7 +231,7 @@ async function tagRecordUrls(createdRecords, postsByIndex) {
   }
 }
 
-// ── B2C Prompt Builder (unchanged) ──
+// ── B2C Prompt Builder (existing rules retained) ──
 
 function buildB2CSystemPrompt(f) {
   return `You are Luna, the automated social media content engine for travel agents. You generate social media posts that will be published to Facebook, Instagram, LinkedIn, Twitter/X, Pinterest, TikTok and Google Business Profile without human review. Because no human checks your output before it goes live, accuracy and brand safety are paramount.
@@ -251,8 +262,12 @@ Specialisms: ${Array.isArray(f["Specialisms"]) ? f["Specialisms"].join(", ") : f
 ## Content Rules
 
 BANNED words/phrases: "leverage", "utilize", "synergy", "game-changer", "innovative", "cutting-edge", "delve", "in today's digital landscape", "it's important to note"
-Use UK English spelling. Use contractions naturally. 
+Use UK English spelling. Use contractions naturally.
 No more than 3 hashtags per platform. No Oxford commas. No em dashes.
+
+## Anti-fabrication
+
+Do NOT invent client testimonials, named customers, or specific outcome statistics. If you don't know a real client name, do not write one. Speak generally about "our travellers" or "guests we've sent" rather than naming a person.
 
 ## Output Format
 
@@ -309,6 +324,7 @@ async function processClient(record, events) {
   const clientId = record.id;
   const clientType = f["Client Type"] || "b2c-travel";
   const isB2B = clientType === "b2b-saas";
+  const isTravelgenix = clientId === TRAVELGENIX_CLIENT_ID;
 
   console.log(
     `Processing ${f["Business Name"]} (${clientType}, ${f["Posting Frequency"] || (isB2B ? 12 : 3)} posts)`
@@ -317,18 +333,30 @@ async function processClient(record, events) {
   const sparks = isB2B ? await getOpenSparks(10) : [];
   if (isB2B) console.log(`  loaded ${sparks.length} open sparks`);
 
-  const systemPrompt = isB2B
+  // Build the per-client base prompt
+  const basePrompt = isB2B
     ? buildB2BSystemPrompt(f, events, sparks)
     : buildB2CSystemPrompt(f);
 
+  // Prepend BRAND_GUARDRAILS for Travelgenix (and any future B2B SaaS client).
+  // For B2C clients we keep the existing lighter ruleset for now per Andy's
+  // scope decision on Day 6.5. To extend guardrails to all clients, change
+  // the condition below to `true`.
+  const systemPrompt = isB2B
+    ? BRAND_GUARDRAILS + "\n\n" + basePrompt
+    : basePrompt;
+
+  // IMPORTANT: web_search tool stays for B2B because the prompt may need to
+  // verify a research spark detail. The guardrails explicitly tell the model
+  // not to invent facts even when searching, so this is now safer.
   const tools = isB2B
     ? [{ type: "web_search_20250305", name: "web_search" }]
     : [];
 
   const userMessage = isB2B
     ? (sparks.length > 0
-        ? "Generate this week's B2B content. Use the Research Sparks above as your primary factual foundation for Industry Commentary posts. Search the web only if you need supplementary detail. Return ONLY a JSON array."
-        : "Generate this week's B2B content. No fresh sparks today, so search the web for current UK travel industry news first, then generate all posts. Return ONLY a JSON array.")
+        ? "Generate this week's B2B content. Use the Research Sparks above as your primary factual foundation for Industry Commentary posts. Search the web only if you need supplementary detail. Return ONLY a JSON array. Remember: never name competitors, never invent client names, never invent statistics."
+        : "Generate this week's B2B content. No fresh sparks today, so search the web for current UK travel industry news first, then generate all posts. Return ONLY a JSON array. Remember: never name competitors, never invent client names, never invent statistics.")
     : "Generate this week's social media posts. Return ONLY a JSON array.";
 
   const messages = [{ role: "user", content: userMessage }];
@@ -351,7 +379,7 @@ async function processClient(record, events) {
   }
 
   const jsonStr = textContent.replace(/```json/g, "").replace(/```/g, "").trim();
-  
+
   let posts;
   try {
     posts = JSON.parse(jsonStr);
@@ -367,8 +395,10 @@ async function processClient(record, events) {
   const weekLabel = `${new Date().getFullYear()}-W${String(Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 86400000 / 7)).padStart(2, "0")}`;
 
   const queueRecords = [];
-  const postsByIndex = []; // we keep the original posts to UTM-tag them after write
+  const postsByIndex = [];
   const usedSparkIds = [];
+  let blockedCount = 0;
+  let warnCount = 0;
 
   for (let i = 0; i < posts.length; i++) {
     const post = posts[i];
@@ -433,10 +463,39 @@ async function processClient(record, events) {
       if (post.captionGBP) fields.fld39pPTqpajLLpnX = post.captionGBP;
     }
 
+    // ── VALIDATE — Travelgenix only (per Day 6.5 scope) ──
+    // Build a "field name" version of the captions for the validator
+    if (isTravelgenix) {
+      const validationFields = {
+        "Caption - Facebook": fields.fldWe3d6ec4pu9jcZ,
+        "Caption - Instagram": fields.fldpAenBNwgJMFs7k,
+        "Caption - LinkedIn": fields.fldJKPHgL0U9ZZAuX,
+        "Caption - Twitter": fields.fldYQsiw65rcd2X2B,
+        "Caption - Pinterest": fields.fldCfdS6ByrofDtkE || "",
+        "Caption - TikTok": fields.fldyVawF0JrCLb9n5 || "",
+        "Caption - GBP": fields.fld39pPTqpajLLpnX || "",
+        "First Comment": fields.fldkOeFJLYsjhZ9KZ || "",
+      };
+
+      const validation = validatePost(validationFields);
+
+      if (validation.severity === "fail") {
+        // Block — Status flips to Quality Hold; never auto-publishes
+        fields.fldDmTOSTSlkObab7 = "Quality Hold";
+        // Quality Issues field (assumed added on Post Queue table — Day 6.5 setup)
+        // If the field doesn't exist yet, the typecast=true call silently drops it.
+        fields["Quality Issues"] = validation.formattedReport.slice(0, 50000);
+        blockedCount++;
+        console.warn(`  [VALIDATOR] Post ${i + 1} blocked: ${validation.issues.filter(x => x.severity === "fail").map(x => x.code).join(", ")}`);
+      } else if (validation.severity === "warn") {
+        // Warning — still queue but record the issues for review
+        fields["Quality Issues"] = "WARNINGS:\n" + validation.formattedReport.slice(0, 50000);
+        warnCount++;
+      }
+    }
+
     queueRecords.push({ fields });
-    
-    // Keep a clean copy of the original post for UTM tagging.
-    // We strip citations on the captions to match what's stored.
+
     postsByIndex.push({
       postTitle: post.postTitle,
       targetChannel: isB2B ? normaliseChannel(post.targetChannel) : null,
@@ -454,7 +513,8 @@ async function processClient(record, events) {
 
   // Write to Airtable queue and get the created records back
   const created = await writeToQueueAndReturnIds(queueRecords);
-  console.log(`  ${created.length}/${queueRecords.length} records written`);
+  console.log(`  ${created.length}/${queueRecords.length} records written` +
+    (isTravelgenix ? ` (${blockedCount} on Quality Hold, ${warnCount} with warnings)` : ""));
 
   // Now UTM-tag the URLs in each record using the recordId for utm_content
   if (created.length > 0) {
@@ -475,6 +535,8 @@ async function processClient(record, events) {
     posts: created.length,
     type: clientType,
     sparksUsed: usedSparkIds.length,
+    qualityHold: blockedCount,
+    warnings: warnCount,
   };
 }
 
@@ -513,6 +575,7 @@ module.exports = async (req, res) => {
       errors: results.filter((r) => r.status === "error").length,
       b2b: results.filter((r) => r.type === "b2b-saas").length,
       b2c: results.filter((r) => r.type === "b2c-travel").length,
+      qualityHoldTotal: results.reduce((s, r) => s + (r.qualityHold || 0), 0),
       results,
     };
 

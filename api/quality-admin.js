@@ -1,17 +1,19 @@
 // api/quality-admin.js
 // Day 6.5 quality admin endpoint. Lets Andy run quality operations from curl.
 //
+// PATCHED 2 May 2026 (Day 6.5 fix-2):
+//   - Fixed the Airtable formula. ARRAYJOIN({Client}, ',') returns primary
+//     field values (e.g. "Travelgenix") not record IDs, so FIND for the
+//     record ID was always returning 0. Replaced with a primary-field match
+//     against the client business name.
+//
 // Auth: Bearer CRON_SECRET
 //
 // Actions (POST body { action: '...' }):
 //   - 'preview-delete': Lists all non-published posts for Travelgenix.
-//                       Does NOT delete. Use first to see what's there.
 //   - 'nuclear-delete': Deletes all non-published Travelgenix posts.
-//                       Returns count deleted. Cannot be undone.
-//   - 'audit-existing': Runs the validator over Travelgenix's posts and
-//                       reports issues without deleting anything.
-//   - 'validate-text': Validates a single piece of text (pass `text` in body).
-//                      Useful for testing the validator.
+//   - 'audit-existing': Runs the validator over Travelgenix's posts.
+//   - 'validate-text': Validates a single piece of text.
 
 const { validateContent, validatePost } = require("./validate-content.js");
 
@@ -19,6 +21,7 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const POST_QUEUE_TABLE = "Post Queue";
 const TRAVELGENIX_CLIENT_ID = "recFXQY7be6gMr4In";
+const TRAVELGENIX_BUSINESS_NAME = "Travelgenix";
 const CRON_SECRET = process.env.CRON_SECRET;
 
 async function airtableFetch(url, options = {}) {
@@ -51,15 +54,18 @@ async function listAll(table, params = "") {
   return all;
 }
 
+// FIXED: ARRAYJOIN({Client}, ',') returns the primary field values of the
+// linked records (e.g. "Travelgenix"), not the record IDs. So we match
+// against the business name. If you ever rename the Travelgenix client
+// record's primary field, update TRAVELGENIX_BUSINESS_NAME above.
 async function getNonPublishedTravelgenixPosts() {
   const formula = encodeURIComponent(
-    `AND(NOT({Status}='Published'), FIND('${TRAVELGENIX_CLIENT_ID}', ARRAYJOIN({Client}, ',')))`
+    `AND(NOT({Status}='Published'), FIND('${TRAVELGENIX_BUSINESS_NAME}', ARRAYJOIN({Client}, ',')))`
   );
   return listAll(POST_QUEUE_TABLE, `filterByFormula=${formula}`);
 }
 
 async function deleteRecords(recordIds) {
-  // Airtable allows up to 10 deletes per call
   const deleted = [];
   for (let i = 0; i < recordIds.length; i += 10) {
     const batch = recordIds.slice(i, i + 10);
@@ -77,13 +83,10 @@ async function deleteRecords(recordIds) {
     for (const rec of (data.records || [])) {
       if (rec.deleted) deleted.push(rec.id);
     }
-    // Rate limit pacing
     await new Promise(r => setTimeout(r, 250));
   }
   return deleted;
 }
-
-// ─── ACTIONS ───
 
 async function previewDelete() {
   const posts = await getNonPublishedTravelgenixPosts();
@@ -150,8 +153,6 @@ async function auditExisting() {
     message: `Audited ${posts.length} posts. ${failCount} would be blocked. ${warnCount} have warnings.`,
   };
 }
-
-// ─── MAIN HANDLER ───
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

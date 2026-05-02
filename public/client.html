@@ -101,6 +101,78 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 .tab-badge { position:absolute; top:50%; right:var(--space-3); transform:translateY(-50%); background:var(--tg-error); color:#fff; font-size:var(--text-xs); font-weight:700; padding:0 var(--space-2); border-radius:var(--radius-full); font-family:var(--tg-font-mono); min-width:20px; height:20px; line-height:20px; text-align:center; }
 
 /* ══════════════════════════════════════════
+   DASHBOARD TAB
+   ══════════════════════════════════════════ */
+.dash-section { margin-bottom:var(--space-6); }
+.dash-section-title { font-size:var(--text-xs); font-family:var(--tg-font-mono); color:var(--tg-accent-dark); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:var(--space-3); font-weight:600; }
+[data-theme="dark"] .dash-section-title { color:var(--tg-accent); }
+.dash-lede { font-size:var(--text-lg); line-height:1.5; color:var(--tg-text-secondary); margin-bottom:var(--space-2); }
+.dash-lede strong { color:var(--tg-text-primary); font-weight:600; }
+.dash-lede em { color:var(--tg-accent-dark); font-style:normal; font-weight:600; }
+[data-theme="dark"] .dash-lede em { color:var(--tg-accent); }
+.dash-action-card { display:flex; align-items:center; gap:var(--space-4); padding:var(--space-4); background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); cursor:pointer; transition:all var(--duration-fast); width:100%; text-align:left; font-family:var(--tg-font-body); margin-bottom:var(--space-2); }
+.dash-action-card:hover { border-color:var(--tg-accent); transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.dash-action-icon { width:44px; height:44px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.dash-action-icon svg { width:20px; height:20px; }
+.dash-action-body { flex:1; min-width:0; }
+.dash-action-title { font-weight:600; font-size:var(--text-base); color:var(--tg-text-primary); }
+.dash-action-desc { font-size:var(--text-sm); color:var(--tg-text-tertiary); margin-top:2px; }
+.dash-action-pill { padding:4px 12px; border-radius:var(--radius-full); font-size:var(--text-xs); font-weight:700; color:#fff; flex-shrink:0; font-family:var(--tg-font-mono); }
+.dash-action-arrow { color:var(--tg-text-tertiary); flex-shrink:0; }
+.dash-action-arrow svg { width:18px; height:18px; }
+.dash-kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-4); padding:var(--space-5); background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); }
+@media (max-width:600px) { .dash-kpi-grid { grid-template-columns:1fr; } }
+.dash-kpi { padding-right:var(--space-4); border-right:1px solid var(--tg-border-light); }
+.dash-kpi:last-child { border-right:none; }
+@media (max-width:600px) { .dash-kpi { border-right:none; border-bottom:1px solid var(--tg-border-light); padding-bottom:var(--space-3); padding-right:0; } .dash-kpi:last-child { border-bottom:none; padding-bottom:0; } }
+.dash-kpi-label { font-size:var(--text-xs); font-family:var(--tg-font-mono); color:var(--tg-text-tertiary); text-transform:uppercase; letter-spacing:1px; margin-bottom:var(--space-1); font-weight:600; }
+.dash-kpi-value { font-size:var(--text-2xl); font-weight:700; color:var(--tg-text-primary); line-height:1.1; font-variant-numeric:tabular-nums; }
+.dash-kpi-delta { font-size:var(--text-xs); font-weight:600; margin-top:var(--space-1); font-family:var(--tg-font-mono); }
+.dash-kpi-delta.up { color:var(--tg-success); }
+.dash-kpi-delta.down { color:var(--tg-error); }
+.dash-lead-card { background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); padding:var(--space-5); cursor:pointer; transition:all var(--duration-fast); margin-bottom:var(--space-3); }
+.dash-lead-card:hover { border-color:var(--tg-accent); transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.dash-lead-grid { display:grid; grid-template-columns:90px 1fr; gap:var(--space-4); align-items:start; }
+@media (max-width:540px) { .dash-lead-grid { grid-template-columns:1fr; } }
+.dash-lead-score { font-size:var(--text-2xl); font-weight:700; line-height:1; }
+.dash-lead-type { font-size:10px; font-family:var(--tg-font-mono); color:var(--tg-text-tertiary); text-transform:uppercase; letter-spacing:0.8px; margin-top:var(--space-1); font-weight:600; }
+.dash-lead-author { font-weight:600; color:var(--tg-text-primary); margin-bottom:var(--space-2); }
+.dash-lead-quote { padding:var(--space-2) var(--space-3); border-left:3px solid var(--tg-accent); font-style:italic; color:var(--tg-text-secondary); line-height:1.5; }
+.dash-lead-meta { font-size:var(--text-xs); color:var(--tg-text-tertiary); margin-top:var(--space-2); font-family:var(--tg-font-mono); }
+.dash-post-row { padding:var(--space-3) var(--space-4); border-bottom:1px solid var(--tg-border); cursor:pointer; transition:background var(--duration-fast); display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); }
+.dash-post-row:last-child { border-bottom:none; }
+.dash-post-row:hover { background:var(--tg-bg-secondary); }
+.dash-post-title { font-weight:600; font-size:var(--text-sm); color:var(--tg-text-primary); line-height:1.4; }
+.dash-post-meta { font-size:var(--text-xs); color:var(--tg-text-tertiary); margin-top:4px; }
+.dash-post-meta strong { color:var(--tg-accent-dark); font-weight:600; }
+[data-theme="dark"] .dash-post-meta strong { color:var(--tg-accent); }
+.dash-post-time { font-size:var(--text-xs); font-family:var(--tg-font-mono); color:var(--tg-text-tertiary); white-space:nowrap; flex-shrink:0; padding-top:2px; }
+.dash-top-post-card { background:linear-gradient(135deg, rgba(0,180,216,0.04), transparent); border:1px solid var(--tg-border); border-radius:var(--radius-lg); padding:var(--space-5); }
+.dash-top-post-title { font-size:var(--text-lg); font-weight:600; color:var(--tg-text-primary); margin-bottom:var(--space-2); line-height:1.4; }
+.dash-top-post-stats { display:flex; gap:var(--space-6); flex-wrap:wrap; margin-top:var(--space-4); }
+.dash-top-post-stat-value { font-size:var(--text-xl); font-weight:700; color:var(--tg-text-primary); font-variant-numeric:tabular-nums; }
+.dash-top-post-stat-value.accent { color:var(--tg-accent-dark); }
+[data-theme="dark"] .dash-top-post-stat-value.accent { color:var(--tg-accent); }
+.dash-top-post-stat-label { font-size:var(--text-xs); font-family:var(--tg-font-mono); color:var(--tg-text-tertiary); text-transform:uppercase; letter-spacing:0.8px; margin-top:2px; font-weight:600; }
+.dash-activity { display:flex; gap:var(--space-3); padding:var(--space-2) 0; font-size:var(--text-sm); color:var(--tg-text-secondary); border-bottom:1px solid var(--tg-border-light); }
+.dash-activity:last-child { border-bottom:none; }
+.dash-activity-time { width:70px; flex-shrink:0; font-size:var(--text-xs); font-family:var(--tg-font-mono); color:var(--tg-text-tertiary); padding-top:2px; }
+.dash-activity-text { flex:1; line-height:1.5; }
+.dash-activity-text strong { color:var(--tg-text-primary); font-weight:600; }
+.dash-activity-text em { color:var(--tg-accent-dark); font-style:italic; }
+[data-theme="dark"] .dash-activity-text em { color:var(--tg-accent); }
+.dash-skeleton { background:linear-gradient(90deg, var(--tg-bg-tertiary) 25%, var(--tg-bg-secondary) 50%, var(--tg-bg-tertiary) 75%); background-size:200% 100%; animation:skeleton 1.5s infinite; border-radius:var(--radius-md); }
+@keyframes skeleton { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+.dash-empty { text-align:center; padding:var(--space-8); color:var(--tg-text-tertiary); font-size:var(--text-sm); border:1px dashed var(--tg-border); border-radius:var(--radius-lg); }
+.dash-drawer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:50; }
+.dash-drawer { position:fixed; bottom:0; left:0; right:0; max-height:85vh; background:var(--tg-bg-primary); border-radius:var(--radius-xl) var(--radius-xl) 0 0; z-index:51; overflow-y:auto; box-shadow:var(--shadow-xl); }
+.dash-drawer-head { display:flex; align-items:center; justify-content:space-between; padding:var(--space-4) var(--space-5); border-bottom:1px solid var(--tg-border); position:sticky; top:0; background:var(--tg-bg-primary); }
+.dash-drawer-title { font-size:var(--text-lg); font-weight:600; color:var(--tg-text-primary); }
+.dash-drawer-close { background:none; border:none; cursor:pointer; color:var(--tg-text-tertiary); padding:var(--space-1); }
+.dash-drawer-close svg { width:20px; height:20px; }
+.dash-drawer-body { padding:var(--space-5); }
+
+/* ══════════════════════════════════════════
    CARDS & SHARED
    ══════════════════════════════════════════ */
 .card { background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); padding:var(--space-6); box-shadow:var(--shadow-sm); margin-bottom:var(--space-4); }
@@ -369,8 +441,9 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   </header>
   <div class="stats" id="statsRow"></div>
   <div id="eventsTicker" style="margin-bottom:var(--space-4);overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);display:none"></div>
-  <nav class="tabs" role="tablist"><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
+  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
   <main>
+    <div id="view-dashboard" class="hide" role="tabpanel"></div>
     <div id="view-posts" class="fade-in" role="tabpanel"></div>
     <div id="view-create" class="hide" role="tabpanel"></div>
     <div id="view-events" class="hide" role="tabpanel"></div>
@@ -401,10 +474,10 @@ $('codeEye').onclick=function(){var i=$('loginCode');var h=i.type==='password';i
 async function doLogin(){var email=$('loginEmail').value.trim(),code=$('loginCode').value.trim(),err=$('loginErr');if(!email){err.textContent='Please enter your email address';err.classList.add('show');return}if(!code){err.textContent='Please enter your access code';err.classList.add('show');return}$('loginBtn').disabled=true;$('loginBtn').textContent='Signing in...';try{var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,code:code})});var d=await r.json();if(!r.ok)throw new Error(d.error);state.profile=d.profile;try{sessionStorage.setItem(SK,JSON.stringify({e:email,c:code,t:Date.now()}))}catch(e){}showApp()}catch(e){err.textContent=e.message;err.classList.add('show')}finally{$('loginBtn').disabled=false;$('loginBtn').textContent='Sign In'}}
 function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=null;$('loginScreen').classList.remove('hidden');$('app').classList.add('hide')}
 (async function(){try{var s=JSON.parse(sessionStorage.getItem(SK));if(s&&Date.now()-s.t<MAX){var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:s.e,code:s.c})});var d=await r.json();if(r.ok){state.profile=d.profile;showApp()}}}catch(e){}})();
-function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;loadPosts();loadEventsTicker()}
+function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['posts','create','events','calendar','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard()};
 
 // Data
 var PLATS=[
@@ -1023,6 +1096,399 @@ window.C={
   setFreq:function(n,btn){btn.parentElement.querySelectorAll('.ps-btn').forEach(function(p){p.classList.remove('active')});btn.classList.add('active');state.profile.posting_frequency=n;save({postingFrequency:n});renderStats()},
   toggleDay:function(btn,d){btn.classList.toggle('active');var ds=[];btn.parentElement.querySelectorAll('.ps-btn.active').forEach(function(p){ds.push(p.textContent.trim())});state.profile.posting_days=ds.join(',');save({postingDays:ds.join(',')})},
   setAuto:function(v){state.profile.auto_publish=v;save({autoPublish:v});flash('auto-saved');renderStats()}
+};
+
+// ══════════════════════════════════════════
+// DASHBOARD TAB — Add this block inside the main IIFE in client.html,
+// directly above the closing })();
+// ══════════════════════════════════════════
+
+var dashState = { data: null, loading: false, lastLoaded: 0 };
+
+async function renderDashboard() {
+  var el = $('view-dashboard');
+  if (!el) return;
+
+  // Show skeleton on first load OR refresh if older than 60 seconds
+  var stale = Date.now() - dashState.lastLoaded > 60000;
+  var firstLoad = !dashState.data;
+
+  if (firstLoad) {
+    el.innerHTML = dashboardSkeletonHTML();
+  }
+
+  if (firstLoad || stale) {
+    if (dashState.loading) return;
+    dashState.loading = true;
+    try {
+      var r = await fetch('/api/dashboard-data?clientId=' + encodeURIComponent(state.profile.id));
+      if (!r.ok) {
+        var err = await r.json().catch(function(){return{error:'Server error '+r.status}});
+        el.innerHTML = '<div class="dash-empty" style="color:var(--tg-error)">Could not load dashboard: ' + esc(err.error) + '</div>';
+        return;
+      }
+      dashState.data = await r.json();
+      dashState.lastLoaded = Date.now();
+    } catch (e) {
+      el.innerHTML = '<div class="dash-empty" style="color:var(--tg-error)">' + esc(e.message) + '</div>';
+      return;
+    } finally {
+      dashState.loading = false;
+    }
+  }
+
+  drawDashboard(el, dashState.data);
+}
+
+function dashboardSkeletonHTML() {
+  return '<div class="dash-section"><div class="dash-skeleton" style="height:80px"></div></div>' +
+    '<div class="dash-section"><div class="dash-skeleton" style="height:72px;margin-bottom:8px"></div><div class="dash-skeleton" style="height:72px;margin-bottom:8px"></div><div class="dash-skeleton" style="height:72px"></div></div>' +
+    '<div class="dash-section"><div class="dash-skeleton" style="height:120px"></div></div>';
+}
+
+function drawDashboard(el, d) {
+  var h = '';
+
+  // ── Lede ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Your Day at a Glance</div>';
+  h += '<p class="dash-lede">' + ledeText(d) + '</p>';
+  h += '</div>';
+
+  // ── Action cards ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Today\'s Actions \u00b7 ' + d.actions.total + '</div>';
+  h += actionCardsHTML(d.actions);
+  h += '</div>';
+
+  // ── KPI strip ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Last 30 Days</div>';
+  h += kpiStripHTML(d.kpis);
+  h += '</div>';
+
+  // ── Hot Leads ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Hot Leads \u00b7 Top 3</div>';
+  h += hotLeadsHTML(d.hotLeads);
+  h += '</div>';
+
+  // ── Posts ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Posts Going Out</div>';
+  h += postsListHTML(d.pendingPosts);
+  h += '</div>';
+
+  // ── Top performer ──
+  if (d.topPost) {
+    h += '<div class="dash-section">';
+    h += '<div class="dash-section-title">Top Performer \u00b7 Last 30 Days</div>';
+    h += topPerformerHTML(d.topPost);
+    h += '</div>';
+  }
+
+  // ── Recent activity ──
+  h += '<div class="dash-section">';
+  h += '<div class="dash-section-title">Recent Activity</div>';
+  h += activityHTML(d.recentActivity);
+  h += '</div>';
+
+  el.innerHTML = h;
+  attachDashboardHandlers();
+}
+
+function ledeText(d) {
+  var total = d.actions.total;
+  var top = d.hotLeads[0];
+  if (total === 0) {
+    return 'Nothing pressing right now. Luna is queuing your next batch of content. <em>Check back tomorrow morning.</em>';
+  }
+  if (top) {
+    var matters = d.hotLeads.length;
+    var verb = top.type === 'Buying Intent' ? 'matched on a buying intent signal'
+      : top.type === 'Brand Mention' ? 'mentioned Travelgenix'
+      : top.type === 'Competitor Mention' ? 'flagged a competitor discussion'
+      : 'is worth a look';
+    return total + ' thing' + (total === 1 ? '' : 's') + ' waiting for you' +
+      (matters > 0 ? ', and ' + matters + ' of them really matter' : '') + '. <strong>' +
+      esc(top.author) + '</strong> from ' + esc(top.company || 'their company') + ' ' +
+      verb + ' and scored <strong>' + top.score + ' out of 10</strong>. <em>Worth your morning.</em>';
+  }
+  return total + ' thing' + (total === 1 ? '' : 's') + ' waiting for you. Tap the cards below to work through them.';
+}
+
+function actionCardsHTML(a) {
+  var cards = [];
+  if (a.postsAwaitingApproval > 0) {
+    cards.push({
+      iconBg: 'rgba(0,180,216,0.1)', iconColor: 'var(--tg-accent-dark)',
+      icon: '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>',
+      title: 'Approve ' + a.postsAwaitingApproval + ' post' + (a.postsAwaitingApproval === 1 ? '' : 's'),
+      desc: 'Switch to My Posts to review and approve',
+      pillBg: 'var(--tg-accent)', pillCount: a.postsAwaitingApproval,
+      target: 'posts'
+    });
+  }
+  if (a.hotLeadsToReview > 0) {
+    cards.push({
+      iconBg: 'rgba(236,45,142,0.1)', iconColor: '#EC2D8E',
+      icon: '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>',
+      title: 'Hot leads to engage',
+      desc: 'Comments drafted, ready to post on LinkedIn',
+      pillBg: '#EC2D8E', pillCount: a.hotLeadsToReview,
+      target: 'leads'
+    });
+  }
+  if (a.emailsToApprove > 0) {
+    cards.push({
+      iconBg: 'rgba(255,182,39,0.15)', iconColor: '#C28210',
+      icon: '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>',
+      title: a.emailsToApprove + ' email' + (a.emailsToApprove === 1 ? '' : 's') + ' awaiting approval',
+      desc: 'Newsletter or drip drafts ready for review',
+      pillBg: '#C28210', pillCount: a.emailsToApprove,
+      target: 'emails'
+    });
+  }
+  if (cards.length === 0) {
+    return '<div class="dash-empty"><svg style="width:32px;height:32px;color:var(--tg-success);margin-bottom:8px" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><div style="color:var(--tg-text-primary);font-weight:600">All clear</div><div style="margin-top:4px">No pending actions right now</div></div>';
+  }
+  return cards.map(function(c) {
+    return '<button class="dash-action-card" data-action-target="' + c.target + '">' +
+      '<div class="dash-action-icon" style="background:' + c.iconBg + ';color:' + c.iconColor + '">' + c.icon + '</div>' +
+      '<div class="dash-action-body"><div class="dash-action-title">' + esc(c.title) + '</div><div class="dash-action-desc">' + esc(c.desc) + '</div></div>' +
+      '<span class="dash-action-pill" style="background:' + c.pillBg + '">' + c.pillCount + '</span>' +
+      '<span class="dash-action-arrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>' +
+      '</button>';
+  }).join('');
+}
+
+function formatBig(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function kpiStripHTML(k) {
+  function delta(d) {
+    if (!d) return '';
+    var up = d.charAt(0) === '+';
+    var arrow = up ? '\u2191' : '\u2193';
+    return '<div class="dash-kpi-delta ' + (up ? 'up' : 'down') + '">' + arrow + ' ' + d.replace(/^[+\-]/, '') + ' vs prev 30d</div>';
+  }
+  return '<div class="dash-kpi-grid">' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Demos booked</div><div class="dash-kpi-value">' + k.demoBookings + '</div>' + delta(k.demoBookingsDelta) + '</div>' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Reach</div><div class="dash-kpi-value">' + formatBig(k.postReach) + '</div>' + delta(k.postReachDelta) + '</div>' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Site clicks</div><div class="dash-kpi-value">' + k.websiteClicks + '</div>' + delta(k.websiteClicksDelta) + '</div>' +
+    '</div>';
+}
+
+function leadColour(score) {
+  if (score >= 9) return 'var(--tg-accent-dark)';
+  if (score >= 7) return 'var(--tg-warning)';
+  return '#7C3AED';
+}
+
+function hotLeadsHTML(leads) {
+  if (!leads || leads.length === 0) {
+    return '<div class="dash-empty">No hot leads with drafted comments right now. New signals will appear here once Buska finds them.</div>';
+  }
+  return leads.map(function(l, i) {
+    var colour = leadColour(l.score);
+    return '<div class="dash-lead-card" data-lead-idx="' + i + '">' +
+      '<div class="dash-lead-grid">' +
+      '<div><div class="dash-lead-score" style="color:' + colour + '">' + l.score + '.0</div><div class="dash-lead-type">' + esc(l.type) + '</div></div>' +
+      '<div>' +
+      '<div class="dash-lead-author">' + esc(l.author) + (l.title ? ' \u00b7 ' + esc(l.title) : '') + (l.company ? ', ' + esc(l.company) : '') + '</div>' +
+      '<div class="dash-lead-quote" style="border-left-color:' + colour + '">"' + esc(l.snippet) + (l.snippet.length >= 220 ? '\u2026' : '') + '"</div>' +
+      '<div class="dash-lead-meta">LinkedIn \u00b7 ' + esc(l.capturedAgo) + '</div>' +
+      '</div></div></div>';
+  }).join('');
+}
+
+function postsListHTML(posts) {
+  if (!posts || posts.length === 0) {
+    return '<div class="dash-empty">No posts in the queue right now. Luna\'s content cron runs Mon/Wed/Fri at 7am UTC.</div>';
+  }
+  return '<div class="card" style="padding:0;margin-bottom:0">' + posts.map(function(p, i) {
+    return '<div class="dash-post-row" data-post-idx="' + i + '">' +
+      '<div style="flex:1;min-width:0">' +
+      '<div class="dash-post-title">' + esc(p.title) + '</div>' +
+      '<div class="dash-post-meta"><strong>' + esc(p.targetChannel) + '</strong>' + (p.contentPillar ? ' \u00b7 ' + esc(p.contentPillar) : '') + '</div>' +
+      '</div>' +
+      '<div class="dash-post-time">' + esc(p.scheduledFor) + '</div>' +
+      '</div>';
+  }).join('') + '</div>';
+}
+
+function topPerformerHTML(p) {
+  return '<div class="dash-top-post-card">' +
+    '<div class="dash-top-post-title">"' + esc(p.title) + '"</div>' +
+    '<div style="font-size:var(--text-sm);color:var(--tg-text-tertiary)">' + esc(p.targetChannel) + ' \u2014 your best-reaching post in the last 30 days.</div>' +
+    '<div class="dash-top-post-stats">' +
+    '<div><div class="dash-top-post-stat-value">' + formatBig(p.reach) + '</div><div class="dash-top-post-stat-label">Reach</div></div>' +
+    '<div><div class="dash-top-post-stat-value">' + p.engagement + '</div><div class="dash-top-post-stat-label">Engagements</div></div>' +
+    '<div><div class="dash-top-post-stat-value accent">' + p.clicks + '</div><div class="dash-top-post-stat-label">Clicks</div></div>' +
+    '</div></div>';
+}
+
+function activityHTML(items) {
+  if (!items || items.length === 0) {
+    return '<div class="dash-empty">No activity in the last week.</div>';
+  }
+  return items.map(function(item) {
+    return '<div class="dash-activity">' +
+      '<div class="dash-activity-time">' + esc(item.timeAgo) + '</div>' +
+      '<div class="dash-activity-text">' + item.text + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function attachDashboardHandlers() {
+  // Action cards — switch tabs
+  document.querySelectorAll('[data-action-target]').forEach(function(btn) {
+    btn.onclick = function() {
+      var target = btn.getAttribute('data-action-target');
+      if (target === 'posts') {
+        document.querySelector('[data-view=posts]').click();
+      } else if (target === 'leads') {
+        // Scroll to hot leads section within dashboard
+        var firstLead = document.querySelector('[data-lead-idx]');
+        if (firstLead) firstLead.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (target === 'emails') {
+        toast('Open the Email Queue table in Airtable to review pending emails');
+      }
+    };
+  });
+  // Hot lead cards — open drawer
+  document.querySelectorAll('[data-lead-idx]').forEach(function(el) {
+    el.onclick = function() {
+      var idx = parseInt(el.getAttribute('data-lead-idx'), 10);
+      openLeadDrawer(dashState.data.hotLeads[idx]);
+    };
+  });
+  // Post rows — open drawer
+  document.querySelectorAll('[data-post-idx]').forEach(function(el) {
+    el.onclick = function() {
+      var idx = parseInt(el.getAttribute('data-post-idx'), 10);
+      openPostDrawer(dashState.data.pendingPosts[idx]);
+    };
+  });
+}
+
+function toast(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;background:var(--tg-text-primary);color:var(--tg-bg-primary);box-shadow:var(--shadow-lg);font-family:var(--tg-font-body)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() {
+    t.style.transition = 'opacity 0.3s';
+    t.style.opacity = '0';
+    setTimeout(function() { t.remove(); }, 300);
+  }, 3000);
+}
+
+function openLeadDrawer(lead) {
+  if (!lead) return;
+  var bodyHTML = '<div style="margin-bottom:var(--space-4)">' +
+    '<div class="dash-section-title">Original post</div>' +
+    '<div class="dash-lead-quote" style="margin-top:var(--space-2)">"' + esc(lead.snippet) + (lead.snippet.length >= 220 ? '\u2026' : '') + '"</div>' +
+    (lead.postUrl ? '<a href="' + esc(lead.postUrl) + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:var(--space-3);font-size:var(--text-sm);color:var(--tg-accent-dark);text-decoration:none;border-bottom:2px solid var(--tg-accent)">View on LinkedIn \u2192</a>' : '') +
+    '</div>' +
+    '<div style="margin-bottom:var(--space-4)">' +
+    '<div class="dash-section-title">Suggested comment (Andy\'s voice)</div>' +
+    '<div style="padding:var(--space-4);background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:var(--radius-md);margin-top:var(--space-2);white-space:pre-wrap;line-height:1.6">' + (esc(lead.suggestedComment) || '<span style="color:var(--tg-text-tertiary)">No comment drafted yet</span>') + '</div>' +
+    '<button class="btn btn-ghost btn-sm" style="margin-top:var(--space-2)" onclick="window.__dashCopy(\'' + lead.id + '\')">Copy comment</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--tg-border)">' +
+    '<button class="btn btn-primary" style="flex:1" onclick="window.__dashEngage(\'' + lead.id + '\')">Mark as engaged</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="window.__dashDismiss(\'' + lead.id + '\')">Dismiss</button>' +
+    '</div>';
+  showDrawer(esc(lead.author) + ' \u00b7 Score ' + lead.score, bodyHTML);
+  window.__pendingDashComment = lead.suggestedComment || '';
+}
+
+function openPostDrawer(post) {
+  if (!post) return;
+  var bodyHTML = '<div style="margin-bottom:var(--space-3)">' +
+    '<div class="dash-section-title">Channel</div>' +
+    '<div style="margin-top:var(--space-1)">' + esc(post.targetChannel) + (post.contentPillar ? ' \u00b7 ' + esc(post.contentPillar) : '') + '</div>' +
+    '</div>' +
+    '<div style="margin-bottom:var(--space-4)">' +
+    '<div class="dash-section-title">Scheduled for</div>' +
+    '<div style="margin-top:var(--space-1)">' + esc(post.scheduledFor) + '</div>' +
+    '</div>' +
+    '<div style="font-size:var(--text-sm);color:var(--tg-text-tertiary);font-style:italic;margin-bottom:var(--space-4)">Switch to the My Posts tab to read the full caption and edit before approving.</div>' +
+    '<div style="display:flex;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--tg-border)">' +
+    '<button class="btn btn-approve" style="flex:1" onclick="window.__dashApprove(\'' + post.id + '\')">Approve</button>' +
+    '<button class="btn btn-reject" onclick="window.__dashReject(\'' + post.id + '\')">Reject</button>' +
+    '</div>';
+  showDrawer('Post: ' + esc(post.title), bodyHTML);
+}
+
+function showDrawer(title, bodyHTML) {
+  closeDrawer();
+  var backdrop = document.createElement('div');
+  backdrop.className = 'dash-drawer-backdrop';
+  backdrop.id = 'dashDrawerBackdrop';
+  backdrop.onclick = closeDrawer;
+  document.body.appendChild(backdrop);
+  var drawer = document.createElement('div');
+  drawer.className = 'dash-drawer';
+  drawer.id = 'dashDrawer';
+  drawer.innerHTML = '<div class="dash-drawer-head"><div class="dash-drawer-title">' + title + '</div><button class="dash-drawer-close" onclick="window.__dashCloseDrawer()" aria-label="Close"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="dash-drawer-body">' + bodyHTML + '</div>';
+  document.body.appendChild(drawer);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDrawer() {
+  var b = $('dashDrawerBackdrop');
+  var d = $('dashDrawer');
+  if (b) b.remove();
+  if (d) d.remove();
+  document.body.style.overflow = '';
+}
+window.__dashCloseDrawer = closeDrawer;
+
+window.__dashCopy = async function() {
+  var text = window.__pendingDashComment || '';
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Comment copied to clipboard');
+  } catch (e) {
+    toast('Could not copy \u2014 select and copy manually');
+  }
+};
+
+async function dashAction(action, recordId, notes) {
+  var r = await fetch('/api/dashboard-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId: state.profile.id, action: action, recordId: recordId, notes: notes })
+  });
+  if (!r.ok) {
+    var err = await r.json().catch(function(){return{}});
+    throw new Error(err.error || 'Action failed');
+  }
+  return r.json();
+}
+
+window.__dashEngage = async function(id) {
+  try { await dashAction('mark_lead_engaged', id); toast('Marked as engaged'); closeDrawer(); dashState.lastLoaded = 0; renderDashboard(); }
+  catch (e) { toast('Failed: ' + e.message); }
+};
+window.__dashDismiss = async function(id) {
+  if (!confirm('Dismiss this lead? It will be removed from the queue.')) return;
+  try { await dashAction('dismiss_lead', id); toast('Lead dismissed'); closeDrawer(); dashState.lastLoaded = 0; renderDashboard(); }
+  catch (e) { toast('Failed: ' + e.message); }
+};
+window.__dashApprove = async function(id) {
+  try { await dashAction('approve_post', id); toast('Post approved'); closeDrawer(); dashState.lastLoaded = 0; renderDashboard(); }
+  catch (e) { toast('Failed: ' + e.message); }
+};
+window.__dashReject = async function(id) {
+  var reason = prompt('Why are you rejecting this post? (optional)') || '';
+  try { await dashAction('reject_post', id, reason); toast('Post rejected'); closeDrawer(); dashState.lastLoaded = 0; renderDashboard(); }
+  catch (e) { toast('Failed: ' + e.message); }
 };
 })();
 </script>

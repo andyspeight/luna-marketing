@@ -1,15 +1,22 @@
 // api/email-drip.js
-// Drip sequence handler — Day 5 patch: writes Recipient Email to Email Queue
+// Drip sequence handler — Day 6.5 patch: brand guardrails + content validator.
 //
 // Triggered by inbound form fills on travelgenix.co.uk
 // Welcome email sends instantly via transactional
 // Day 3/7/14/28 follow-ups saved as Awaiting Approval drafts WITH Recipient Email set
-// so the hourly cron can fire them when scheduled
+// so the hourly cron can fire them when scheduled.
+//
+// PATCHED 1 May 2026 (Day 6.5):
+//   - BRAND_GUARDRAILS prepended to every drip email's system prompt
+//   - validateContent called on each generated body before saving
+//   - Failed drafts save with status = Quality Hold (won't be sent by cron)
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { upsertContact, sendTransactional } = require("./brevo-helper.js");
 const { wrapEmail, plainToHtml, htmlToPlain } = require("./email-template.js");
 const { addUtm } = require("./utm-helper.js");
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validateContent } = require("./validate-content.js");
 
 const aiClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -33,21 +40,21 @@ const DRIP_SEQUENCE = [
   {
     type: "Drip - Day 3",
     delayDays: 3,
-    purpose: "Share a relevant insight or case study about UK travel agencies. Position Andy as someone who understands their world. Don't pitch yet.",
+    purpose: "Share a relevant insight about UK travel agencies. Position Andy as someone who understands their world. Don't pitch yet. Do NOT invent a specific case study or client name.",
     ctaText: "Read the full article",
     ctaUrl: "https://travelgenix.io/insights",
   },
   {
     type: "Drip - Day 7",
     delayDays: 7,
-    purpose: "Soft product introduction. Show one specific thing Travelgenix does that solves a real problem. Include one client outcome (vague, no specific stats).",
+    purpose: "Soft product introduction. Show one specific thing Travelgenix does that solves a real problem. Speak generally about types of clients you've helped. Do NOT name specific clients or invent specific outcome statistics.",
     ctaText: "See it in action",
     ctaUrl: "https://travelgenix.io/demo",
   },
   {
     type: "Drip - Day 14",
     delayDays: 14,
-    purpose: "Address a common objection (price, complexity, switching cost, time). Andy speaking honestly about how Travelgenix handles it.",
+    purpose: "Address a common objection (price, complexity, switching cost, time). Andy speaking honestly about how Travelgenix handles it. Do NOT name competitors, do NOT invent specific switching stories with named agents.",
     ctaText: "Have a quick chat",
     ctaUrl: "https://travelgenix.io/demo",
   },
@@ -80,11 +87,9 @@ async function airtableCreate(table, fields) {
 }
 
 async function generateDripBody(stepConfig, leadContext) {
-  const systemPrompt = `You write a single email in a 5-email drip sequence for Travelgenix, a UK B2B travel-tech SaaS company. The email goes to someone who recently filled an inbound form on travelgenix.io.
+  const dripPrompt = `You write a single email in a 5-email drip sequence for Travelgenix, a UK B2B travel-tech SaaS company. The email goes to someone who recently filled an inbound form on travelgenix.io.
 
-Voice: Andy Speight (CEO). Warm, direct, knowledgeable, never pushy. UK English. NO em dashes. NO Oxford commas.
-
-BANNED: leverage, utilize, synergy, game-changer, innovative, cutting-edge, delve, in today's digital landscape, robust, empower, harness, unlock, seamless.
+Voice: Andy Speight (CEO). Warm, direct, knowledgeable, never pushy. UK English.
 
 LEAD CONTEXT:
 - First name: ${leadContext.firstName || "(not provided)"}
@@ -112,6 +117,9 @@ OUTPUT FORMAT — return ONLY a valid JSON object, no preamble, no markdown fenc
 }
 
 Use \\n\\n for paragraph breaks. Do NOT include the CTA button text in bodyMarkdown.`;
+
+  // Prepend brand guardrails
+  const systemPrompt = BRAND_GUARDRAILS + "\n\n" + dripPrompt;
 
   const response = await aiClient.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -194,7 +202,7 @@ module.exports = async (req, res) => {
       console.error("Attribution log failed:", e.message);
     }
 
-    // 3. Generate all 5 drip emails
+    // 3. Generate all 5 drip emails (with guardrails + validation)
     const now = new Date();
 
     for (const step of DRIP_SEQUENCE) {
@@ -222,11 +230,20 @@ module.exports = async (req, res) => {
 
         const plain = htmlToPlain(html);
 
+        // VALIDATE drip body + subject
+        const validationText = `${draft.subject || ""}\n\n${plain}`;
+        const validation = validateContent(validationText);
+        const validatorBlocked = validation.severity === "fail";
+        let qualityIssues = "";
+        if (validation.severity !== "pass") {
+          qualityIssues = validation.issues.map(i => `${i.severity.toUpperCase()} ${i.code}: ${i.detail}`).join("\n");
+        }
+
         const scheduled = new Date(now);
         scheduled.setDate(scheduled.getDate() + step.delayDays);
 
-        if (step.sendImmediately) {
-          // Send Welcome email NOW via transactional
+        if (step.sendImmediately && !validatorBlocked) {
+          // Welcome email: send NOW via transactional
           try {
             await sendTransactional({
               to: [{ email, name: fullName || email }],
@@ -247,6 +264,7 @@ module.exports = async (req, res) => {
               "Sent At": now.toISOString(),
               "Recipient Email": email,
               "Recipient Name": fullName,
+              ...(qualityIssues ? { "Rejection Reason": "WARNINGS: " + qualityIssues.slice(0, 500) } : {}),
             });
             created.push({ step: step.type, status: "sent", recordId: saved.records[0].id });
           } catch (e) {
@@ -266,7 +284,10 @@ module.exports = async (req, res) => {
             created.push({ step: step.type, status: "failed", recordId: saved.records[0].id, error: e.message });
           }
         } else {
-          // Save as Awaiting Approval, with Recipient Email set so cron can send it
+          // Save as Awaiting Approval (or Quality Hold if validator blocked).
+          // Setting status = Quality Hold means email-cron.js will NOT send it
+          // (the cron filters on Status='Approved').
+          const status = validatorBlocked ? "Quality Hold" : "Awaiting Approval";
           const saved = await airtableCreate(EMAIL_QUEUE_TABLE, {
             "Subject": draft.subject,
             "Email Type": step.type,
@@ -274,12 +295,19 @@ module.exports = async (req, res) => {
             "Body HTML": html,
             "Body Plain": plain,
             "Preview Text": draft.previewText || "",
-            "Status": "Awaiting Approval",
+            "Status": status,
             "Scheduled Send": scheduled.toISOString(),
             "Recipient Email": email,
             "Recipient Name": fullName,
+            ...(qualityIssues ? { "Rejection Reason": qualityIssues.slice(0, 500) } : {}),
           });
-          created.push({ step: step.type, status: "drafted", recordId: saved.records[0].id, scheduledSend: scheduled.toISOString() });
+          created.push({
+            step: step.type,
+            status: validatorBlocked ? "quality_hold" : "drafted",
+            recordId: saved.records[0].id,
+            scheduledSend: scheduled.toISOString(),
+            ...(qualityIssues ? { issues: qualityIssues } : {}),
+          });
         }
       } catch (e) {
         console.error(`Drip step ${step.type} failed:`, e.message);
@@ -291,7 +319,7 @@ module.exports = async (req, res) => {
       success: true,
       email,
       sequence: created,
-      message: `Drip sequence kicked off for ${email}. Welcome sent. ${created.filter(c => c.status === "drafted").length} follow-ups awaiting approval.`,
+      message: `Drip sequence kicked off for ${email}. Welcome sent. ${created.filter(c => c.status === "drafted").length} follow-ups awaiting approval, ${created.filter(c => c.status === "quality_hold").length} on quality hold.`,
     });
   } catch (e) {
     console.error("Drip handler failed:", e);

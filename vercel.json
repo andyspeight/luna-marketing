@@ -9,14 +9,6 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/email-generate",
-      "schedule": "30 6 * * 1"
-    },
-    {
-      "path": "/api/email-cron",
-      "schedule": "5 * * * *"
-    },
-    {
       "path": "/api/cron-draft-comments",
       "schedule": "0 8 * * 1-5"
     }

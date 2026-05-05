@@ -28,6 +28,7 @@
     "api/email-action.js": { "maxDuration": 30 },
     "api/email-compose.js": { "maxDuration": 30 },
     "api/email-send-now.js": { "maxDuration": 60 },
+    "api/email-render.js": { "maxDuration": 30 },
     "api/audiences.js": { "maxDuration": 30 },
     "api/brevo-webhook.js": { "maxDuration": 30 },
     "api/buska-webhook.js": { "maxDuration": 30 },

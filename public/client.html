@@ -2110,6 +2110,440 @@ window.__emailCancel = async function() {
 
 // === EMAILS TAB BLOCK END ===
 
+// === EMAILS TAB DAY B ADDITIONS START ===
+// ══════════════════════════════════════════
+// EMAILS TAB — DAY B ADDITIONS
+// Adds: Compose form, Audiences sub-tab, Send Now button
+// Extends Day A's emailState and drawEmails / drawEmailDrawer
+// ══════════════════════════════════════════
+
+// Extend emailState with compose + audiences
+emailState.composeOpen = false;
+emailState.composeData = {
+  subject: '',
+  previewText: '',
+  bodyHTML: '',
+  bodyPlain: '',
+  audience: 'Client',
+  audienceSegment: '',
+  recipientEmail: '',
+  scheduledSend: '',
+  emailType: 'Newsletter',
+};
+emailState.audiences = null;
+emailState.audiencesLoading = false;
+
+// Override the original drawEmails to include Compose button and Audiences sub-tab
+var __originalDrawEmails = drawEmails;
+drawEmails = function() {
+  var el = $('view-emails');
+  if (!el) return;
+
+  // If compose is open, render compose view instead
+  if (emailState.composeOpen) {
+    drawComposeForm();
+    return;
+  }
+
+  // If audiences sub-tab is active, render audiences view
+  if (emailState.currentSubTab === 'audiences') {
+    drawAudiencesView();
+    return;
+  }
+
+  // Otherwise call original draw (Queue / Sent)
+  __originalDrawEmails();
+
+  // Now inject the Compose button and Audiences sub-tab into the rendered output
+  injectDayBControls();
+};
+
+function injectDayBControls() {
+  // Add Compose button to top of view (before sub-tabs)
+  var subtabsRow = document.querySelector('#view-emails .email-subtabs');
+  if (!subtabsRow) return;
+
+  // Add Audiences sub-tab if not already there
+  if (!subtabsRow.querySelector('[data-subtab="audiences"]')) {
+    var audSubtab = document.createElement('button');
+    audSubtab.className = 'email-subtab' + (emailState.currentSubTab === 'audiences' ? ' active' : '');
+    audSubtab.setAttribute('data-subtab', 'audiences');
+    audSubtab.textContent = 'Audiences';
+    audSubtab.onclick = function() { window.__emailSubTab('audiences'); };
+    subtabsRow.appendChild(audSubtab);
+  }
+
+  // Add Compose button positioned absolute to top-right of subtabs row
+  if (!document.querySelector('#emailComposeBtn')) {
+    var composeBtn = document.createElement('button');
+    composeBtn.id = 'emailComposeBtn';
+    composeBtn.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--tg-font-body);transition:background var(--duration-fast)';
+    composeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Compose';
+    composeBtn.onclick = function() { window.__emailCompose(); };
+    composeBtn.onmouseenter = function() { this.style.background = 'var(--tg-accent-dark)'; };
+    composeBtn.onmouseleave = function() { this.style.background = 'var(--tg-accent)'; };
+    subtabsRow.style.alignItems = 'center';
+    subtabsRow.appendChild(composeBtn);
+  }
+}
+
+// ── COMPOSE FORM ──
+
+window.__emailCompose = function() {
+  emailState.composeOpen = true;
+  // Reset to defaults but preserve any in-progress data
+  drawEmails();
+};
+
+window.__emailComposeClose = function() {
+  if (hasComposeContent() && !confirm('Discard this email? All unsaved content will be lost.')) {
+    return;
+  }
+  emailState.composeOpen = false;
+  emailState.composeData = {
+    subject: '',
+    previewText: '',
+    bodyHTML: '',
+    bodyPlain: '',
+    audience: 'Client',
+    audienceSegment: '',
+    recipientEmail: '',
+    scheduledSend: '',
+    emailType: 'Newsletter',
+  };
+  drawEmails();
+};
+
+function hasComposeContent() {
+  var d = emailState.composeData;
+  return !!(d.subject || d.previewText || d.bodyHTML || d.bodyPlain || d.recipientEmail);
+}
+
+function drawComposeForm() {
+  var el = $('view-emails');
+  var d = emailState.composeData;
+
+  var h = '';
+  // Header
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">';
+  h += '<div><h2 style="font-size:var(--text-xl);font-weight:700;color:var(--tg-text-primary);margin:0">Compose Email</h2>';
+  h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:4px 0 0">Saved as Awaiting Approval. Email crons paused so this won\'t auto-send.</p></div>';
+  h += '<div style="display:flex;gap:8px">';
+  h += '<button onclick="window.__emailComposeClose()" style="height:40px;padding:0 16px;border-radius:var(--radius-md);background:transparent;border:1px solid var(--tg-border);color:var(--tg-text-secondary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Cancel</button>';
+  h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" style="height:40px;padding:0 20px;border-radius:var(--radius-md);background:var(--tg-accent);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Save as Draft</button>';
+  h += '</div></div>';
+
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">';
+
+  // LEFT COLUMN: Metadata
+  h += '<div>';
+
+  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5);margin-bottom:var(--space-4)">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--space-3);font-family:var(--tg-font-mono)">Metadata</div>';
+
+  // Subject
+  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Subject</label>';
+  h += '<input id="composeSubject" type="text" value="' + esc(d.subject) + '" maxlength="200" placeholder="Subject line of the email" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'subject\',this.value)"></div>';
+
+  // Preview text
+  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Preview text <span style="color:var(--tg-text-tertiary);font-weight:400">(shown in inbox preview, max 200 chars)</span></label>';
+  h += '<input id="composePreview" type="text" value="' + esc(d.previewText) + '" maxlength="200" placeholder="A taster line that shows under the subject in inboxes" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'previewText\',this.value)"></div>';
+
+  // Audience
+  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Audience</label>';
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  ['Cold', 'Nurture', 'Client', 'Drip'].forEach(function(a) {
+    var active = d.audience === a;
+    h += '<button onclick="window.__composeUpdate(\'audience\',\'' + a + '\');drawEmails()" style="height:36px;padding:0 14px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:13px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + a + '</button>';
+  });
+  h += '</div></div>';
+
+  // Email type
+  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Type</label>';
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  ['Newsletter', 'Promotion', 'Update', 'Drip'].forEach(function(t) {
+    var active = d.emailType === t;
+    h += '<button onclick="window.__composeUpdate(\'emailType\',\'' + t + '\');drawEmails()" style="height:32px;padding:0 12px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:12px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + t + '</button>';
+  });
+  h += '</div></div>';
+
+  h += '</div>'; // end metadata card
+
+  // Recipient card
+  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5);margin-bottom:var(--space-4)">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--space-3);font-family:var(--tg-font-mono)">Recipient</div>';
+  h += '<p style="font-size:12px;color:var(--tg-text-tertiary);line-height:1.5;margin:0 0 12px">For Day B v1, only single-recipient sends are supported. Enter one email address. List sends arrive in Day C.</p>';
+
+  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Recipient email</label>';
+  h += '<input id="composeRecipient" type="email" value="' + esc(d.recipientEmail) + '" placeholder="someone@example.com" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'recipientEmail\',this.value)"></div>';
+
+  h += '<div><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Audience segment label <span style="color:var(--tg-text-tertiary);font-weight:400">(optional)</span></label>';
+  h += '<input id="composeSegment" type="text" value="' + esc(d.audienceSegment) + '" placeholder="e.g. Travelgenix Clients" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'audienceSegment\',this.value)"></div>';
+
+  h += '</div>'; // end recipient card
+
+  h += '</div>'; // end left column
+
+  // RIGHT COLUMN: Body
+  h += '<div>';
+  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5)">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;font-family:var(--tg-font-mono)">Body</div>';
+  h += '<div style="display:flex;gap:4px">';
+  h += '<button onclick="window.__composeBodyMode(\'html\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + ((emailState.composeBodyMode || 'html') === 'html' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + ((emailState.composeBodyMode || 'html') === 'html' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">HTML</button>';
+  h += '<button onclick="window.__composeBodyMode(\'plain\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + (emailState.composeBodyMode === 'plain' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (emailState.composeBodyMode === 'plain' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">Plain</button>';
+  h += '<button onclick="window.__composeBodyMode(\'preview\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + (emailState.composeBodyMode === 'preview' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (emailState.composeBodyMode === 'preview' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">Preview</button>';
+  h += '</div></div>';
+
+  var mode = emailState.composeBodyMode || 'html';
+  if (mode === 'html') {
+    h += '<textarea id="composeHTML" rows="20" placeholder="<p>Your HTML email body...</p>" style="width:100%;padding:12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-mono);font-size:12px;background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical;line-height:1.5" oninput="window.__composeUpdate(\'bodyHTML\',this.value)">' + esc(d.bodyHTML) + '</textarea>';
+  } else if (mode === 'plain') {
+    h += '<textarea id="composePlain" rows="20" placeholder="Plain-text version of the email (recommended for accessibility)" style="width:100%;padding:12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-mono);font-size:12px;background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical;line-height:1.5" oninput="window.__composeUpdate(\'bodyPlain\',this.value)">' + esc(d.bodyPlain) + '</textarea>';
+  } else {
+    h += '<div style="border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:16px;background:#fff;min-height:400px;max-height:600px;overflow-y:auto">' + (d.bodyHTML || '<em style="color:#999">Nothing to preview yet</em>') + '</div>';
+  }
+  h += '</div>'; // end body card
+  h += '</div>'; // end right column
+
+  h += '</div>'; // end grid
+
+  el.innerHTML = h;
+}
+
+window.__composeUpdate = function(key, value) {
+  emailState.composeData[key] = value;
+};
+
+window.__composeBodyMode = function(mode) {
+  // Save current textarea content before switching
+  var d = emailState.composeData;
+  if ($('composeHTML')) d.bodyHTML = $('composeHTML').value;
+  if ($('composePlain')) d.bodyPlain = $('composePlain').value;
+  emailState.composeBodyMode = mode;
+  drawEmails();
+};
+
+window.__emailComposeSave = async function() {
+  // Pull latest values from textareas (in case user typed without onclick triggering)
+  var d = emailState.composeData;
+  if ($('composeHTML')) d.bodyHTML = $('composeHTML').value;
+  if ($('composePlain')) d.bodyPlain = $('composePlain').value;
+  if ($('composeSubject')) d.subject = $('composeSubject').value;
+  if ($('composePreview')) d.previewText = $('composePreview').value;
+  if ($('composeRecipient')) d.recipientEmail = $('composeRecipient').value;
+  if ($('composeSegment')) d.audienceSegment = $('composeSegment').value;
+
+  // Validate
+  if (!d.subject.trim()) { alert('Subject is required'); return; }
+  if (!d.bodyHTML.trim() && !d.bodyPlain.trim()) { alert('Body (HTML or plain text) is required'); return; }
+  if (!d.audience) { alert('Pick an audience'); return; }
+  if (d.recipientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.recipientEmail)) {
+    alert('Recipient email is not valid'); return;
+  }
+
+  var btn = $('composeSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; btn.style.opacity = '0.6'; }
+
+  try {
+    var r = await fetch('/api/email-compose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ clientId: state.profile.id }, d)),
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error || 'Save failed');
+
+    showEmailToast('Email saved as Awaiting Approval', 'success');
+    emailState.composeOpen = false;
+    emailState.composeData = {
+      subject: '', previewText: '', bodyHTML: '', bodyPlain: '',
+      audience: 'Client', audienceSegment: '', recipientEmail: '',
+      scheduledSend: '', emailType: 'Newsletter',
+    };
+    loadEmails();  // refresh queue
+  } catch (e) {
+    alert('Save failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save as Draft'; btn.style.opacity = '1'; }
+  }
+};
+
+// ── AUDIENCES VIEW ──
+
+async function drawAudiencesView() {
+  var el = $('view-emails');
+  var h = '';
+
+  // Sub-tabs row (replicate from Day A)
+  h += '<div class="email-subtabs" style="align-items:center">';
+  h += '<button class="email-subtab" onclick="window.__emailSubTab(\'queue\')">Queue</button>';
+  h += '<button class="email-subtab" onclick="window.__emailSubTab(\'sent\')">Sent</button>';
+  h += '<button class="email-subtab active" data-subtab="audiences">Audiences</button>';
+  h += '<button id="emailComposeBtn" onclick="window.__emailCompose()" style="margin-left:auto;display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius-md);background:var(--tg-accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--tg-font-body)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Compose</button>';
+  h += '</div>';
+
+  // Description
+  h += '<div style="background:linear-gradient(135deg,rgba(0,180,216,0.06),rgba(27,43,91,0.04));border:1px solid rgba(0,180,216,0.15);border-radius:var(--radius-md);padding:16px 20px;margin-bottom:var(--space-4)">';
+  h += '<div style="font-size:13px;color:var(--tg-text-secondary);line-height:1.6">';
+  h += '<strong style="color:var(--tg-text-primary)">Brevo audiences</strong> are your contact lists. Each list maps to one of our four audience types: Cold (cold prospects), Nurture (inbound leads), Client (paying customers), and Drip (sequence pipeline). Counts update from Brevo on load.';
+  h += '</div></div>';
+
+  if (emailState.audiences === null) {
+    h += '<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading audiences from Brevo...</div>';
+    el.innerHTML = h;
+    await loadAudiences();
+    drawAudiencesView();
+    return;
+  }
+
+  if (!emailState.audiences.length) {
+    h += '<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No audiences configured.</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  // Render audience cards
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-3)">';
+  emailState.audiences.forEach(function(a) {
+    h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:18px;transition:box-shadow var(--duration-fast)">';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+    h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-accent-dark);font-family:var(--tg-font-mono)">' + esc(a.audienceMapping || '—') + '</div>';
+    if (!a.configured) {
+      h += '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.1);color:var(--tg-warning)">NOT CONFIGURED</span>';
+    } else if (a.error) {
+      h += '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(239,68,68,0.1);color:var(--tg-error)">ERROR</span>';
+    } else {
+      h += '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.1);color:var(--tg-success)">LIVE</span>';
+    }
+    h += '</div>';
+    h += '<div style="font-size:16px;font-weight:700;color:var(--tg-text-primary);margin-bottom:4px">' + esc(a.listName || a.label) + '</div>';
+    h += '<div style="font-size:11px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono);margin-bottom:14px">' + esc(a.label) + (a.listId ? ' &middot; List ' + esc(a.listId) : '') + '</div>';
+
+    if (a.configured && !a.error) {
+      h += '<div style="display:flex;gap:16px;padding-top:12px;border-top:1px solid var(--tg-border)">';
+      h += '<div><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Subscribers</div><div style="font-size:20px;font-weight:700;color:var(--tg-text-primary);font-variant-numeric:tabular-nums">' + (a.totalSubscribers || 0) + '</div></div>';
+      if (a.totalBlacklisted) {
+        h += '<div><div style="font-size:10px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Blocklisted</div><div style="font-size:20px;font-weight:700;color:var(--tg-text-tertiary);font-variant-numeric:tabular-nums">' + a.totalBlacklisted + '</div></div>';
+      }
+      h += '</div>';
+    } else {
+      h += '<div style="font-size:11px;color:var(--tg-text-tertiary);padding-top:12px;border-top:1px solid var(--tg-border)">' + esc(a.error || 'Brevo list ID env var not set') + '</div>';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+
+  el.innerHTML = h;
+}
+
+async function loadAudiences() {
+  if (!state.profile || !state.profile.id) return;
+  emailState.audiencesLoading = true;
+  try {
+    var r = await fetch('/api/audiences?clientId=' + encodeURIComponent(state.profile.id));
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Failed to load');
+    emailState.audiences = d.audiences || [];
+  } catch (e) {
+    emailState.audiences = [];
+    console.error('Audiences load error:', e);
+  } finally {
+    emailState.audiencesLoading = false;
+  }
+}
+
+// ── SEND NOW BUTTON (extends drawEmailDrawer) ──
+
+var __originalDrawEmailDrawer = drawEmailDrawer;
+drawEmailDrawer = function() {
+  // Run original
+  __originalDrawEmailDrawer();
+
+  // Now inject Send Now button if email is Approved + has a recipient
+  var email = emailState.currentEmail;
+  if (!email) return;
+
+  var isApproved = email.status === 'Approved';
+  var hasRecipient = email.recipientEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.recipientEmail);
+
+  if (!isApproved || !hasRecipient) return;
+
+  var actionsRow = document.querySelector('.email-actions');
+  if (!actionsRow || actionsRow.querySelector('.email-action-send-now')) return;
+
+  var btn = document.createElement('button');
+  btn.className = 'email-action-approve email-action-send-now';
+  btn.style.cssText = 'background:var(--tg-accent);border-color:var(--tg-accent)';
+  btn.innerHTML = 'Send Now';
+  btn.onclick = function() { window.__emailSendNow(); };
+
+  // Replace existing buttons (they'll be Cancel send only) with Send Now + Cancel
+  actionsRow.innerHTML = '';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'email-action-reject';
+  cancelBtn.textContent = 'Cancel send';
+  cancelBtn.onclick = function() { window.__emailCancel(); };
+  actionsRow.appendChild(cancelBtn);
+  actionsRow.appendChild(btn);
+};
+
+window.__emailSendNow = async function() {
+  var email = emailState.currentEmail;
+  if (!email) return;
+  if (!confirm('Send "' + email.subject + '" to ' + email.recipientEmail + ' right now? This cannot be undone.')) return;
+
+  try {
+    var r = await fetch('/api/email-send-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        emailId: email.id,
+      }),
+    });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Send failed');
+    showEmailToast('Sent to ' + d.recipient, 'success');
+    closeEmailDrawer();
+    loadEmails();
+  } catch (e) {
+    alert('Send failed: ' + e.message);
+  }
+};
+
+// ── TOAST HELPER ──
+function showEmailToast(msg, type) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;font-family:var(--tg-font-body);box-shadow:0 8px 24px rgba(0,0,0,0.15);';
+  t.style.background = type === 'success' ? '#059669' : type === 'error' ? '#DC2626' : '#475569';
+  t.style.color = '#fff';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transition = 'opacity 0.3s';
+    setTimeout(function() { t.remove(); }, 300);
+  }, 2500);
+}
+
+// Override emailSubTab to handle audiences
+var __originalSubTab = window.__emailSubTab;
+window.__emailSubTab = function(tab) {
+  emailState.currentSubTab = tab;
+  if (tab === 'queue') {
+    emailState.currentFilter = 'awaiting';
+    loadEmails();
+  } else if (tab === 'sent') {
+    emailState.currentFilter = 'all';
+    loadEmails();
+  } else if (tab === 'audiences') {
+    drawEmails();
+  }
+};
+
+// === EMAILS TAB DAY B ADDITIONS END ===
+
+
 })();
 </script>
 </body>

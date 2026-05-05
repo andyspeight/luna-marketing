@@ -96,12 +96,37 @@ async function writeAuditLog({ actor, action, subjectId, details, ip }) {
 
 async function sendViaBrevo({ to, toName, subject, htmlContent, textContent, replyTo, tags }) {
   const url = "https://api.brevo.com/v3/smtp/email";
+
+  // Brevo requires non-empty textContent. Auto-generate from HTML if missing.
+  let finalText = (textContent || "").trim();
+  if (!finalText && htmlContent) {
+    finalText = htmlContent
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<\/div>/gi, "\n")
+      .replace(/<\/h[1-6]>/gi, "\n\n")
+      .replace(/<\/li>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+  // Last-resort fallback: Brevo will not accept empty textContent
+  if (!finalText) finalText = subject || "(no content)";
   const payload = {
     sender: { email: SENDER_EMAIL, name: BREVO_SENDER_NAME },
     to: [{ email: to, ...(toName ? { name: toName } : {}) }],
     subject: subject,
-    htmlContent: htmlContent || `<p>${textContent || ""}</p>`,
-    textContent: textContent || "",
+    htmlContent: htmlContent || `<p>${finalText}</p>`,
+    textContent: finalText,
     ...(replyTo ? { replyTo: { email: replyTo } } : {}),
     ...(tags && tags.length ? { tags } : {}),
   };

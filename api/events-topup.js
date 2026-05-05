@@ -137,9 +137,8 @@ async function fetchExistingEventNames(pat) {
     for (const rec of (data.records || [])) {
       const f = rec.fields || {};
       const name = f[FIELDS.name];
-      const start = f[FIELDS.dateStart];
       if (name && typeof name === 'string') {
-        names.push(`${name} (${start || 'no date'})`);
+        names.push(name);
       }
     }
     offset = data.offset || '';
@@ -153,61 +152,47 @@ async function fetchExistingEventNames(pat) {
 // ── Claude prompt + call ────────────────────────────────
 
 function buildSystemPrompt(existingEventNames, todayStr, horizonStr) {
-  return `You are a travel industry events researcher for Travelgenix, a UK travel-tech SaaS company.
+  // Cap to 80 names to stay well under tier-1 rate limits (30k input tokens/min).
+  // 80 short event names ≈ 1500 tokens. Plenty of room for the rest of the prompt
+  // plus web-search responses.
+  const namesForPrompt = existingEventNames.slice(0, 80).join(', ');
 
-Your job is to find major travel-driving events happening between ${todayStr} and ${horizonStr} that are NOT already in our calendar.
+  return `You research travel-driving events for Travelgenix, a UK travel-tech SaaS.
 
-We use these events to drive timely social media content for travel agents and tour operators. Good events have a clear travel angle: people travel TO them, AROUND them, or BOOK travel BECAUSE of them.
+Find major events between ${todayStr} and ${horizonStr} NOT already in our calendar. Good events make travel agents want to post: people travel TO them, AROUND them, or BOOK travel BECAUSE of them.
 
-EVENT TYPES TO LOOK FOR:
-- Major sporting fixtures (Olympics, World Cups, Six Nations, Grand Prix, Wimbledon, golf majors, finals weeks)
-- Cultural festivals worldwide (Carnival, Diwali, Songkran, Holi, Day of the Dead, Christmas markets, Edinburgh Fringe, Glastonbury)
-- Religious festivals with travel impact (Easter, Eid, Ramadan, Hanukkah, Lent)
-- Public holidays in major UK source-market AND popular destination countries
-- School holidays (UK term dates, half-terms, US spring break, French/German/Italian summer breaks)
-- Major awareness days that drive travel demand (World Whale Day, World Wildlife Day, etc.)
-- B2B travel industry events (WTM, ITB, ABTA, ITT Conference, PTS, TravelTech Show)
-- Trade shows and conferences relevant to UK travel agents
+LOOK FOR: major sporting fixtures, cultural festivals worldwide, religious festivals with travel impact, public holidays in UK source-market and popular destination countries, school holidays (UK term dates, US spring break, EU summer breaks), travel-relevant awareness days, B2B travel industry events (WTM, ITB, ABTA, PTS, TravelTech Show).
 
-EXISTING EVENTS TO AVOID DUPLICATING:
-${existingEventNames.slice(0, 200).join('\n')}
+ALREADY COVERED (skip these and close variants): ${namesForPrompt}
 
-(showing first 200 of ${existingEventNames.length} — assume similar coverage exists for events near these names)
+OUTPUT: ONLY a valid JSON array, max ${HARD_CAP_EVENTS} events. No prose, no markdown fences.
 
-OUTPUT REQUIREMENTS:
-- Return ONLY valid JSON: an array of event objects, no surrounding prose, no markdown fences
-- Maximum ${HARD_CAP_EVENTS} events per response — pick the best, not the most
-- Skip anything already on the existing list (treat similar names as duplicates)
-- Skip anything with no clear travel angle
-- Use REAL dates verified via web search where the date isn't a fixed annual one
-- Dates must be ISO format YYYY-MM-DD
-- All events must start between ${todayStr} and ${horizonStr}
-
-EACH EVENT OBJECT MUST HAVE:
+Each event:
 {
-  "name": string (under 100 chars, the official event name including year),
+  "name": "Official event name with year (under 100 chars)",
   "dateStart": "YYYY-MM-DD",
-  "dateEnd": "YYYY-MM-DD" (same as dateStart for single-day events),
-  "category": one of [${ALLOWED_CATEGORIES.map(c => `"${c}"`).join(', ')}],
-  "countries": comma-separated string of country names where this event is relevant (e.g. "United Kingdom, France"),
-  "destinations": comma-separated string of cities or regions (e.g. "London, Edinburgh") — empty string if national/global,
-  "travelAngle": 1-2 sentences explaining the travel content hook,
-  "audience": array of 1-4 strings from [${ALLOWED_AUDIENCES.map(a => `"${a}"`).join(', ')}],
-  "recurring": one of [${ALLOWED_RECURRING.map(r => `"${r}"`).join(', ')}],
-  "impact": one of [${ALLOWED_IMPACT.map(i => `"${i}"`).join(', ')}],
-  "contentSuggestion": 1-2 sentences suggesting a post angle for travel agents,
-  "leadTimeWeeks": integer 2-12 — how many weeks before the event content should run
+  "dateEnd": "YYYY-MM-DD",
+  "category": one of: ${ALLOWED_CATEGORIES.join(' | ')},
+  "countries": "Country, Country",
+  "destinations": "City, City" (empty if national/global),
+  "travelAngle": "1-2 sentences on the travel content hook",
+  "audience": array from: ${ALLOWED_AUDIENCES.join(' | ')},
+  "recurring": one of: ${ALLOWED_RECURRING.join(' | ')},
+  "impact": one of: ${ALLOWED_IMPACT.join(' | ')},
+  "contentSuggestion": "1-2 sentences suggesting a post angle",
+  "leadTimeWeeks": 2-12
 }
 
-If you can't find ${HARD_CAP_EVENTS} new events, return fewer. Quality over quantity.`;
+Use web search to verify dates. All dates must be in ISO format and fall between ${todayStr} and ${horizonStr}. Quality over quantity — return fewer if needed.`;
 }
 
 async function callClaude(systemPrompt, userPrompt, apiKey) {
-  // Use a current Sonnet model id. The cron-generate code in this repo uses
-  // claude-sonnet-4-5 — match that so we don't introduce a new dependency.
+  // Haiku 4.5 is plenty for "structure web search results into JSON". Much
+  // cheaper than Sonnet, much higher rate limit on tier 1, and the task
+  // doesn't need Sonnet's reasoning depth.
   const body = {
-    model: 'claude-sonnet-4-5',
-    max_tokens: 8000,
+    model: 'claude-haiku-4-5',
+    max_tokens: 4000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
     tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],

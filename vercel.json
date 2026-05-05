@@ -11,6 +11,10 @@
     {
       "path": "/api/cron-draft-comments",
       "schedule": "0 8 * * 1-5"
+    },
+    {
+      "path": "/api/events-topup?mode=cron",
+      "schedule": "0 9 1 * *"
     }
   ],
   "functions": {
@@ -48,6 +52,7 @@
     "api/event-post.js": { "maxDuration": 60 },
     "api/images.js": { "maxDuration": 15 },
     "api/videos.js": { "maxDuration": 15 },
-    "api/fcdo.js": { "maxDuration": 15 }
+    "api/fcdo.js": { "maxDuration": 15 },
+    "api/events-topup.js": { "maxDuration": 120 }
   }
 }

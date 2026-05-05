@@ -2158,6 +2158,9 @@ drawEmails = function() {
   injectDayBControls();
 };
 
+// Expose drawEmails to inline onclick handlers (since drawEmails is IIFE-scoped)
+window.__emailRedraw = function() { drawEmails(); };
+
 function injectDayBControls() {
   // Add Compose button to top of view (before sub-tabs)
   var subtabsRow = document.querySelector('#view-emails .email-subtabs');
@@ -2254,7 +2257,7 @@ function drawComposeForm() {
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
   ['Cold', 'Nurture', 'Client', 'Drip'].forEach(function(a) {
     var active = d.audience === a;
-    h += '<button onclick="window.__composeUpdate(\'audience\',\'' + a + '\');drawEmails()" style="height:36px;padding:0 14px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:13px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + a + '</button>';
+    h += '<button onclick="window.__composeUpdate(\'audience\',\'' + a + '\');window.__emailRedraw()" style="height:36px;padding:0 14px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:13px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + a + '</button>';
   });
   h += '</div></div>';
 
@@ -2263,7 +2266,7 @@ function drawComposeForm() {
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
   ['Newsletter', 'Promotion', 'Update', 'Drip'].forEach(function(t) {
     var active = d.emailType === t;
-    h += '<button onclick="window.__composeUpdate(\'emailType\',\'' + t + '\');drawEmails()" style="height:32px;padding:0 12px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:12px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + t + '</button>';
+    h += '<button onclick="window.__composeUpdate(\'emailType\',\'' + t + '\');window.__emailRedraw()" style="height:32px;padding:0 12px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:12px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + t + '</button>';
   });
   h += '</div></div>';
 

@@ -74,7 +74,7 @@ const ALLOWED_IMPACT = [
   'Medium',
 ];
 
-const HARD_CAP_EVENTS = 20;
+const HARD_CAP_EVENTS = 10;
 
 // ── Helpers ─────────────────────────────────────────────
 
@@ -152,10 +152,10 @@ async function fetchExistingEventNames(pat) {
 // ── Claude prompt + call ────────────────────────────────
 
 function buildSystemPrompt(existingEventNames, todayStr, horizonStr) {
-  // Cap to 80 names to stay well under tier-1 rate limits (30k input tokens/min).
-  // 80 short event names ≈ 1500 tokens. Plenty of room for the rest of the prompt
-  // plus web-search responses.
-  const namesForPrompt = existingEventNames.slice(0, 80).join(', ');
+  // Cap to 50 names to keep prompt small. The dedup job is approximate —
+  // Claude's web search may surface things on the existing list, but the
+  // server-side dedup pass after the response catches anything missed.
+  const namesForPrompt = existingEventNames.slice(0, 50).join(', ');
 
   return `You research travel-driving events for Travelgenix, a UK travel-tech SaaS.
 
@@ -183,19 +183,19 @@ Each event:
   "leadTimeWeeks": 2-12
 }
 
-Use web search to verify dates. All dates must be in ISO format and fall between ${todayStr} and ${horizonStr}. Quality over quantity — return fewer if needed.`;
+Use web search SPARINGLY — only when you genuinely don't know an event's date. Most major events (Olympics, World Cup, Wimbledon, Glastonbury, Diwali, Christmas markets etc.) you already know. All dates must be in ISO format and fall between ${todayStr} and ${horizonStr}. Quality over quantity — return fewer if needed.`;
 }
 
 async function callClaude(systemPrompt, userPrompt, apiKey) {
-  // Haiku 4.5 is plenty for "structure web search results into JSON". Much
-  // cheaper than Sonnet, much higher rate limit on tier 1, and the task
-  // doesn't need Sonnet's reasoning depth.
+  // Haiku 4.5 with limited web search to stay under tier-1 rate limits.
+  // Web search results count toward INPUT tokens — each search can pull in
+  // 5-15k tokens of content. Capping at 3 keeps us well under 50k tpm.
   const body = {
     model: 'claude-haiku-4-5',
-    max_tokens: 4000,
+    max_tokens: 3000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
-    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
   };
 
   const r = await fetch('https://api.anthropic.com/v1/messages', {

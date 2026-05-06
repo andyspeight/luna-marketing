@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
     future.setMonth(future.getMonth() + months);
     var startStr = now.toISOString().split("T")[0];
     var endStr = future.toISOString().split("T")[0];
-    // Fetch events within the date range, sorted by start date
+    // Fetch events within the date range, sorted by start date.
     // Status filter: only return approved events (or blank for legacy events
     // that pre-date the Status field). Pending and rejected are hidden.
     var formula = "AND(" +

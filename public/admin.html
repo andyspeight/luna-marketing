@@ -277,6 +277,9 @@ body { font-family:var(--tg-font-body); background:var(--bg); color:var(--text);
 .empty-state svg { width:48px; height:48px; margin-bottom:var(--space-4); opacity:0.3; }
 .empty-state p { font-size:var(--text-sm); max-width:300px; margin:0 auto; }
 </style>
+<!-- Central auth gate. Bounces to id.travelify.io/signin.html if not signed in.
+     Gated to luna_marketing role admin or owner (internal only). -->
+<script src="https://id.travelify.io/tg-auth-gate.js" data-product="luna_marketing"></script>
 <body data-theme="light">
 
 <!-- ═══════════════ LOGIN ═══════════════ -->
@@ -374,11 +377,9 @@ body { font-family:var(--tg-font-body); background:var(--bg); color:var(--text);
 (function() {
 'use strict';
 
-// Auth: handled by the central Travelgenix sign-in at widgets.travelify.io/signin.html.
-// This page reads the JWT/user from localStorage and gates by role (owner|admin).
-// No passwords stored or checked here.
-var SIGNIN_URL = 'https://widgets.travelify.io/signin.html';
-var SESSION_KEY = 'luna_mkt_session'; // legacy key — cleared on load if present
+// Auth: handled by /tg-auth-gate.js loaded in <head>. The gate validates
+// the central session, enforces the luna_marketing product permission,
+// and fires 'tg-auth-ready' when the page is allowed to render.
 var THEME_KEY = 'luna_mkt_theme';
 
 var state = {
@@ -406,70 +407,22 @@ function toggleTheme() {
   applyTheme();
 }
 
-/* ── LOGIN ── */
-// Central signin: this page never collects credentials. On load, we check
-// for a valid Travelgenix session (tg_token + tg_user written by
-// /signin.html). If missing or wrong role, we bounce to signin with a
-// `next` param so the user lands back here after authenticating.
+/* ── AUTH ── handled by tg-auth-gate.js loaded in <head>. Bounces unauthorised
+   users away; we just listen for the ready event and show the app. The gate
+   has the data-product="luna_marketing" attribute so anyone signed in but
+   without that permission sees a "no access" page instead of bouncing. */
 
-function getCentralSession() {
-  try {
-    var tok = localStorage.getItem('tg_token');
-    var usrRaw = localStorage.getItem('tg_user');
-    if (!tok || !usrRaw) return null;
-    var usr = JSON.parse(usrRaw);
-    var cli = null;
-    try { cli = JSON.parse(localStorage.getItem('tg_client') || 'null'); } catch(e) {}
-    // role lives on the user record — owner | admin | member
-    var role = (usr && usr.role) || '';
-    if (role && typeof role === 'object') role = role.name || ''; // singleSelect normalisation
-    return { token: tok, user: usr, client: cli, role: String(role).toLowerCase() };
-  } catch(e) { return null; }
-}
-
-function bounceToSignin(reason) {
-  var here = location.pathname + location.search + location.hash;
-  var url = SIGNIN_URL + '?next=' + encodeURIComponent('https://' + location.host + here);
-  if (reason) url += '&reason=' + encodeURIComponent(reason);
-  location.href = url;
-}
-
-function initLogin() {
-  // Wire up the controls that DO survive the central-signin migration.
-  $('logoutBtn').addEventListener('click', doLogout);
+window.addEventListener('tg-auth-ready', function() {
+  // tgAuth is populated by the gate. tgAuth.user, tgAuth.client, tgAuth.role
+  state.agent = (tgAuth.user && (tgAuth.user.fullName || tgAuth.user.email)) || 'You';
+  state.company = (tgAuth.client && tgAuth.client.clientName) || 'Travelgenix';
+  $('logoutBtn').addEventListener('click', function() {
+    if (window.tgAuth && tgAuth.signOut) tgAuth.signOut();
+    else location.href = 'https://id.travelify.io/signin.html';
+  });
   $('themeBtn').addEventListener('click', toggleTheme);
-
-  // Clear any legacy session blob so we never silently fall back to it.
-  try { sessionStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_KEY); } catch(e) {}
-
-  // Check the central session.
-  var sess = getCentralSession();
-  if (!sess) { bounceToSignin(); return; }
-
-  // Gate by role — Luna Marketing admin is internal only.
-  if (sess.role !== 'owner' && sess.role !== 'admin') {
-    bounceToSignin('not_authorised');
-    return;
-  }
-
-  // Authorised — populate the header and show the app.
-  state.agent = (sess.user && (sess.user.fullName || sess.user.email)) || 'You';
-  state.company = (sess.client && sess.client.clientName) || 'Travelgenix';
   showApp();
-}
-
-function doLogout() {
-  try {
-    // Clear central auth keys
-    localStorage.removeItem('tg_token');
-    localStorage.removeItem('tg_user');
-    localStorage.removeItem('tg_client');
-    // Clear legacy keys
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
-  } catch(e) {}
-  bounceToSignin();
-}
+});
 
 function showApp() {
   $('loginScreen').classList.add('hidden');
@@ -990,7 +943,7 @@ window.App = {
 
 /* ── INIT ── */
 initTheme();
-initLogin();
+// initLogin() removed — central tg-auth-gate.js fires 'tg-auth-ready' when the session resolves.
 
 })();
 </script>

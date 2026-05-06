@@ -512,19 +512,29 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 }
 
 </style>
+<!-- Central auth gate. Bounces to id.travelify.io/signin.html if not signed in.
+     We use data-product="*" so any signed-in user gets through; product-level
+     access is governed by whether they have a Luna Marketing profile linked. -->
+<script src="https://id.travelify.io/tg-auth-gate.js" data-product="*"></script>
 </head>
 <body data-theme="light">
 
-<!-- Login -->
-<div class="login-screen" id="loginScreen">
+<!-- Profile picker (shown only if user has multiple linked profiles) -->
+<div class="login-screen hidden" id="pickerScreen">
+<div class="login-box" style="width:480px">
+  <div class="hdr-logo" style="width:56px;height:56px;border-radius:var(--radius-xl);font-size:var(--text-2xl);margin:0 auto var(--space-5)">L</div>
+  <h2>Choose a client</h2>
+  <p class="sub">You have access to multiple Luna Marketing profiles. Pick one to continue.</p>
+  <div id="pickerList" style="margin-top:var(--space-4);display:flex;flex-direction:column;gap:8px;text-align:left"></div>
+  <p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">You can switch later from the header menu.</p>
+</div></div>
+
+<!-- Lightweight loading screen while we resolve the session -->
+<div class="login-screen" id="bootScreen">
 <div class="login-box">
   <div class="hdr-logo" style="width:56px;height:56px;border-radius:var(--radius-xl);font-size:var(--text-2xl);margin:0 auto var(--space-5)">L</div>
-  <h2>Luna Marketing</h2><p class="sub">Client Portal</p>
-  <div class="login-field"><label class="input-label" for="loginEmail">Email address</label><input class="input" id="loginEmail" placeholder="your@email.com" type="email"></div>
-  <div class="login-field"><label class="input-label" for="loginCode">Access code</label><div class="pw-wrap"><input class="input" id="loginCode" placeholder="Your unique access code" type="password"><button type="button" class="pw-eye" id="codeEye" aria-label="Toggle code visibility"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
-  <button class="login-submit" id="loginBtn">Sign In</button>
-  <div class="login-err" id="loginErr"></div>
-  <p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">Don't have an access code? Contact your account manager.</p>
+  <h2>Luna Marketing</h2>
+  <p class="sub">Loading your dashboard...</p>
 </div></div>
 
 <!-- App -->
@@ -567,13 +577,88 @@ function applyTheme(){document.body.setAttribute('data-theme',state.theme);$('su
 applyTheme();
 $('themeBtn').onclick=function(){state.theme=state.theme==='light'?'dark':'light';try{localStorage.setItem(TK,state.theme)}catch(e){}applyTheme()};
 
-// Login
-$('loginBtn').onclick=doLogin;$('loginCode').onkeydown=function(e){if(e.key==='Enter')doLogin()};$('loginEmail').onkeydown=function(e){if(e.key==='Enter')$('loginCode').focus()};$('logoutBtn').onclick=doLogout;
-$('codeEye').onclick=function(){var i=$('loginCode');var h=i.type==='password';i.type=h?'text':'password';this.innerHTML=h?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'};
-async function doLogin(){var email=$('loginEmail').value.trim(),code=$('loginCode').value.trim(),err=$('loginErr');if(!email){err.textContent='Please enter your email address';err.classList.add('show');return}if(!code){err.textContent='Please enter your access code';err.classList.add('show');return}$('loginBtn').disabled=true;$('loginBtn').textContent='Signing in...';try{var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,code:code})});var d=await r.json();if(!r.ok)throw new Error(d.error);state.profile=d.profile;try{sessionStorage.setItem(SK,JSON.stringify({e:email,c:code,t:Date.now()}))}catch(e){}showApp()}catch(e){err.textContent=e.message;err.classList.add('show')}finally{$('loginBtn').disabled=false;$('loginBtn').textContent='Sign In'}}
-function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=null;$('loginScreen').classList.remove('hidden');$('app').classList.add('hide')}
-(async function(){try{var s=JSON.parse(sessionStorage.getItem(SK));if(s&&Date.now()-s.t<MAX){var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:s.e,code:s.c})});var d=await r.json();if(r.ok){state.profile=d.profile;showApp()}}}catch(e){}})();
-function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+// Central-session auth — see <script src="...tg-auth-gate.js"> in <head>.
+// On 'tg-auth-ready', resolve which Luna Marketing profile to load.
+// User's chosen profile is remembered in localStorage so the picker only
+// appears once (or when they explicitly switch).
+var PROFILE_PREF_KEY = 'luna_mkt_profile_id';
+
+$('logoutBtn').onclick = function(){
+  try { localStorage.removeItem(PROFILE_PREF_KEY); } catch(e) {}
+  if (window.tgAuth && tgAuth.signOut) { tgAuth.signOut(); }
+  else { window.location.href = 'https://id.travelify.io/signin.html'; }
+};
+
+async function fetchSessionProfile(profileId){
+  var body = profileId ? { profileId: profileId } : {};
+  var r = await fetch('/api/client-auth-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body)
+  });
+  var d = await r.json().catch(function(){return {error:'Bad response'}});
+  if (!r.ok) throw new Error(d.error || ('Auth failed (' + r.status + ')'));
+  return d;
+}
+
+function showPicker(candidates){
+  var list = $('pickerList');
+  list.innerHTML = '';
+  candidates.forEach(function(c){
+    var btn = document.createElement('button');
+    btn.className = 'login-submit';
+    btn.style.cssText = 'background:var(--tg-bg-primary);color:var(--tg-text-primary);border:1px solid var(--tg-border);text-align:left;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px';
+    btn.innerHTML = '<div><div style="font-weight:600;margin-bottom:2px">'+esc(c.name)+'</div>'+(c.package?'<div style="font-size:12px;color:var(--tg-text-tertiary)">'+esc(c.package)+' plan</div>':'')+'</div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+    btn.onclick = function(){ chooseProfile(c.id); };
+    list.appendChild(btn);
+  });
+  $('bootScreen').classList.add('hidden');
+  $('pickerScreen').classList.remove('hidden');
+}
+
+async function chooseProfile(profileId){
+  try {
+    var d = await fetchSessionProfile(profileId);
+    if (!d.profile) throw new Error('Profile not loaded');
+    try { localStorage.setItem(PROFILE_PREF_KEY, profileId); } catch(e) {}
+    state.profile = d.profile;
+    $('pickerScreen').classList.add('hidden');
+    $('bootScreen').classList.add('hidden');
+    showApp();
+  } catch(e) { alert('Could not load that profile: ' + e.message); }
+}
+
+window.addEventListener('tg-auth-ready', async function(){
+  try {
+    var preferred = null;
+    try { preferred = localStorage.getItem(PROFILE_PREF_KEY) || null; } catch(e) {}
+    var d;
+    if (preferred) {
+      try { d = await fetchSessionProfile(preferred); }
+      catch(e) {
+        try { localStorage.removeItem(PROFILE_PREF_KEY); } catch(_) {}
+        d = await fetchSessionProfile(null);
+      }
+    } else { d = await fetchSessionProfile(null); }
+
+    if (d.profile) {
+      state.profile = d.profile;
+      $('bootScreen').classList.add('hidden');
+      showApp();
+    } else if (d.candidates && d.candidates.length > 1) {
+      showPicker(d.candidates);
+    } else if (d.candidates && d.candidates.length === 1) {
+      chooseProfile(d.candidates[0].id);
+    } else {
+      $('bootScreen').innerHTML = '<div class="login-box"><h2>No Luna Marketing account</h2><p class="sub">Your account isn\'t linked to a Luna Marketing profile yet.</p><p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">Contact your account manager to get set up.</p><button class="login-submit" style="margin-top:var(--space-4)" onclick="tgAuth.signOut()">Sign out</button></div>';
+    }
+  } catch(e) {
+    $('bootScreen').innerHTML = '<div class="login-box"><h2>Couldn\'t load your account</h2><p class="sub" style="color:var(--tg-error)">'+esc(e.message)+'</p><button class="login-submit" style="margin-top:var(--space-4)" onclick="location.reload()">Retry</button><button class="login-submit" style="margin-top:var(--space-2);background:transparent;color:var(--tg-text-primary);border:1px solid var(--tg-border)" onclick="tgAuth.signOut()">Sign out</button></div>';
+  }
+});
+
+function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
 document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails()};

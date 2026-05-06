@@ -1026,13 +1026,13 @@ async function loadAdminEvents(){
     var d=await res.json();
     if(!d.success)throw new Error(d.error||'Failed to load');
     evtAdminState.adminEvents=d.events||[];
+    evtAdminState.loading=false;
     drawEventsView(); // Re-render so sub-tab badge updates too
   }catch(e){
+    evtAdminState.loading=false;
     if(target){
       target.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error);font-size:13px">Could not load: '+esc(e.message)+'</div>';
     }
-  }finally{
-    evtAdminState.loading=false;
   }
 }
 

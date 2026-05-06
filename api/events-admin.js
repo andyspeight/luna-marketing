@@ -1,32 +1,46 @@
 /* ══════════════════════════════════════════
    LUNA MARKETING — EVENTS ADMIN API
-   Admin-only endpoint for reviewing pending events.
 
-   Auth: Travelgenix JWT (Authorization: Bearer <tg_token>) sent by
-   events-admin.html. Role-gated to owner or admin. The page never
-   exposes admin keys to the browser — it just forwards the token the
-   user already has from the central signin.
+   Admin-only endpoint for reviewing pending events from inside the Events
+   tab in client.html. Auth piggybacks on the existing client-auth flow.
 
-   Endpoints (all behind the same auth):
-     GET  /api/events-admin?action=list[&status=pending]
-          → { success: true, events: [...] }
-          status query param defaults to "pending". Use "approved",
-          "rejected", or "all" to fetch other slices.
+   How auth works:
+   1. The Luna Marketing client portal stores { email, code } in
+      sessionStorage when the user logs in.
+   2. The "Pending" sub-tab calls this endpoint with email + code in the
+      request body (POST) or signed via the same headers your other admin
+      endpoints use.
+   3. Server verifies email + code by re-running the same Airtable lookup
+      that /api/client-auth does, then checks the resolved client ID matches
+      OWNER_CLIENT_ID. Anyone else gets 403.
 
-     POST /api/events-admin  body: { action, id, [status] }
-          action = approve | reject | delete | set_status
-          id = recXXX
-          status = required for action=set_status
+   This means there's no separate admin password and no JWT —
+   the Travelgenix owner record is the source of truth.
 
-   Reuses TG_EVENTS_AIRTABLE_PAT (read+write scoped) — same env var the
-   events-topup cron uses. Falls back to AIRTABLE_KEY if not set.
+   Endpoints:
+     POST /api/events-admin
+       body: { email, code, action: "list", status?: "pending" }
+       → { success: true, events: [...] }
+
+     POST /api/events-admin
+       body: { email, code, action: "approve" | "reject" | "delete", id: "recXXX" }
+       → { success: true, id, status? }
    ══════════════════════════════════════════ */
 
 var AIRTABLE_API   = "https://api.airtable.com/v0";
 var EVENTS_BASE_ID = "appSoIlSe0sNaJ4BZ";
 var EVENTS_TABLE   = "tblQxIYrbzd6YlJYV";
 
-// Field IDs (stable across renames)
+// Travelgenix's own client record. Only this account is allowed admin
+// privileges. To grant access to additional users, add them as collaborators
+// on this client record (so they share the access code) — or extend the
+// auth check below to consult an "admin emails" list.
+var OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
+
+// Clients table — same base as Events Calendar, used for auth verification
+var CLIENTS_TABLE = "Clients"; // Or update if your Clients table ID is different
+
+// Field IDs on Events Calendar (stable)
 var FIELDS = {
   name:              "fldeCYUaMLwkWpv2u",
   dateStart:         "fld3kpR4x8CMyN5X5",
@@ -47,53 +61,45 @@ var ALLOWED_STATUSES = ["pending", "approved", "rejected"];
 
 // ── Auth ────────────────────────────────────────────
 
-// Decode a Travelgenix JWT without verifying the signature. We rely on the
-// signing service for actual identity assurance; this endpoint only reads
-// the role claim to decide whether the request is allowed. For stronger
-// guarantees, swap this for a verified decode using the JWT secret.
-function decodeJwtPayload(token) {
-  if (!token || typeof token !== "string") return null;
-  var parts = token.split(".");
-  if (parts.length !== 3) return null;
+// Verify the email + access code match a real client by calling the existing
+// /api/client-auth route. We do this server-side so the user's code is never
+// trusted by the admin endpoint without a fresh check, and we don't have to
+// duplicate the client-auth lookup logic here.
+async function verifyClientAuth(email, code, host) {
+  if (!email || !code) {
+    return { ok: false, status: 401, error: "missing email or access code" };
+  }
+
+  // Build the URL to call our own client-auth endpoint. In Vercel, request the
+  // local function via the same host/protocol.
+  var protocol = "https://";
+  var url = protocol + host + "/api/client-auth";
+
   try {
-    var payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    var pad = payload.length % 4;
-    if (pad) payload += "=".repeat(4 - pad);
-    var json = Buffer.from(payload, "base64").toString("utf8");
-    return JSON.parse(json);
-  } catch (e) {
-    return null;
+    var r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, code: code }),
+    });
+    var data = await r.json().catch(function () { return {}; });
+    if (!r.ok || !data || !data.profile) {
+      return { ok: false, status: 401, error: "invalid email or access code" };
+    }
+    if (data.profile.id !== OWNER_CLIENT_ID) {
+      return { ok: false, status: 403, error: "not authorised for admin actions" };
+    }
+    return { ok: true, profile: data.profile };
+  } catch (err) {
+    return { ok: false, status: 500, error: "auth verification failed" };
   }
-}
-
-function checkAuth(req) {
-  var hdr = req.headers && req.headers.authorization;
-  if (!hdr) return { ok: false, status: 401, error: "missing authorization header" };
-  var token = hdr.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return { ok: false, status: 401, error: "missing bearer token" };
-
-  var payload = decodeJwtPayload(token);
-  if (!payload) return { ok: false, status: 401, error: "invalid token format" };
-
-  // Optional: enforce expiry if the JWT carries one
-  if (payload.exp && Date.now() / 1000 > payload.exp) {
-    return { ok: false, status: 401, error: "token expired" };
-  }
-
-  // Role gate — owner or admin only
-  var role = payload.role;
-  if (role && typeof role === "object") role = role.name || "";
-  role = String(role || "").toLowerCase();
-  if (role !== "owner" && role !== "admin") {
-    return { ok: false, status: 403, error: "not authorised" };
-  }
-
-  return { ok: true, user: payload };
 }
 
 // ── Airtable helpers ────────────────────────────────
 
 function getPat() {
+  // Prefer the read+write PAT used by the events-topup cron, fall back to the
+  // existing AIRTABLE_KEY (typically read-only on this base, so writes will
+  // fail but reads still work).
   return process.env.TG_EVENTS_AIRTABLE_PAT || process.env.AIRTABLE_KEY;
 }
 
@@ -189,16 +195,26 @@ async function deleteRecord(recordId) {
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
 
-  var auth = checkAuth(req);
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ success: false, error: "method not allowed" });
+  }
+
+  var body = req.body || {};
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch (e) { body = {}; }
+  }
+
+  // Verify auth via client-auth round-trip
+  var host = (req.headers && req.headers.host) || "";
+  var auth = await verifyClientAuth(body.email, body.code, host);
   if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
 
   try {
-    if (req.method === "GET") {
-      var action = (req.query && req.query.action) || "list";
-      if (action !== "list") {
-        return res.status(400).json({ success: false, error: "unknown GET action" });
-      }
-      var status = (req.query && req.query.status) || "pending";
+    var action = (body.action || "").toLowerCase();
+
+    if (action === "list") {
+      var status = (body.status || "pending").toLowerCase();
       if (["pending", "approved", "rejected", "all"].indexOf(status) === -1) {
         return res.status(400).json({ success: false, error: "invalid status filter" });
       }
@@ -206,45 +222,33 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, count: events.length, events: events });
     }
 
-    if (req.method === "POST") {
-      var body = req.body || {};
-      // Vercel may not parse JSON automatically depending on config — handle both
-      if (typeof body === "string") {
-        try { body = JSON.parse(body); } catch (e) { body = {}; }
-      }
-      var bAction = (body.action || "").toLowerCase();
-      var id = (body.id || "").trim();
-
-      if (!id || !/^rec[A-Za-z0-9]{14}$/.test(id)) {
-        return res.status(400).json({ success: false, error: "invalid or missing record id" });
-      }
-
-      if (bAction === "approve") {
-        await setStatus(id, "approved");
-        return res.status(200).json({ success: true, id: id, status: "approved" });
-      }
-      if (bAction === "reject") {
-        await setStatus(id, "rejected");
-        return res.status(200).json({ success: true, id: id, status: "rejected" });
-      }
-      if (bAction === "delete") {
-        await deleteRecord(id);
-        return res.status(200).json({ success: true, id: id, deleted: true });
-      }
-      if (bAction === "set_status") {
-        var newStatus = (body.status || "").toLowerCase();
-        if (ALLOWED_STATUSES.indexOf(newStatus) === -1) {
-          return res.status(400).json({ success: false, error: "status must be one of: " + ALLOWED_STATUSES.join(", ") });
-        }
-        await setStatus(id, newStatus);
-        return res.status(200).json({ success: true, id: id, status: newStatus });
-      }
-
-      return res.status(400).json({ success: false, error: "action must be approve, reject, delete, or set_status" });
+    var id = (body.id || "").trim();
+    if (!id || !/^rec[A-Za-z0-9]{14}$/.test(id)) {
+      return res.status(400).json({ success: false, error: "invalid or missing record id" });
     }
 
-    res.setHeader("Allow", "GET, POST");
-    return res.status(405).json({ success: false, error: "method not allowed" });
+    if (action === "approve") {
+      await setStatus(id, "approved");
+      return res.status(200).json({ success: true, id: id, status: "approved" });
+    }
+    if (action === "reject") {
+      await setStatus(id, "rejected");
+      return res.status(200).json({ success: true, id: id, status: "rejected" });
+    }
+    if (action === "delete") {
+      await deleteRecord(id);
+      return res.status(200).json({ success: true, id: id, deleted: true });
+    }
+    if (action === "set_status") {
+      var newStatus = (body.status || "").toLowerCase();
+      if (ALLOWED_STATUSES.indexOf(newStatus) === -1) {
+        return res.status(400).json({ success: false, error: "status must be one of: " + ALLOWED_STATUSES.join(", ") });
+      }
+      await setStatus(id, newStatus);
+      return res.status(200).json({ success: true, id: id, status: newStatus });
+    }
+
+    return res.status(400).json({ success: false, error: "action must be list, approve, reject, delete, or set_status" });
 
   } catch (err) {
     console.error("events-admin error", err);

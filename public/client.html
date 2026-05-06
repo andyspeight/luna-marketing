@@ -512,29 +512,19 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 }
 
 </style>
-<!-- Central auth gate. Bounces to id.travelify.io/signin.html if not signed in.
-     We use data-product="*" so any signed-in user gets through; product-level
-     access is governed by whether they have a Luna Marketing profile linked. -->
-<script src="https://id.travelify.io/tg-auth-gate.js" data-product="*"></script>
 </head>
 <body data-theme="light">
 
-<!-- Profile picker (shown only if user has multiple linked profiles) -->
-<div class="login-screen hidden" id="pickerScreen">
-<div class="login-box" style="width:480px">
-  <div class="hdr-logo" style="width:56px;height:56px;border-radius:var(--radius-xl);font-size:var(--text-2xl);margin:0 auto var(--space-5)">L</div>
-  <h2>Choose a client</h2>
-  <p class="sub">You have access to multiple Luna Marketing profiles. Pick one to continue.</p>
-  <div id="pickerList" style="margin-top:var(--space-4);display:flex;flex-direction:column;gap:8px;text-align:left"></div>
-  <p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">You can switch later from the header menu.</p>
-</div></div>
-
-<!-- Lightweight loading screen while we resolve the session -->
-<div class="login-screen" id="bootScreen">
+<!-- Login -->
+<div class="login-screen" id="loginScreen">
 <div class="login-box">
   <div class="hdr-logo" style="width:56px;height:56px;border-radius:var(--radius-xl);font-size:var(--text-2xl);margin:0 auto var(--space-5)">L</div>
-  <h2>Luna Marketing</h2>
-  <p class="sub">Loading your dashboard...</p>
+  <h2>Luna Marketing</h2><p class="sub">Client Portal</p>
+  <div class="login-field"><label class="input-label" for="loginEmail">Email address</label><input class="input" id="loginEmail" placeholder="your@email.com" type="email"></div>
+  <div class="login-field"><label class="input-label" for="loginCode">Access code</label><div class="pw-wrap"><input class="input" id="loginCode" placeholder="Your unique access code" type="password"><button type="button" class="pw-eye" id="codeEye" aria-label="Toggle code visibility"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+  <button class="login-submit" id="loginBtn">Sign In</button>
+  <div class="login-err" id="loginErr"></div>
+  <p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">Don't have an access code? Contact your account manager.</p>
 </div></div>
 
 <!-- App -->
@@ -568,6 +558,16 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 'use strict';
 var SK='luna_client_session',TK='luna_client_theme',MAX=4*3600000;
 var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',dragPid:null};
+// Travelgenix's own client record. Only this account sees the admin
+// sub-tabs inside Events. Everyone else just sees the standard view.
+var OWNER_CLIENT_ID = 'recFXQY7be6gMr4In';
+function isOwner() { return state.profile && state.profile.id === OWNER_CLIENT_ID; }
+// Auth credentials for the events-admin endpoint — captured at login so
+// we can re-send them on every admin call (events-admin re-verifies them
+// server-side before doing anything).
+var adminCreds = { email: '', code: '' };
+// Admin sub-tab state — only ever populated when isOwner() is true.
+var evtAdminState = { tab: 'all', adminEvents: [], adminFilter: 'pending', loading: false };
 var $=function(id){return document.getElementById(id)};
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
@@ -577,88 +577,13 @@ function applyTheme(){document.body.setAttribute('data-theme',state.theme);$('su
 applyTheme();
 $('themeBtn').onclick=function(){state.theme=state.theme==='light'?'dark':'light';try{localStorage.setItem(TK,state.theme)}catch(e){}applyTheme()};
 
-// Central-session auth — see <script src="...tg-auth-gate.js"> in <head>.
-// On 'tg-auth-ready', resolve which Luna Marketing profile to load.
-// User's chosen profile is remembered in localStorage so the picker only
-// appears once (or when they explicitly switch).
-var PROFILE_PREF_KEY = 'luna_mkt_profile_id';
-
-$('logoutBtn').onclick = function(){
-  try { localStorage.removeItem(PROFILE_PREF_KEY); } catch(e) {}
-  if (window.tgAuth && tgAuth.signOut) { tgAuth.signOut(); }
-  else { window.location.href = 'https://id.travelify.io/signin.html'; }
-};
-
-async function fetchSessionProfile(profileId){
-  var body = profileId ? { profileId: profileId } : {};
-  var r = await fetch('/api/client-auth-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body)
-  });
-  var d = await r.json().catch(function(){return {error:'Bad response'}});
-  if (!r.ok) throw new Error(d.error || ('Auth failed (' + r.status + ')'));
-  return d;
-}
-
-function showPicker(candidates){
-  var list = $('pickerList');
-  list.innerHTML = '';
-  candidates.forEach(function(c){
-    var btn = document.createElement('button');
-    btn.className = 'login-submit';
-    btn.style.cssText = 'background:var(--tg-bg-primary);color:var(--tg-text-primary);border:1px solid var(--tg-border);text-align:left;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px';
-    btn.innerHTML = '<div><div style="font-weight:600;margin-bottom:2px">'+esc(c.name)+'</div>'+(c.package?'<div style="font-size:12px;color:var(--tg-text-tertiary)">'+esc(c.package)+' plan</div>':'')+'</div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
-    btn.onclick = function(){ chooseProfile(c.id); };
-    list.appendChild(btn);
-  });
-  $('bootScreen').classList.add('hidden');
-  $('pickerScreen').classList.remove('hidden');
-}
-
-async function chooseProfile(profileId){
-  try {
-    var d = await fetchSessionProfile(profileId);
-    if (!d.profile) throw new Error('Profile not loaded');
-    try { localStorage.setItem(PROFILE_PREF_KEY, profileId); } catch(e) {}
-    state.profile = d.profile;
-    $('pickerScreen').classList.add('hidden');
-    $('bootScreen').classList.add('hidden');
-    showApp();
-  } catch(e) { alert('Could not load that profile: ' + e.message); }
-}
-
-window.addEventListener('tg-auth-ready', async function(){
-  try {
-    var preferred = null;
-    try { preferred = localStorage.getItem(PROFILE_PREF_KEY) || null; } catch(e) {}
-    var d;
-    if (preferred) {
-      try { d = await fetchSessionProfile(preferred); }
-      catch(e) {
-        try { localStorage.removeItem(PROFILE_PREF_KEY); } catch(_) {}
-        d = await fetchSessionProfile(null);
-      }
-    } else { d = await fetchSessionProfile(null); }
-
-    if (d.profile) {
-      state.profile = d.profile;
-      $('bootScreen').classList.add('hidden');
-      showApp();
-    } else if (d.candidates && d.candidates.length > 1) {
-      showPicker(d.candidates);
-    } else if (d.candidates && d.candidates.length === 1) {
-      chooseProfile(d.candidates[0].id);
-    } else {
-      $('bootScreen').innerHTML = '<div class="login-box"><h2>No Luna Marketing account</h2><p class="sub">Your account isn\'t linked to a Luna Marketing profile yet.</p><p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">Contact your account manager to get set up.</p><button class="login-submit" style="margin-top:var(--space-4)" onclick="tgAuth.signOut()">Sign out</button></div>';
-    }
-  } catch(e) {
-    $('bootScreen').innerHTML = '<div class="login-box"><h2>Couldn\'t load your account</h2><p class="sub" style="color:var(--tg-error)">'+esc(e.message)+'</p><button class="login-submit" style="margin-top:var(--space-4)" onclick="location.reload()">Retry</button><button class="login-submit" style="margin-top:var(--space-2);background:transparent;color:var(--tg-text-primary);border:1px solid var(--tg-border)" onclick="tgAuth.signOut()">Sign out</button></div>';
-  }
-});
-
-function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+// Login
+$('loginBtn').onclick=doLogin;$('loginCode').onkeydown=function(e){if(e.key==='Enter')doLogin()};$('loginEmail').onkeydown=function(e){if(e.key==='Enter')$('loginCode').focus()};$('logoutBtn').onclick=doLogout;
+$('codeEye').onclick=function(){var i=$('loginCode');var h=i.type==='password';i.type=h?'text':'password';this.innerHTML=h?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'};
+async function doLogin(){var email=$('loginEmail').value.trim(),code=$('loginCode').value.trim(),err=$('loginErr');if(!email){err.textContent='Please enter your email address';err.classList.add('show');return}if(!code){err.textContent='Please enter your access code';err.classList.add('show');return}$('loginBtn').disabled=true;$('loginBtn').textContent='Signing in...';try{var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,code:code})});var d=await r.json();if(!r.ok)throw new Error(d.error);state.profile=d.profile;adminCreds.email=email;adminCreds.code=code;try{sessionStorage.setItem(SK,JSON.stringify({e:email,c:code,t:Date.now()}))}catch(e){}showApp()}catch(e){err.textContent=e.message;err.classList.add('show')}finally{$('loginBtn').disabled=false;$('loginBtn').textContent='Sign In'}}
+function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=null;$('loginScreen').classList.remove('hidden');$('app').classList.add('hide')}
+(async function(){try{var s=JSON.parse(sessionStorage.getItem(SK));if(s&&Date.now()-s.t<MAX){var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:s.e,code:s.c})});var d=await r.json();if(r.ok){state.profile=d.profile;adminCreds.email=s.e;adminCreds.code=s.c;showApp()}}}catch(e){}})();
+function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
 document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails()};
@@ -917,11 +842,67 @@ async function renderEventsView(){
     evtState.postedIds=pd.postedEventIds||[];
   }catch(e){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error)">Error: '+e.message+'</div>';return}
   evtState.selected={};
-  drawEventsClient();
+  // Default sub-tab is the existing client view
+  evtAdminState.tab='all';
+  drawEventsView();
 }
 
+// Top-level wrapper that renders the appropriate sub-tab content
+function drawEventsView(){
+  var el=$('view-events');
+  if(!isOwner()){
+    // Regular clients: original client view, no sub-tabs
+    drawEventsClient();
+    return;
+  }
+  // Admin (owner): wrap the view with sub-tabs
+  var wrap='';
+  wrap+='<div style="display:flex;gap:var(--space-1);border-bottom:1px solid var(--tg-border);margin-bottom:var(--space-5);overflow-x:auto">';
+  wrap+='<button class="evt-subtab'+(evtAdminState.tab==='all'?' active':'')+'" data-evt-subtab="all" style="padding:var(--space-3) var(--space-5);background:transparent;border:none;border-bottom:2px solid '+(evtAdminState.tab==='all'?'var(--tg-accent)':'transparent')+';cursor:pointer;font-family:var(--tg-font-body);font-size:var(--text-sm);font-weight:600;color:'+(evtAdminState.tab==='all'?'var(--tg-accent-dark)':'var(--tg-text-secondary)')+';margin-bottom:-1px;white-space:nowrap">All Events</button>';
+  // Owner-only Pending Review tab — count badge updated after first fetch
+  var pendCount=evtAdminState.adminEvents.filter(function(x){return x.status==='pending'}).length;
+  wrap+='<button class="evt-subtab'+(evtAdminState.tab==='admin'?' active':'')+'" data-evt-subtab="admin" style="padding:var(--space-3) var(--space-5);background:transparent;border:none;border-bottom:2px solid '+(evtAdminState.tab==='admin'?'var(--tg-accent)':'transparent')+';cursor:pointer;font-family:var(--tg-font-body);font-size:var(--text-sm);font-weight:600;color:'+(evtAdminState.tab==='admin'?'var(--tg-accent-dark)':'var(--tg-text-secondary)')+';margin-bottom:-1px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px">';
+  wrap+='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
+  wrap+='Pending Review';
+  if(pendCount>0)wrap+='<span style="background:var(--tg-accent);color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;font-family:var(--tg-font-mono)">'+pendCount+'</span>';
+  wrap+='</button>';
+  wrap+='</div>';
+
+  // Sub-tab content container
+  wrap+='<div id="evt-subtab-content"></div>';
+  el.innerHTML=wrap;
+
+  // Render the active sub-tab into the inner container
+  if(evtAdminState.tab==='all'){
+    drawEventsClientInto($('evt-subtab-content'));
+  }else{
+    drawEventsAdminInto($('evt-subtab-content'));
+  }
+}
+
+// Sub-tab switcher — wires up the buttons rendered above
+document.addEventListener('click',function(e){
+  var sb=e.target.closest('[data-evt-subtab]');
+  if(!sb)return;
+  var tab=sb.getAttribute('data-evt-subtab');
+  if(tab===evtAdminState.tab)return;
+  evtAdminState.tab=tab;
+  drawEventsView();
+  if(tab==='admin'&&!evtAdminState.adminEvents.length&&!evtAdminState.loading){
+    loadAdminEvents();
+  }
+});
+
+// ── Existing client view, refactored to render into a target element ──
+
 function drawEventsClient(){
-  var el=$('view-events');var events=evtState.events;
+  // Backwards compatible: when called without a target, render into the
+  // top-level events view (used by non-owners).
+  drawEventsClientInto($('view-events'));
+}
+
+function drawEventsClientInto(targetEl){
+  var events=evtState.events;
   if(evtState.filter!=='all')events=events.filter(function(e){return e.category===evtState.filter});
   var now=new Date();var n30=new Date();n30.setDate(n30.getDate()+30);
   var major=evtState.events.filter(function(e){return e.impact&&e.impact.includes('Major')}).length;
@@ -956,7 +937,7 @@ function drawEventsClient(){
   Object.keys(cats).sort().forEach(function(c){var color=EVT_CAT_COLORS[c]||'#64748B';var isA=evtState.filter===c;h+='<button data-evt-filter="'+esc(c)+'" style="height:30px;padding:0 12px;border-radius:15px;border:1px solid '+(isA?color:'var(--tg-border)')+';background:'+(isA?color:'var(--tg-bg-primary)')+';color:'+(isA?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:5px">';if(!isA)h+='<span style="width:7px;height:7px;border-radius:50%;background:'+color+'"></span>';h+=esc(c)+' ('+cats[c]+')</button>'});
   h+='</div>';
 
-  if(!events.length){h+='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No events for this filter.</div>';el.innerHTML=h;return}
+  if(!events.length){h+='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No events for this filter.</div>';targetEl.innerHTML=h;return}
 
   var months={};events.forEach(function(e){var k=evtMonthYear(e.dateStart);if(!months[k])months[k]=[];months[k].push(e)});
 
@@ -972,20 +953,17 @@ function drawEventsClient(){
       h+='<div class="evt-card'+(isPosted?' evt-posted':'')+'" id="evt-'+e.id+'" style="background:var(--tg-bg-primary);border:1px solid '+(isPosted?'rgba(16,185,129,0.3)':'var(--tg-border)')+';border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;transition:box-shadow 0.2s">';
       h+='<div style="display:flex;align-items:center;gap:10px;padding:14px 16px">';
 
-      // Checkbox (not for posted events)
       if(!isPosted){
         h+='<input type="checkbox" class="evt-checkbox" data-evt-check="'+e.id+'" '+(isChecked?'checked':'')+' style="width:18px;height:18px;flex-shrink:0;accent-color:var(--tg-accent);cursor:pointer" onclick="event.stopPropagation()">';
       } else {
         h+='<div style="width:18px;flex-shrink:0"></div>';
       }
 
-      // Clickable row content
       h+='<div data-evt-toggle="'+e.id+'" style="display:flex;align-items:center;gap:14px;flex:1;cursor:pointer">';
       h+='<div style="width:50px;text-align:center;flex-shrink:0"><div style="font-size:22px;font-weight:800;color:var(--tg-text-primary);line-height:1.1">'+evtDay(e.dateStart)+'</div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary)">'+evtMon(e.dateStart)+'</div></div>';
       h+='<div style="width:1px;height:34px;background:var(--tg-border);flex-shrink:0"></div>';
       h+='<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--tg-text-primary)">'+esc(e.name)+'</div><div style="font-size:12px;color:var(--tg-text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.countries+(e.destinations?' \u2014 '+e.destinations:''))+'</div></div>';
 
-      // Tags + Posted pill
       if(isPosted){
         h+='<span style="flex-shrink:0;height:22px;padding:0 10px;border-radius:11px;font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;background:rgba(16,185,129,0.12);color:#059669;border:1px solid rgba(16,185,129,0.25)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Posted</span>';
       }
@@ -994,7 +972,6 @@ function drawEventsClient(){
       h+='<svg style="width:18px;height:18px;flex-shrink:0;color:var(--tg-text-tertiary);transition:transform 0.3s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
       h+='</div></div>';
 
-      // Expanded detail
       h+='<div class="evt-detail" style="display:none;padding:0 16px 16px">';
       h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
       h+='<div style="background:var(--tg-bg-secondary);border-radius:8px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary);margin-bottom:6px">When</div><div style="font-size:13px;color:var(--tg-text-primary)">'+dateRange+'</div></div>';
@@ -1004,7 +981,6 @@ function drawEventsClient(){
       h+='</div>';
       if(e.audience&&e.audience.length){h+='<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--tg-text-tertiary);margin-bottom:6px">Best For</div><div style="display:flex;gap:5px;flex-wrap:wrap">';e.audience.forEach(function(a){var n=typeof a==='string'?a:a.name;h+='<span style="height:24px;padding:0 10px;border-radius:12px;font-size:11px;font-weight:500;background:rgba(0,180,216,0.08);color:var(--tg-accent-dark);display:flex;align-items:center">'+esc(n)+'</span>'});h+='</div></div>'}
 
-      // Meta + Create Post button
       h+='<div style="display:flex;align-items:center;gap:14px;padding-top:12px;border-top:1px solid var(--tg-border);flex-wrap:wrap">';
       h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">Post '+e.leadTimeWeeks+' weeks before</span>';
       h+='<span style="font-size:11px;color:var(--tg-text-tertiary)">'+(e.recurring||'Annual')+'</span>';
@@ -1028,11 +1004,160 @@ function drawEventsClient(){
   h+='<button id="evtBatchGenerate" style="height:36px;padding:0 20px;border-radius:8px;border:none;background:var(--tg-accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Generate Posts for Selected</button>';
   h+='</div>';
 
-  el.innerHTML=h;
-  if(!document.getElementById('evtStyles')){var s=document.createElement('style');s.id='evtStyles';s.textContent='.evt-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08);border-color:var(--tg-accent)}.evt-open .evt-detail{display:block!important}.evt-open svg:last-child{transform:rotate(180deg)}.evt-posted{background:rgba(16,185,129,0.02)!important}';document.head.appendChild(s)}
+  targetEl.innerHTML=h;
+  if(!document.getElementById('evtStyles')){var s=document.createElement('style');s.id='evtStyles';s.textContent='.evt-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08);border-color:var(--tg-accent)}.evt-open .evt-detail{display:block!important}.evt-open svg:last-child{transform:rotate(180deg)}.evt-posted{background:rgba(16,185,129,0.02)!important}.evt-subtab:hover{color:var(--tg-text-primary)!important}.evt-admin-card{background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);margin-bottom:8px;padding:16px;transition:all 0.2s}.evt-admin-card:hover{box-shadow:var(--shadow-md);border-color:var(--tg-text-tertiary)}.evt-admin-card.processing{opacity:0.5;pointer-events:none}.evt-admin-card.fade-out{opacity:0;transform:translateX(-20px);transition:all 0.3s}';document.head.appendChild(s)}
   updateBatchBar();
 }
 
+// ── Admin Pending Review sub-tab ──
+
+async function loadAdminEvents(){
+  evtAdminState.loading=true;
+  var target=$('evt-subtab-content');
+  if(target){
+    target.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading pending events...</div>';
+  }
+  try{
+    var res=await fetch('/api/events-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:adminCreds.email,code:adminCreds.code,action:'list',status:evtAdminState.adminFilter})
+    });
+    var d=await res.json();
+    if(!d.success)throw new Error(d.error||'Failed to load');
+    evtAdminState.adminEvents=d.events||[];
+    drawEventsView(); // Re-render so sub-tab badge updates too
+  }catch(e){
+    if(target){
+      target.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-error);font-size:13px">Could not load: '+esc(e.message)+'</div>';
+    }
+  }finally{
+    evtAdminState.loading=false;
+  }
+}
+
+function drawEventsAdminInto(targetEl){
+  if(evtAdminState.loading){
+    targetEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">Loading...</div>';
+    return;
+  }
+  var events=evtAdminState.adminEvents;
+  var h='';
+
+  // Filter pills + bulk actions header
+  h+='<div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;align-items:center">';
+  ['pending','approved','rejected','all'].forEach(function(f){
+    var isA=evtAdminState.adminFilter===f;
+    var label=f.charAt(0).toUpperCase()+f.slice(1);
+    h+='<button data-admin-filter="'+f+'" style="height:32px;padding:0 14px;border-radius:16px;border:1px solid '+(isA?'var(--tg-accent)':'var(--tg-border)')+';background:'+(isA?'var(--tg-accent)':'var(--tg-bg-primary)')+';color:'+(isA?'#fff':'var(--tg-text-secondary)')+';font-size:12px;font-weight:'+(isA?'600':'500')+';cursor:pointer;font-family:var(--tg-font-body)">'+label+'</button>';
+  });
+  h+='<div style="flex:1"></div>';
+  h+='<a href="https://airtable.com/appSoIlSe0sNaJ4BZ/tblQxIYrbzd6YlJYV" target="_blank" rel="noopener" style="font-size:12px;color:var(--tg-text-tertiary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">Open table<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>';
+  h+='</div>';
+
+  if(!events.length){
+    var msg=evtAdminState.adminFilter==='pending'?'No pending events to review. The cron adds new ones on the 1st of each month.':'No events in this filter.';
+    h+='<div style="text-align:center;padding:60px 20px;background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div style="font-size:14px;font-weight:600;color:var(--tg-text-primary);margin-bottom:4px">All caught up</div><div style="font-size:12px;color:var(--tg-text-tertiary)">'+esc(msg)+'</div></div>';
+    targetEl.innerHTML=h;
+    return;
+  }
+
+  // Cards — one row per event with key info and actions
+  events.forEach(function(e){
+    var color=EVT_CAT_COLORS[e.category]||'#64748B';
+    var imp=evtImpact(e.impact);
+    var dateRange=evtDate(e.dateStart);
+    if(e.dateEnd&&e.dateEnd!==e.dateStart)dateRange+=' \u2014 '+evtDate(e.dateEnd);
+
+    h+='<div class="evt-admin-card" data-admin-id="'+esc(e.id)+'">';
+
+    // Top row: name + badges
+    h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
+    h+='<div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:700;color:var(--tg-text-primary);margin-bottom:2px">'+esc(e.name)+'</div>';
+    h+='<div style="font-size:12px;color:var(--tg-text-secondary);font-variant-numeric:tabular-nums">'+esc(dateRange)+'</div></div>';
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    if(e.category)h+='<span style="height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;background:'+color+'14;color:'+color+';border:1px solid '+color+'30">'+esc(e.category)+'</span>';
+    h+='<span style="height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;'+(imp[0]==='major'?'background:rgba(16,185,129,0.1);color:#059669':imp[0]==='mod'?'background:rgba(245,158,11,0.1);color:#D97706':'background:rgba(100,116,139,0.1);color:#64748B')+'">'+imp[1]+'</span>';
+    if(e.recurring)h+='<span style="height:22px;padding:0 8px;border-radius:11px;font-size:10px;font-weight:600;display:inline-flex;align-items:center;background:rgba(16,185,129,0.08);color:#065F46;border:1px solid rgba(16,185,129,0.2)">'+esc(e.recurring)+'</span>';
+    h+='</div></div>';
+
+    // Body: where + travel angle + content suggestion
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;padding-top:12px;border-top:1px solid var(--tg-border-light)">';
+    h+='<div><div style="font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:var(--tg-font-mono)">Where</div><div style="font-size:12px;color:var(--tg-text-primary)">'+esc(e.countries||'\u2014')+(e.destinations?'<div style="font-size:11px;color:var(--tg-text-tertiary);margin-top:2px">'+esc(e.destinations)+'</div>':'')+'</div></div>';
+    h+='<div><div style="font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:var(--tg-font-mono)">Lead Time</div><div style="font-size:12px;color:var(--tg-text-primary)">'+(e.leadTimeWeeks?'Promote '+e.leadTimeWeeks+' week'+(e.leadTimeWeeks===1?'':'s')+' ahead':'\u2014')+'</div></div>';
+    if(e.travelAngle)h+='<div style="grid-column:1/-1"><div style="font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:var(--tg-font-mono)">Travel Angle</div><div style="font-size:12px;color:var(--tg-text-primary);line-height:1.5">'+esc(e.travelAngle)+'</div></div>';
+    if(e.contentSuggestion)h+='<div style="grid-column:1/-1;background:rgba(0,180,216,0.04);border:1px solid rgba(0,180,216,0.12);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:var(--tg-font-mono)">Content Suggestion</div><div style="font-size:12px;color:var(--tg-text-primary);line-height:1.5">'+esc(e.contentSuggestion)+'</div></div>';
+    h+='</div>';
+
+    // Actions row
+    h+='<div style="display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--tg-border-light);flex-wrap:wrap">';
+    var s=(e.status||'pending').toLowerCase();
+    if(s==='pending'){
+      h+='<button data-admin-action="approve" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:var(--tg-success);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>';
+      h+='<button data-admin-action="reject" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject</button>';
+    }else if(s==='approved'){
+      h+='<span style="height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);color:#059669;border-radius:8px;font-size:12px;font-weight:600"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Approved</span>';
+      h+='<button data-admin-action="reject" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Move to rejected</button>';
+    }else if(s==='rejected'){
+      h+='<span style="height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.08);color:var(--tg-error);border-radius:8px;font-size:12px;font-weight:600">Rejected</span>';
+      h+='<button data-admin-action="approve" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:var(--tg-success);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Approve</button>';
+    }
+    h+='<button data-admin-action="delete" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:transparent;color:var(--tg-error);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Delete</button>';
+    h+='<a href="https://airtable.com/appSoIlSe0sNaJ4BZ/tblQxIYrbzd6YlJYV/'+esc(e.id)+'" target="_blank" rel="noopener" style="margin-left:auto;height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:transparent;color:var(--tg-text-secondary);font-size:12px;font-weight:500;font-family:var(--tg-font-body);text-decoration:none;display:inline-flex;align-items:center;gap:6px">Open in Airtable<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>';
+    h+='</div>';
+
+    h+='</div>';
+  });
+
+  targetEl.innerHTML=h;
+}
+
+// Admin filter switcher + action handler
+document.addEventListener('click',function(e){
+  var fb=e.target.closest('[data-admin-filter]');
+  if(fb){
+    evtAdminState.adminFilter=fb.getAttribute('data-admin-filter');
+    loadAdminEvents();
+    return;
+  }
+  var ab=e.target.closest('[data-admin-action]');
+  if(ab){
+    handleAdminAction(ab.getAttribute('data-admin-action'),ab.getAttribute('data-id'));
+    return;
+  }
+});
+
+async function handleAdminAction(action,id){
+  if(action==='delete'){
+    if(!confirm('Delete this event permanently? This cannot be undone.'))return;
+  }
+  var card=document.querySelector('.evt-admin-card[data-admin-id="'+CSS.escape(id)+'"]');
+  if(card)card.classList.add('processing');
+
+  try{
+    var res=await fetch('/api/events-admin',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:adminCreds.email,code:adminCreds.code,action:action,id:id})
+    });
+    var d=await res.json();
+    if(!d.success)throw new Error(d.error||'Failed');
+
+    var verb=action==='approve'?'approved':action==='reject'?'rejected':'deleted';
+    showEvtToast('Event '+verb,'success');
+
+    if(card){
+      card.classList.add('fade-out');
+      setTimeout(function(){
+        evtAdminState.adminEvents=evtAdminState.adminEvents.filter(function(x){return x.id!==id});
+        drawEventsView();
+      },280);
+    }
+  }catch(err){
+    showEvtToast('Error: '+err.message,'error');
+    if(card)card.classList.remove('processing');
+  }
+}
 function renderCalendar(){
   var dates=getWeek(state.calOff);var posts=state.allPosts;var totalH=CAL_E-CAL_S;var gh=totalH*CAL_H;
   var ml=MONTHS[dates[0].getMonth()];if(dates[0].getMonth()!==dates[6].getMonth())ml=MONTHS[dates[0].getMonth()]+' / '+MONTHS[dates[6].getMonth()];

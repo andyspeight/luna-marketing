@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna Marketing — Events Review</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════
+   LUNA MARKETING — EVENTS REVIEW
+   Reuses admin.html tokens and patterns
+   ════════════════════════════════════════════ */
+:root {
+  --tg-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --tg-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --text-xs: 11px; --text-sm: 13px; --text-base: 15px; --text-md: 16px;
+  --text-lg: 18px; --text-xl: 22px; --text-2xl: 28px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-full: 9999px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.08), 0 4px 6px rgba(0,0,0,0.04);
+  --tg-primary: #1B2B5B; --tg-accent: #00B4D8; --tg-accent-dark: #0096B7;
+  --tg-success: #10B981; --tg-warning: #F59E0B; --tg-error: #EF4444;
+  --tg-bg-primary: #FFFFFF; --tg-bg-secondary: #F8FAFC; --tg-bg-tertiary: #F1F5F9;
+  --tg-border: #E2E8F0; --tg-border-light: #F1F5F9;
+  --tg-text-primary: #0F172A; --tg-text-secondary: #475569; --tg-text-tertiary: #94A3B8;
+  --tg-text-inverse: #FFFFFF;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --duration-fast: 150ms; --duration-normal: 250ms;
+  --teal: var(--tg-accent); --teal-dim: var(--tg-accent-dark);
+  --green: var(--tg-success); --amber: var(--tg-warning); --red: var(--tg-error);
+  --bg: var(--tg-bg-secondary); --card: var(--tg-bg-primary); --surface: var(--tg-bg-tertiary);
+  --border: var(--tg-border); --text: var(--tg-text-primary);
+  --text-body: var(--tg-text-secondary); --text-dim: var(--tg-text-tertiary);
+  --font: var(--tg-font-body); --mono: var(--tg-font-mono);
+  --transition: var(--duration-fast); --shadow: var(--shadow-sm);
+}
+[data-theme="dark"] {
+  --tg-bg-primary: #0F172A; --tg-bg-secondary: #1E293B; --tg-bg-tertiary: #334155;
+  --tg-border: #334155; --tg-border-light: #1E293B;
+  --tg-text-primary: #F8FAFC; --tg-text-secondary: #CBD5E1; --tg-text-tertiary: #64748B;
+}
+
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; font-size:var(--text-base); line-height:1.6; -webkit-font-smoothing:antialiased; transition:background var(--duration-normal), color var(--duration-normal); }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:0.01ms!important; transition-duration:0.01ms!important; } }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--text-dim); border-radius:var(--radius-full); }
+
+/* ── LAYOUT ── */
+.shell { max-width:1440px; margin:0 auto; padding:var(--space-6); }
+@media (max-width:640px) { .shell { padding:var(--space-4); } }
+
+/* ── HEADER ── (matches admin.html) ── */
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-6); gap:var(--space-4); flex-wrap:wrap; }
+.header-brand { display:flex; align-items:center; gap:var(--space-3); }
+.header-logo { width:40px; height:40px; border-radius:var(--radius-lg); background:linear-gradient(135deg,var(--teal),var(--teal-dim)); display:flex; align-items:center; justify-content:center; color:var(--tg-text-inverse); font-weight:700; font-size:var(--text-lg); }
+.header-title { font-size:var(--text-lg); font-weight:700; letter-spacing:-0.3px; }
+.header-sub { font-size:var(--text-xs); font-family:var(--mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
+.header-right { display:flex; align-items:center; gap:var(--space-3); }
+.header-meta { text-align:right; }
+.header-meta > div:first-child { font-size:var(--text-sm); font-family:var(--mono); color:var(--text-dim); }
+.header-agent { font-size:var(--text-xs); color:var(--text-dim); }
+.back-link { height:44px; padding:0 var(--space-4); border-radius:var(--radius-md); border:1px solid var(--border); background:var(--card); color:var(--text-body); font-size:var(--text-xs); font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:var(--space-2); transition:all var(--transition); }
+.back-link:hover { border-color:var(--teal); color:var(--teal); }
+.theme-btn { width:44px; height:44px; border-radius:var(--radius-md); border:1px solid var(--border); background:var(--card); color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--transition); }
+.theme-btn:hover { border-color:var(--teal); color:var(--teal); }
+.theme-btn svg { width:18px; height:18px; }
+.logout-btn { height:44px; padding:0 var(--space-4); border-radius:var(--radius-md); font-size:var(--text-xs); font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; border:1px solid rgba(239,68,68,0.2); background:rgba(239,68,68,0.04); color:var(--red); transition:all var(--transition); }
+.logout-btn:hover { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.3); }
+
+/* ── INTRO BANNER ── */
+.intro { background:linear-gradient(135deg, rgba(0,180,216,0.06), rgba(27,43,91,0.04)); border:1px solid rgba(0,180,216,0.15); border-radius:var(--radius-lg); padding:var(--space-5); margin-bottom:var(--space-5); display:flex; gap:var(--space-4); align-items:flex-start; }
+.intro-icon { width:44px; height:44px; border-radius:var(--radius-md); background:rgba(0,180,216,0.12); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--teal); }
+.intro h1 { font-size:var(--text-xl); font-weight:700; margin-bottom:var(--space-1); letter-spacing:-0.3px; }
+.intro p { font-size:var(--text-sm); color:var(--text-body); line-height:1.6; margin:0; }
+
+/* ── STATS ── */
+.stats { display:flex; gap:var(--space-3); margin-bottom:var(--space-5); flex-wrap:wrap; }
+.stat { flex:1; min-width:130px; padding:var(--space-4) var(--space-5); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); cursor:pointer; transition:all 200ms; }
+.stat:hover { border-color:var(--teal); box-shadow:var(--shadow-md); }
+.stat.active { border-color:var(--teal); background:rgba(0,180,216,0.04); }
+.stat-label { font-size:var(--text-xs); font-family:var(--mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:var(--space-1); }
+.stat-value { font-size:var(--text-2xl); font-weight:700; color:var(--tg-accent-dark); line-height:1; font-variant-numeric:tabular-nums; }
+[data-theme="dark"] .stat-value { color:var(--teal); }
+
+/* ── TOOLBAR ── */
+.toolbar { display:flex; align-items:center; gap:var(--space-3); margin-bottom:var(--space-4); flex-wrap:wrap; }
+.search-wrap { position:relative; flex:1; max-width:360px; }
+.search-input { width:100%; height:44px; padding:0 var(--space-4) 0 var(--space-10); border-radius:var(--radius-md); border:1px solid var(--border); background:var(--card); color:var(--text); font-size:var(--text-base); font-family:var(--font); transition:border-color var(--transition); }
+.search-input:focus { outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,180,216,0.15); }
+.search-wrap svg { position:absolute; left:var(--space-3); top:50%; transform:translateY(-50%); width:18px; height:18px; color:var(--text-dim); pointer-events:none; }
+.bulk-bar { margin-left:auto; display:flex; gap:var(--space-2); align-items:center; }
+.bulk-count { font-size:var(--text-sm); color:var(--text-body); font-family:var(--mono); }
+.btn { height:36px; padding:0 var(--space-4); border-radius:var(--radius-md); font-size:var(--text-sm); font-weight:500; cursor:pointer; font-family:var(--font); border:1px solid transparent; transition:all var(--transition); display:inline-flex; align-items:center; justify-content:center; gap:var(--space-2); }
+.btn:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(0,180,216,0.2); }
+.btn:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-approve { background:var(--green); color:#fff; }
+.btn-approve:hover:not(:disabled) { background:#059669; }
+.btn-reject { background:var(--card); color:var(--text-body); border-color:var(--border); }
+.btn-reject:hover:not(:disabled) { background:var(--surface); color:var(--text); }
+.btn-delete { background:transparent; color:var(--red); border-color:var(--border); }
+.btn-delete:hover:not(:disabled) { background:rgba(239,68,68,0.08); border-color:var(--red); }
+.btn-airtable { background:transparent; color:var(--text-body); border-color:var(--border); }
+.btn-airtable:hover:not(:disabled) { background:var(--surface); color:var(--text); border-color:var(--text-dim); }
+
+/* ── CARDS ── */
+.events-list { display:flex; flex-direction:column; gap:var(--space-3); }
+.event-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:var(--space-5); transition:all 200ms ease-out; }
+.event-card:hover { box-shadow:var(--shadow-md); border-color:var(--text-dim); }
+.event-card.processing { opacity:0.5; pointer-events:none; }
+.event-card.fade-out { opacity:0; transform:translateX(-20px); transition:all 300ms ease; }
+.event-head { display:flex; gap:var(--space-3); margin-bottom:var(--space-3); flex-wrap:wrap; align-items:flex-start; }
+.event-check { width:18px; height:18px; flex-shrink:0; margin-top:2px; cursor:pointer; accent-color:var(--teal); }
+.event-title-block { flex:1; min-width:280px; }
+.event-name { font-size:var(--text-md); font-weight:600; color:var(--text); margin:0 0 var(--space-1); line-height:1.3; }
+.event-dates { display:inline-flex; align-items:center; gap:var(--space-2); color:var(--text-body); font-size:var(--text-sm); font-variant-numeric:tabular-nums; }
+.event-dates svg { width:14px; height:14px; color:var(--text-dim); }
+.event-badges { display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:flex-start; }
+.badge { display:inline-flex; align-items:center; padding:2px 10px; border-radius:var(--radius-sm); font-size:var(--text-xs); font-weight:500; line-height:1.5; white-space:nowrap; }
+.badge-cat { background:#EEF2FF; color:#3730A3; }
+.badge-impact-major { background:#FEF3C7; color:#92400E; }
+.badge-impact-mod { background:#DBEAFE; color:#1E40AF; }
+.badge-impact-minor { background:var(--surface); color:var(--text-body); }
+.badge-recurring { background:#ECFDF5; color:#065F46; }
+[data-theme="dark"] .badge-cat { background:rgba(99,102,241,0.2); color:#C7D2FE; }
+[data-theme="dark"] .badge-impact-major { background:rgba(245,158,11,0.2); color:#FCD34D; }
+[data-theme="dark"] .badge-impact-mod { background:rgba(59,130,246,0.2); color:#93C5FD; }
+[data-theme="dark"] .badge-impact-minor { background:var(--surface); color:var(--text-body); }
+[data-theme="dark"] .badge-recurring { background:rgba(16,185,129,0.2); color:#6EE7B7; }
+
+.event-body { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin-bottom:var(--space-4); padding:var(--space-3) 0; border-top:1px solid var(--tg-border-light); }
+@media (max-width:720px) { .event-body { grid-template-columns:1fr; } }
+.field-group h4 { font-size:var(--text-xs); font-family:var(--mono); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:var(--space-1); }
+.field-group p { margin:0; color:var(--text); font-size:var(--text-sm); line-height:1.55; }
+.field-group .meta { color:var(--text-body); font-size:var(--text-sm); }
+.field-group .sub { color:var(--text-dim); font-size:var(--text-xs); }
+.audience-tags { display:flex; gap:var(--space-1); flex-wrap:wrap; margin-top:var(--space-1); }
+.audience-tag { padding:2px 8px; background:var(--surface); border-radius:var(--radius-sm); font-size:var(--text-xs); color:var(--text-body); font-family:var(--mono); }
+.event-actions { display:flex; gap:var(--space-2); padding-top:var(--space-3); border-top:1px solid var(--tg-border-light); flex-wrap:wrap; }
+.event-actions .btn-airtable { margin-left:auto; }
+
+/* ── STATES ── */
+.state { text-align:center; padding:var(--space-12) var(--space-6); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); }
+.state-icon { width:56px; height:56px; margin:0 auto var(--space-4); background:var(--surface); border-radius:var(--radius-xl); display:flex; align-items:center; justify-content:center; color:var(--text-dim); }
+.state h2 { margin:0 0 var(--space-2); font-size:var(--text-xl); font-weight:600; }
+.state p { margin:0; color:var(--text-body); font-size:var(--text-sm); max-width:480px; margin-left:auto; margin-right:auto; }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:var(--space-6); right:var(--space-6); padding:var(--space-3) var(--space-5); border-radius:var(--radius-md); font-size:var(--text-sm); font-weight:500; color:#fff; box-shadow:var(--shadow-lg); z-index:50; transform:translateY(20px); opacity:0; transition:all 300ms var(--ease-out); pointer-events:none; max-width:90vw; }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast-success { background:var(--green); }
+.toast-error { background:var(--red); }
+.toast-info { background:var(--text); color:var(--card); }
+
+/* ── SKELETON ── */
+.skeleton { background:linear-gradient(90deg, var(--surface) 25%, var(--tg-border-light) 50%, var(--surface) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:var(--radius-md); }
+@keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+.skeleton-card { height:200px; border-radius:var(--radius-lg); }
+
+/* ── LOADING SCREEN ── */
+.loading-screen { position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:var(--space-3); }
+.loading-screen.hidden { display:none; }
+.spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--teal); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-screen p { color:var(--text-body); font-size:var(--text-sm); }
+
+.hide { display:none !important; }
+</style>
+</head>
+<body data-theme="light">
+
+<!-- Loading screen while we check auth -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <p>Verifying access...</p>
+</div>
+
+<!-- App shell -->
+<div class="shell hide" id="app">
+  <div class="header">
+    <div class="header-brand">
+      <div class="header-logo">L</div>
+      <div>
+        <div class="header-title">Events Review</div>
+        <div class="header-sub">Luna Marketing · Admin</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-meta">
+        <div id="clock"></div>
+        <div class="header-agent" id="agentLabel"></div>
+      </div>
+      <a class="back-link" href="/admin.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Clients
+      </a>
+      <button class="theme-btn" id="themeBtn" title="Toggle theme">
+        <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg id="iconMoon" class="hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="intro">
+    <div class="intro-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
+    <div>
+      <h1>Pending events</h1>
+      <p>The AI top-up cron and seed batches add events as <strong>pending</strong>. Review them here and approve to make them visible to all clients in their Events tab. Rejected events are kept for audit but stay hidden.</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="statsRow"></div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="search-input" id="searchInput" placeholder="Search events..." oninput="App.search()">
+    </div>
+    <div class="bulk-bar" id="bulkBar" style="display:none">
+      <span class="bulk-count" id="bulkCount"></span>
+      <button class="btn btn-approve" onclick="App.bulkAction('approve')">Approve selected</button>
+      <button class="btn btn-reject" onclick="App.bulkAction('reject')">Reject selected</button>
+    </div>
+  </div>
+
+  <!-- Events -->
+  <div id="content"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function() {
+'use strict';
+
+var SIGNIN_URL = 'https://widgets.travelify.io/signin.html';
+var THEME_KEY = 'luna_events_admin_theme';
+
+var state = {
+  agent: '',
+  theme: 'light',
+  events: [],
+  search: '',
+  filter: 'pending', // pending | approved | rejected | all
+  selected: {},
+  token: null,
+};
+
+var $ = function(id) { return document.getElementById(id); };
+function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+// ── THEME ──
+try { state.theme = localStorage.getItem(THEME_KEY) || 'light'; } catch(e) {}
+function applyTheme() {
+  document.body.setAttribute('data-theme', state.theme);
+  $('iconSun').classList.toggle('hide', state.theme === 'dark');
+  $('iconMoon').classList.toggle('hide', state.theme !== 'dark');
+}
+applyTheme();
+
+// ── AUTH (matches admin.html exactly) ──
+function getCentralSession() {
+  try {
+    var tok = localStorage.getItem('tg_token');
+    var usrRaw = localStorage.getItem('tg_user');
+    if (!tok || !usrRaw) return null;
+    var usr = JSON.parse(usrRaw);
+    var role = (usr && usr.role) || '';
+    if (role && typeof role === 'object') role = role.name || '';
+    return { token: tok, user: usr, role: String(role).toLowerCase() };
+  } catch(e) { return null; }
+}
+
+function bounceToSignin(reason) {
+  var here = location.pathname + location.search + location.hash;
+  var url = SIGNIN_URL + '?next=' + encodeURIComponent('https://' + location.host + here);
+  if (reason) url += '&reason=' + encodeURIComponent(reason);
+  location.href = url;
+}
+
+function doLogout() {
+  try {
+    localStorage.removeItem('tg_token');
+    localStorage.removeItem('tg_user');
+    localStorage.removeItem('tg_client');
+  } catch(e) {}
+  bounceToSignin();
+}
+
+function init() {
+  var sess = getCentralSession();
+  if (!sess) { bounceToSignin(); return; }
+  if (sess.role !== 'owner' && sess.role !== 'admin') {
+    bounceToSignin('not_authorised');
+    return;
+  }
+  state.token = sess.token;
+  state.agent = (sess.user && (sess.user.fullName || sess.user.email)) || 'You';
+
+  $('logoutBtn').addEventListener('click', doLogout);
+  $('themeBtn').addEventListener('click', function() {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, state.theme); } catch(e) {}
+    applyTheme();
+  });
+
+  $('agentLabel').textContent = state.agent;
+  $('clock').textContent = new Date().toLocaleString('en-GB', {
+    day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+
+  $('loadingScreen').classList.add('hidden');
+  $('app').classList.remove('hide');
+
+  loadEvents();
+}
+
+// ── API ──
+async function apiGet(params) {
+  var qs = new URLSearchParams(params || {}).toString();
+  var r = await fetch('/api/events-admin' + (qs ? '?' + qs : ''), {
+    headers: { Authorization: 'Bearer ' + state.token }
+  });
+  if (r.status === 401 || r.status === 403) {
+    doLogout();
+    throw new Error('Session expired');
+  }
+  var data = await r.json();
+  if (!data.success) throw new Error(data.error || 'Server error');
+  return data;
+}
+
+async function apiPost(body) {
+  var r = await fetch('/api/events-admin', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + state.token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (r.status === 401 || r.status === 403) {
+    doLogout();
+    throw new Error('Session expired');
+  }
+  var data = await r.json();
+  if (!data.success) throw new Error(data.error || 'Server error');
+  return data;
+}
+
+// ── DATA ──
+async function loadEvents() {
+  showLoading();
+  try {
+    var data = await apiGet({ action: 'list', status: state.filter });
+    state.events = data.events || [];
+    state.selected = {};
+    renderAll();
+  } catch (err) {
+    $('content').innerHTML =
+      '<div class="state"><div class="state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h2>Could not load</h2><p>' + esc(err.message) + '</p></div>';
+  }
+}
+
+// ── TOAST ──
+var toastTimer = null;
+function toast(msg, type) {
+  var el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast toast-' + (type || 'success') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2500);
+}
+
+// ── HELPERS ──
+function fmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+function fmtRange(start, end) {
+  if (!start) return '';
+  if (!end || end === start) return fmtDate(start);
+  return fmtDate(start) + ' \u2192 ' + fmtDate(end);
+}
+function impactClass(impact) {
+  var i = (impact || '').toLowerCase();
+  if (i.indexOf('major') === 0) return 'badge-impact-major';
+  if (i.indexOf('moderate') === 0) return 'badge-impact-mod';
+  return 'badge-impact-minor';
+}
+
+// ── RENDER ──
+function renderAll() {
+  renderStats();
+  renderEvents();
+  renderBulkBar();
+}
+
+function renderStats() {
+  // Counts are based on the currently loaded set, which is one status filter
+  // at a time. The stat tiles act as filters; clicking one reloads.
+  var total = state.events.length;
+  var label = state.filter === 'pending' ? 'Pending' :
+              state.filter === 'approved' ? 'Approved' :
+              state.filter === 'rejected' ? 'Rejected' : 'All';
+  var items = [
+    { label: 'Pending', filter: 'pending' },
+    { label: 'Approved', filter: 'approved' },
+    { label: 'Rejected', filter: 'rejected' },
+    { label: 'All', filter: 'all' },
+  ];
+  $('statsRow').innerHTML = items.map(function(s) {
+    var isActive = state.filter === s.filter;
+    var count = isActive ? total : '\u2014';
+    return '<div class="stat' + (isActive ? ' active' : '') + '" onclick="App.setFilter(\'' + s.filter + '\')">'
+      + '<div class="stat-label">' + s.label + '</div>'
+      + '<div class="stat-value">' + count + '</div></div>';
+  }).join('');
+}
+
+function visibleEvents() {
+  var q = state.search.toLowerCase().trim();
+  if (!q) return state.events;
+  return state.events.filter(function(e) {
+    return (e.name || '').toLowerCase().indexOf(q) !== -1
+      || (e.countries || '').toLowerCase().indexOf(q) !== -1
+      || (e.destinations || '').toLowerCase().indexOf(q) !== -1
+      || (e.category || '').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function showLoading() {
+  $('content').innerHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3)">'
+    + '<div class="skeleton skeleton-card"></div>'
+    + '<div class="skeleton skeleton-card"></div>'
+    + '<div class="skeleton skeleton-card"></div>'
+    + '</div>';
+}
+
+function renderEvents() {
+  var events = visibleEvents();
+
+  if (state.events.length === 0) {
+    var emptyMsg = state.filter === 'pending'
+      ? 'No pending events to review. The cron adds new ones on the 1st of each month, and you can run it manually any time.'
+      : state.filter === 'approved'
+      ? 'No approved events in this slice.'
+      : state.filter === 'rejected'
+      ? 'No rejected events.'
+      : 'No events at all.';
+    $('content').innerHTML =
+      '<div class="state"><div class="state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><h2>All caught up</h2><p>' + esc(emptyMsg) + '</p></div>';
+    return;
+  }
+
+  if (events.length === 0) {
+    $('content').innerHTML =
+      '<div class="state"><div class="state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h2>No matches</h2><p>No events match your search.</p></div>';
+    return;
+  }
+
+  $('content').innerHTML = '<div class="events-list">' + events.map(renderCard).join('') + '</div>';
+}
+
+function renderCard(ev) {
+  var canBulkAction = state.filter === 'pending';
+  var checked = !!state.selected[ev.id];
+  var audienceTags = (ev.audience || []).map(function(a) {
+    var name = typeof a === 'string' ? a : (a.name || '');
+    return '<span class="audience-tag">' + esc(name) + '</span>';
+  }).join('');
+
+  var airtableUrl = 'https://airtable.com/appSoIlSe0sNaJ4BZ/tblQxIYrbzd6YlJYV/' + ev.id;
+
+  var statusActions = '';
+  if (state.filter === 'pending') {
+    statusActions =
+      '<button class="btn btn-approve" data-action="approve" data-id="' + esc(ev.id) + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' +
+        'Approve</button>' +
+      '<button class="btn btn-reject" data-action="reject" data-id="' + esc(ev.id) + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+        'Reject</button>';
+  } else if (state.filter === 'approved') {
+    statusActions =
+      '<button class="btn btn-reject" data-action="reject" data-id="' + esc(ev.id) + '">Reject</button>';
+  } else if (state.filter === 'rejected') {
+    statusActions =
+      '<button class="btn btn-approve" data-action="approve" data-id="' + esc(ev.id) + '">Approve</button>';
+  } else {
+    // 'all' view — show both
+    statusActions =
+      '<button class="btn btn-approve" data-action="approve" data-id="' + esc(ev.id) + '">Approve</button>' +
+      '<button class="btn btn-reject" data-action="reject" data-id="' + esc(ev.id) + '">Reject</button>';
+  }
+
+  return '<article class="event-card" data-id="' + esc(ev.id) + '">'
+    + '<div class="event-head">'
+    + (canBulkAction
+        ? '<input type="checkbox" class="event-check" ' + (checked ? 'checked' : '') + ' data-id="' + esc(ev.id) + '">'
+        : '<div style="width:18px;flex-shrink:0"></div>')
+    + '<div class="event-title-block">'
+    + '<h3 class="event-name">' + esc(ev.name) + '</h3>'
+    + '<div class="event-dates">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+    + esc(fmtRange(ev.dateStart, ev.dateEnd))
+    + '</div></div>'
+    + '<div class="event-badges">'
+    + (ev.category ? '<span class="badge badge-cat">' + esc(ev.category) + '</span>' : '')
+    + (ev.impact ? '<span class="badge ' + impactClass(ev.impact) + '">' + esc(ev.impact) + '</span>' : '')
+    + (ev.recurring ? '<span class="badge badge-recurring">' + esc(ev.recurring) + '</span>' : '')
+    + '</div></div>'
+    + '<div class="event-body">'
+    + '<div class="field-group"><h4>Travel angle</h4><p>' + esc(ev.travelAngle || 'Not provided') + '</p></div>'
+    + '<div class="field-group"><h4>Content suggestion</h4><p>' + esc(ev.contentSuggestion || 'Not provided') + '</p></div>'
+    + '<div class="field-group"><h4>Where</h4><p class="meta">' + esc(ev.countries || '\u2014') + (ev.destinations ? '<br><span class="sub">' + esc(ev.destinations) + '</span>' : '') + '</p></div>'
+    + '<div class="field-group"><h4>Audience &amp; lead time</h4><div class="audience-tags">' + (audienceTags || '<span class="audience-tag">No tags</span>') + '</div>'
+    + (ev.leadTimeWeeks ? '<p class="meta" style="margin-top:6px">Promote ' + ev.leadTimeWeeks + ' week' + (ev.leadTimeWeeks === 1 ? '' : 's') + ' ahead</p>' : '')
+    + '</div>'
+    + '</div>'
+    + '<div class="event-actions">'
+    + statusActions
+    + '<button class="btn btn-delete" data-action="delete" data-id="' + esc(ev.id) + '">'
+    + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+    + 'Delete</button>'
+    + '<a class="btn btn-airtable" href="' + airtableUrl + '" target="_blank" rel="noopener">'
+    + 'Open in Airtable'
+    + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+    + '</a>'
+    + '</div></article>';
+}
+
+function renderBulkBar() {
+  var bar = $('bulkBar');
+  var ids = Object.keys(state.selected).filter(function(k) { return state.selected[k]; });
+  if (state.filter !== 'pending' || ids.length === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  $('bulkCount').textContent = ids.length + ' selected';
+}
+
+// ── EVENT DELEGATION ──
+document.addEventListener('click', function(e) {
+  var actionBtn = e.target.closest('[data-action]');
+  if (actionBtn) {
+    handleAction(actionBtn.dataset.id, actionBtn.dataset.action, actionBtn);
+    return;
+  }
+});
+document.addEventListener('change', function(e) {
+  if (e.target.matches('.event-check')) {
+    state.selected[e.target.dataset.id] = e.target.checked;
+    renderBulkBar();
+  }
+});
+
+async function handleAction(id, action, btn) {
+  if (action === 'delete') {
+    if (!confirm('Delete this event permanently? This cannot be undone.')) return;
+  }
+  var card = document.querySelector('.event-card[data-id="' + CSS.escape(id) + '"]');
+  if (card) card.classList.add('processing');
+
+  try {
+    await apiPost({ action: action, id: id });
+    var verb = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'deleted';
+    toast('Event ' + verb, 'success');
+
+    if (card) {
+      card.classList.add('fade-out');
+      await new Promise(function(r) { setTimeout(r, 280); });
+    }
+    state.events = state.events.filter(function(e) { return e.id !== id; });
+    delete state.selected[id];
+    renderAll();
+  } catch (err) {
+    toast(err.message || 'Something went wrong', 'error');
+    if (card) card.classList.remove('processing');
+  }
+}
+
+// ── PUBLIC API ──
+window.App = {
+  search: function() {
+    state.search = $('searchInput').value;
+    renderEvents();
+  },
+  setFilter: function(filter) {
+    if (state.filter === filter) return;
+    state.filter = filter;
+    state.search = '';
+    $('searchInput').value = '';
+    loadEvents();
+  },
+  bulkAction: async function(action) {
+    var ids = Object.keys(state.selected).filter(function(k) { return state.selected[k]; });
+    if (ids.length === 0) return;
+    var confirmMsg = action === 'approve'
+      ? 'Approve ' + ids.length + ' event' + (ids.length === 1 ? '' : 's') + '?'
+      : 'Reject ' + ids.length + ' event' + (ids.length === 1 ? '' : 's') + '?';
+    if (!confirm(confirmMsg)) return;
+
+    toast('Processing ' + ids.length + ' event' + (ids.length === 1 ? '' : 's') + '...', 'info');
+    var ok = 0, failed = 0;
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        await apiPost({ action: action, id: ids[i] });
+        ok++;
+      } catch (e) {
+        failed++;
+      }
+    }
+    state.selected = {};
+    if (failed === 0) toast(ok + ' ' + (action === 'approve' ? 'approved' : 'rejected'), 'success');
+    else toast(ok + ' done, ' + failed + ' failed', 'error');
+    loadEvents();
+  },
+};
+
+// Boot
+init();
+
+})();
+</script>
+</body>
+</html>

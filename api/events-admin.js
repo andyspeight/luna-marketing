@@ -244,6 +244,55 @@ async function deleteRecord(recordId) {
   return await r.json();
 }
 
+// Update editable fields on an event (used by the inline editor in client.html).
+// Whitelist: only fields the editor can touch. Everything else is rejected.
+async function updateFields(recordId, updates) {
+  const pat = getPat();
+  if (!pat) throw new Error("airtable PAT not configured");
+
+  const allowed = {
+    name:         FIELDS.name,
+    dateStart:    FIELDS.dateStart,
+    dateEnd:      FIELDS.dateEnd,
+    countries:    FIELDS.countries,
+    destinations: FIELDS.destinations,
+    travelAngle:  FIELDS.travelAngle,
+    contentSuggestion: FIELDS.contentSuggestion,
+  };
+
+  const fields = {};
+  Object.keys(updates || {}).forEach(function (k) {
+    if (allowed[k] && typeof updates[k] === "string") {
+      fields[allowed[k]] = updates[k];
+    }
+  });
+
+  if (Object.keys(fields).length === 0) {
+    throw new Error("no editable fields provided");
+  }
+
+  // Light validation on dates — must be YYYY-MM-DD or empty
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  if (fields[FIELDS.dateStart] && !dateRe.test(fields[FIELDS.dateStart])) {
+    throw new Error("dateStart must be YYYY-MM-DD");
+  }
+  if (fields[FIELDS.dateEnd] && !dateRe.test(fields[FIELDS.dateEnd])) {
+    throw new Error("dateEnd must be YYYY-MM-DD");
+  }
+
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + recordId;
+  const r = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + pat, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: fields, typecast: true }),
+  });
+  if (!r.ok) {
+    const resp = await r.text().catch(function () { return ""; });
+    throw new Error("airtable-patch-" + r.status + ": " + resp.slice(0, 200));
+  }
+  return await r.json();
+}
+
 // ── Handler ─────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -304,8 +353,13 @@ module.exports = async function handler(req, res) {
       await setStatus(id, newStatus);
       return res.status(200).json({ success: true, id: id, status: newStatus });
     }
+    if (action === "update") {
+      const updates = body.updates || {};
+      const updated = await updateFields(id, updates);
+      return res.status(200).json({ success: true, id: id, updated: true, record: updated });
+    }
 
-    return res.status(400).json({ success: false, error: "action must be list, approve, reject, delete, or set_status" });
+    return res.status(400).json({ success: false, error: "action must be list, approve, reject, delete, set_status, or update" });
 
   } catch (err) {
     console.error("events-admin error", err);

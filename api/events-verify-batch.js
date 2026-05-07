@@ -1,46 +1,60 @@
 /* ══════════════════════════════════════════
-   LUNA MARKETING — SINGLE EVENT VERIFIER
+   LUNA MARKETING — EVENTS VERIFY BATCH
 
-   Verifies one event's existence, dates and location against authoritative
-   web sources. Uses Claude Sonnet 4.6 with web search.
+   Verifies pending events in chunks. The browser polls this endpoint
+   repeatedly with chunk=5 until done=true.
 
-   Called internally by /api/events-verify-batch and exposed for one-off
-   debugging. SSO-cookie auth, owner-gated.
+   For each event:
+     1. Calls verifyOne() (event-verify.js)
+     2. Writes Verified At / Verification Confidence / Verification Notes
+     3. Auto-actions:
+          high + datesMatch        → Status=approved
+          high + dates corrected   → Status=approved + Date Start/End updated
+          not_found                → Status=rejected
+          medium / low / parse fail → leaves Status=pending for manual review
+
+   Skip rules:
+     - Default: only events with Status=pending AND Verified At empty
+     - force=true: also re-verify already-verified events (browser warns first)
+
+   Auth: SSO cookie, owner-gated (same pattern as events-admin.js).
 
    Request:
-     POST /api/event-verify
-     body: { id, name, dateStart, dateEnd, countries }
-       id          — Airtable record id (for logging/return only)
-       name        — Event name (e.g. "Monaco Grand Prix 2026")
-       dateStart   — Stored start date (YYYY-MM-DD)
-       dateEnd     — Stored end date (YYYY-MM-DD), optional
-       countries   — Country/region string for sanity check, optional
-
-   Response:
-     {
-       success: true,
-       result: {
-         confidence: "high" | "medium" | "low" | "not_found",
-         datesMatch: boolean,
-         verifiedDateStart: "YYYY-MM-DD" | null,
-         verifiedDateEnd:   "YYYY-MM-DD" | null,
-         sources: [ { url, publisher, claim } ],
-         summary: "...",
-         recommendedAction: "approve" | "update_dates" | "manual_review" | "reject"
+     POST /api/events-verify-batch
+     body: { chunk?: 5, force?: false }
+     → {
+         success: true,
+         processed: [ { id, name, action, confidence, datesMatch } ],
+         summary: { ok, errors, total },
+         remaining: number,
+         done: boolean
        }
-     }
    ══════════════════════════════════════════ */
 
-const ID_HOST = "https://id.travelify.io";
-const AT_BASE = "appSoIlSe0sNaJ4BZ";
-const CLIENTS_TABLE = "tblUkzvBujc94Yali";
+const { verifyOne } = require("./event-verify");
+
+const AIRTABLE_API   = "https://api.airtable.com/v0";
+const EVENTS_BASE_ID = "appSoIlSe0sNaJ4BZ";
+const EVENTS_TABLE   = "tblQxIYrbzd6YlJYV";
+const CLIENTS_TABLE  = "tblUkzvBujc94Yali";
 const OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
-const ANTHROPIC_MODEL = "claude-sonnet-4-6"; // Sonnet 4.6 — far higher rate limit than Haiku
+const ID_HOST = "https://id.travelify.io";
 
 const ALLOWED_ORIGINS = [
   "https://luna-marketing.vercel.app",
   "https://marketing.travelify.io"
 ];
+
+const FIELDS = {
+  name:           "fldeCYUaMLwkWpv2u",
+  dateStart:      "fld3kpR4x8CMyN5X5",
+  dateEnd:        "fldwec6M9n8vwsLHz",
+  countries:      "fldxFYgltX1yU9ks3",
+  status:         "fldkJLEulZQJVR0hY",
+  verifiedAt:     "fldPRpt68nR72gaxz",
+  vConfidence:    "fld8oVlV8dMGWYPJZ",
+  vNotes:         "fldkGbSYEimyTqghd"
+};
 
 function applyCors(req, res) {
   const origin = req.headers.origin;
@@ -57,7 +71,7 @@ function escFormula(s) {
   return String(s || "").replace(/'/g, "\\'");
 }
 
-// Same SSO-owner check as events-admin.js.
+// SSO owner check (same pattern as events-admin.js).
 async function verifyOwner(req) {
   const cookie = req.headers.cookie || "";
   if (!cookie.match(/(?:^|;\s*)tg_session=/)) {
@@ -66,15 +80,12 @@ async function verifyOwner(req) {
   let meData;
   try {
     const meRes = await fetch(ID_HOST + "/api/auth/me", {
-      method: "GET",
-      headers: { cookie: cookie }
+      method: "GET", headers: { cookie: cookie }
     });
     if (meRes.status === 401) return { ok: false, status: 401, error: "Session expired" };
     if (!meRes.ok) return { ok: false, status: 502, error: "Auth check failed" };
     meData = await meRes.json();
-  } catch (e) {
-    return { ok: false, status: 502, error: "Auth check failed" };
-  }
+  } catch (e) { return { ok: false, status: 502, error: "Auth check failed" }; }
   if (!meData || !meData.ok || !meData.user || !meData.user.email) {
     return { ok: false, status: 401, error: "Invalid session" };
   }
@@ -86,155 +97,153 @@ async function verifyOwner(req) {
   const formula = encodeURIComponent(
     "LOWER({Monthly Report Email})='" + escFormula(email) + "'"
   );
-  const url = "https://api.airtable.com/v0/" + AT_BASE + "/" + CLIENTS_TABLE
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + CLIENTS_TABLE
     + "?filterByFormula=" + formula + "&maxRecords=10";
 
   let records = [];
   try {
     const r = await fetch(url, { headers: { Authorization: "Bearer " + atKey } });
     if (!r.ok) return { ok: false, status: 502, error: "Client lookup failed" };
-    const data = await r.json();
-    records = (data && data.records) || [];
-  } catch (e) {
-    return { ok: false, status: 502, error: "Client lookup failed" };
-  }
+    records = ((await r.json()).records) || [];
+  } catch (e) { return { ok: false, status: 502, error: "Client lookup failed" }; }
 
-  if (records.length === 0) {
-    return { ok: false, status: 403, error: "No client linked to your account" };
-  }
+  if (records.length === 0) return { ok: false, status: 403, error: "No client linked" };
   const isOwner = records.some(function (rec) { return rec.id === OWNER_CLIENT_ID; });
   if (!isOwner) return { ok: false, status: 403, error: "Not authorised" };
-  return { ok: true, email: email };
+  return { ok: true };
 }
 
-// ── Claude verifier ─────────────────────────────────
+// ── Airtable helpers ────────────────────────────────
 
-function buildPrompt(event) {
-  const lines = [
-    "You are verifying an event for a UK travel marketing calendar. Your job is to check whether the event exists, when it actually takes place, and whether the stored dates are correct. Use web search to find authoritative sources.",
-    "",
-    "EVENT TO VERIFY:",
-    "Name: " + (event.name || "(unknown)"),
-    "Stored start date: " + (event.dateStart || "(none)"),
-    "Stored end date: " + (event.dateEnd || "(none)"),
-    "Stored country/region: " + (event.countries || "(none)"),
-    "",
-    "RULES:",
-    "1. Use web search. Find at least 2 independent authoritative sources (official event site, governing body, major news, Wikipedia). Do NOT rely on travel blogs, booking sites, or aggregators.",
-    "2. Cross-check the dates AND the location. A different event with the same name in the wrong country is not a match.",
-    "3. CONFIDENCE RUBRIC:",
-    "   - high      = 2+ authoritative sources agree exactly on the dates",
-    "   - medium    = 1 authoritative source, OR 2+ sources with minor disagreement (a few days)",
-    "   - low       = sources exist but disagree, or only weak sources found",
-    "   - not_found = no credible evidence the event exists in the year of the stored start date",
-    "4. If the stored dates are confirmed correct → datesMatch=true",
-    "5. If the event is real but on different dates → datesMatch=false, fill verifiedDateStart/End",
-    "6. If the event does not exist → confidence=not_found, datesMatch=false",
-    "",
-    "RETURN A JSON OBJECT — and ONLY that JSON object, no markdown, no preamble, no code fences:",
-    "{",
-    '  "confidence": "high" | "medium" | "low" | "not_found",',
-    '  "datesMatch": true | false,',
-    '  "verifiedDateStart": "YYYY-MM-DD" | null,',
-    '  "verifiedDateEnd": "YYYY-MM-DD" | null,',
-    '  "sources": [',
-    '    { "url": "...", "publisher": "...", "claim": "Says event runs DD-DD MMM YYYY" }',
-    '  ],',
-    '  "summary": "One short paragraph: what you found, key sources, why this confidence level."',
-    "}"
-  ];
-  return lines.join("\n");
+function getPat() {
+  return process.env.TG_EVENTS_AIRTABLE_PAT || process.env.AIRTABLE_KEY;
 }
 
-async function callClaude(event) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
+async function listToVerify(force, limit) {
+  const pat = getPat();
+  if (!pat) throw new Error("airtable PAT not configured");
 
-  const body = {
-    model: ANTHROPIC_MODEL,
-    max_tokens: 1500,
-    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
-    messages: [
-      { role: "user", content: buildPrompt(event) }
-    ]
-  };
+  // Always Status=pending. If force=false, also require Verified At empty.
+  const formula = force
+    ? "{Status}='pending'"
+    : "AND({Status}='pending', {Verified At}=BLANK())";
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+  const params = new URLSearchParams();
+  params.set("returnFieldsByFieldId", "true");
+  params.set("pageSize", String(Math.max(limit, 10))); // grab a small buffer
+  params.set("maxRecords", String(Math.max(limit, 10)));
+  params.set("filterByFormula", formula);
+  params.append("sort[0][field]", "Date Start");
+  params.append("sort[0][direction]", "asc");
 
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE
+    + "?" + params.toString();
+  const r = await fetch(url, { headers: { Authorization: "Bearer " + pat } });
   if (!r.ok) {
-    const txt = await r.text().catch(function () { return ""; });
-    throw new Error("anthropic-" + r.status + ": " + txt.slice(0, 300));
+    const body = await r.text().catch(function () { return ""; });
+    throw new Error("airtable-list-" + r.status + ": " + body.slice(0, 200));
   }
-
   const data = await r.json();
-  // Concatenate all text blocks (tool_use / tool_result blocks are skipped).
-  const textOut = (data.content || [])
-    .filter(function (b) { return b && b.type === "text"; })
-    .map(function (b) { return b.text || ""; })
-    .join("\n")
-    .trim();
-
-  return textOut;
-}
-
-function parseClaudeJson(text) {
-  if (!text) return null;
-  // Strip code fences if any leaked through.
-  let cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
-  // If there's prose around the JSON, grab the first {...} block.
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start >= 0 && end > start) cleaned = cleaned.slice(start, end + 1);
-  try {
-    return JSON.parse(cleaned);
-  } catch (e) {
-    return null;
-  }
-}
-
-function deriveAction(parsed) {
-  if (!parsed) return "manual_review";
-  const c = (parsed.confidence || "").toLowerCase();
-  if (c === "not_found") return "reject";
-  if (c === "high" && parsed.datesMatch === true) return "approve";
-  if (c === "high" && parsed.datesMatch === false &&
-      parsed.verifiedDateStart) return "update_dates";
-  return "manual_review";
-}
-
-// Public — used by events-verify-batch.
-async function verifyOne(event) {
-  const text = await callClaude(event);
-  const parsed = parseClaudeJson(text);
-  if (!parsed) {
+  return (data.records || []).slice(0, limit).map(function (rec) {
+    const f = rec.fields || {};
     return {
-      confidence: "low",
-      datesMatch: false,
-      verifiedDateStart: null,
-      verifiedDateEnd: null,
-      sources: [],
-      summary: "Could not parse verifier response. Raw: " + (text || "").slice(0, 500),
-      recommendedAction: "manual_review"
+      id: rec.id,
+      name:      f[FIELDS.name] || "",
+      dateStart: f[FIELDS.dateStart] || "",
+      dateEnd:   f[FIELDS.dateEnd] || "",
+      countries: f[FIELDS.countries] || ""
     };
-  }
-  return {
-    confidence: parsed.confidence || "low",
-    datesMatch: !!parsed.datesMatch,
-    verifiedDateStart: parsed.verifiedDateStart || null,
-    verifiedDateEnd: parsed.verifiedDateEnd || null,
-    sources: Array.isArray(parsed.sources) ? parsed.sources.slice(0, 6) : [],
-    summary: String(parsed.summary || "").slice(0, 1500),
-    recommendedAction: deriveAction(parsed)
-  };
+  });
 }
+
+async function countRemaining(force) {
+  const pat = getPat();
+  const formula = force
+    ? "{Status}='pending'"
+    : "AND({Status}='pending', {Verified At}=BLANK())";
+  const params = new URLSearchParams();
+  params.set("filterByFormula", formula);
+  params.set("fields[]", "Event Name");
+  params.set("pageSize", "100");
+
+  let total = 0;
+  let offset = "";
+  let pages = 0;
+  while (pages < 5) {
+    const u = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE
+      + "?" + params.toString() + (offset ? "&offset=" + encodeURIComponent(offset) : "");
+    const r = await fetch(u, { headers: { Authorization: "Bearer " + pat } });
+    if (!r.ok) break;
+    const data = await r.json();
+    total += (data.records || []).length;
+    offset = data.offset || "";
+    pages++;
+    if (!offset) break;
+  }
+  return total;
+}
+
+function buildNotesText(result) {
+  const parts = [];
+  parts.push("Confidence: " + (result.confidence || "low"));
+  parts.push("Dates match stored: " + (result.datesMatch ? "yes" : "no"));
+  if (result.verifiedDateStart) {
+    parts.push("Verified start: " + result.verifiedDateStart);
+  }
+  if (result.verifiedDateEnd) {
+    parts.push("Verified end: " + result.verifiedDateEnd);
+  }
+  parts.push("Action taken: " + result.recommendedAction);
+  parts.push("");
+  parts.push("Summary:");
+  parts.push(result.summary || "(none)");
+  if (result.sources && result.sources.length) {
+    parts.push("");
+    parts.push("Sources:");
+    result.sources.forEach(function (s, i) {
+      const line = "  " + (i + 1) + ". " + (s.publisher || "(unknown)")
+        + (s.url ? " — " + s.url : "")
+        + (s.claim ? "\n     " + s.claim : "");
+      parts.push(line);
+    });
+  }
+  return parts.join("\n").slice(0, 95000); // long-text safety
+}
+
+async function applyResult(eventRecord, result) {
+  const pat = getPat();
+  if (!pat) throw new Error("airtable PAT not configured");
+
+  const fields = {};
+  fields[FIELDS.verifiedAt]  = new Date().toISOString();
+  fields[FIELDS.vConfidence] = result.confidence;
+  fields[FIELDS.vNotes]      = buildNotesText(result);
+
+  // Auto-actions
+  if (result.recommendedAction === "approve") {
+    fields[FIELDS.status] = "approved";
+  } else if (result.recommendedAction === "update_dates") {
+    fields[FIELDS.status] = "approved";
+    if (result.verifiedDateStart) fields[FIELDS.dateStart] = result.verifiedDateStart;
+    if (result.verifiedDateEnd)   fields[FIELDS.dateEnd]   = result.verifiedDateEnd;
+  } else if (result.recommendedAction === "reject") {
+    fields[FIELDS.status] = "rejected";
+  }
+  // manual_review → leave Status=pending
+
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + eventRecord.id;
+  const r = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + pat, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: fields, typecast: true })
+  });
+  if (!r.ok) {
+    const body = await r.text().catch(function () { return ""; });
+    throw new Error("airtable-patch-" + r.status + ": " + body.slice(0, 200));
+  }
+}
+
+// ── Handler ─────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   applyCors(req, res);
@@ -254,29 +263,53 @@ module.exports = async function handler(req, res) {
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch (e) { body = {}; }
   }
-
-  const event = {
-    id: body.id || "",
-    name: body.name || "",
-    dateStart: body.dateStart || "",
-    dateEnd: body.dateEnd || "",
-    countries: body.countries || ""
-  };
-  if (!event.name) {
-    return res.status(400).json({ success: false, error: "name is required" });
-  }
+  const force = !!body.force;
+  const chunk = Math.min(Math.max(parseInt(body.chunk, 10) || 5, 1), 8);
 
   try {
-    const result = await verifyOne(event);
-    return res.status(200).json({ success: true, id: event.id, result: result });
+    const events = await listToVerify(force, chunk);
+
+    const processed = [];
+    let ok = 0, errors = 0;
+
+    for (const ev of events) {
+      try {
+        const result = await verifyOne(ev);
+        await applyResult(ev, result);
+        processed.push({
+          id: ev.id,
+          name: ev.name,
+          action: result.recommendedAction,
+          confidence: result.confidence,
+          datesMatch: result.datesMatch
+        });
+        ok++;
+      } catch (err) {
+        console.error("verify-batch event error", ev.id, err);
+        processed.push({
+          id: ev.id,
+          name: ev.name,
+          action: "error",
+          error: String((err && err.message) || err).slice(0, 200)
+        });
+        errors++;
+      }
+    }
+
+    const remaining = await countRemaining(force);
+    return res.status(200).json({
+      success: true,
+      processed: processed,
+      summary: { ok: ok, errors: errors, total: processed.length },
+      remaining: remaining,
+      done: events.length === 0 || remaining === 0
+    });
+
   } catch (err) {
-    console.error("event-verify error", err);
+    console.error("verify-batch error", err);
     return res.status(500).json({
       success: false,
       error: String((err && err.message) || err).slice(0, 300)
     });
   }
 };
-
-// Export for events-verify-batch.js to import.
-module.exports.verifyOne = verifyOne;

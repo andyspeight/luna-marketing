@@ -554,11 +554,9 @@ var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',
 // sub-tabs inside Events. Everyone else just sees the standard view.
 var OWNER_CLIENT_ID = 'recFXQY7be6gMr4In';
 function isOwner() { return state.profile && state.profile.id === OWNER_CLIENT_ID; }
-// Auth credentials for the events-admin endpoint — captured at login so
-// we can re-send them on every admin call (events-admin re-verifies them
-// server-side before doing anything).
-var adminCreds = { email: '', code: '' };
 // Admin sub-tab state — only ever populated when isOwner() is true.
+// events-admin uses the SSO cookie directly (credentials: 'include'),
+// so we no longer capture/forward an email + code pair.
 var evtAdminState = { tab: 'all', adminEvents: [], adminFilter: 'pending', loading: false };
 var $=function(id){return document.getElementById(id)};
 function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -590,10 +588,6 @@ window.addEventListener('tg-auth-ready',async function(){
       }
     }
     state.profile=d.profile;
-    // Captured for any admin endpoints that still expect creds (events-admin
-    // is on the to-do list for the same SSO migration).
-    adminCreds.email=(d.account&&d.account.email)||'';
-    adminCreds.code='';
     showApp();
   }catch(e){
     document.body.innerHTML='<div style="font-family:system-ui;max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 6px rgba(0,0,0,.06)"><h1 style="font-size:20px;margin:0 0 12px;color:#0F172A">Could not load your portal</h1><p style="color:#64748B;line-height:1.5;margin:0 0 24px">'+e.message+'</p><a href="https://id.travelify.io" style="display:inline-block;padding:10px 20px;background:#00B4D8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Back to Apps</a></div>';
@@ -1036,8 +1030,9 @@ async function loadAdminEvents(){
   try{
     var res=await fetch('/api/events-admin',{
       method:'POST',
+      credentials:'include',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email:adminCreds.email,code:adminCreds.code,action:'list',status:evtAdminState.adminFilter})
+      body:JSON.stringify({action:'list',status:evtAdminState.adminFilter})
     });
     var d=await res.json();
     if(!d.success)throw new Error(d.error||'Failed to load');
@@ -1153,8 +1148,9 @@ async function handleAdminAction(action,id){
   try{
     var res=await fetch('/api/events-admin',{
       method:'POST',
+      credentials:'include',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email:adminCreds.email,code:adminCreds.code,action:action,id:id})
+      body:JSON.stringify({action:action,id:id})
     });
     var d=await res.json();
     if(!d.success)throw new Error(d.error||'Failed');

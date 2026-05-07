@@ -2,46 +2,50 @@
    LUNA MARKETING — EVENTS ADMIN API
 
    Admin-only endpoint for reviewing pending events from inside the Events
-   tab in client.html. Auth piggybacks on the existing client-auth flow.
+   tab in client.html. Uses Travelgenix SSO — exact same pattern as
+   /api/auth-session.
 
    How auth works:
-   1. The Luna Marketing client portal stores { email, code } in
-      sessionStorage when the user logs in.
-   2. The "Pending" sub-tab calls this endpoint with email + code in the
-      request body (POST) or signed via the same headers your other admin
-      endpoints use.
-   3. Server verifies email + code by re-running the same Airtable lookup
-      that /api/client-auth does, then checks the resolved client ID matches
+   1. The browser carries the tg_session cookie set by id.travelify.io.
+   2. This endpoint forwards that cookie to id.travelify.io/api/auth/me to
+      resolve the signed-in user's email.
+   3. We then look up the Luna Marketing client whose Monthly Report Email
+      matches that email, and check the resolved client ID equals
       OWNER_CLIENT_ID. Anyone else gets 403.
 
-   This means there's no separate admin password and no JWT —
-   the Travelgenix owner record is the source of truth.
+   No bearer tokens, no email/code body fields. Just the SSO cookie.
 
    Endpoints:
      POST /api/events-admin
-       body: { email, code, action: "list", status?: "pending" }
+       body: { action: "list", status?: "pending" }
        → { success: true, events: [...] }
 
      POST /api/events-admin
-       body: { email, code, action: "approve" | "reject" | "delete", id: "recXXX" }
+       body: { action: "approve" | "reject" | "delete" | "set_status",
+               id: "recXXX", status?: "pending"|"approved"|"rejected" }
        → { success: true, id, status? }
    ══════════════════════════════════════════ */
 
-var AIRTABLE_API   = "https://api.airtable.com/v0";
-var EVENTS_BASE_ID = "appSoIlSe0sNaJ4BZ";
-var EVENTS_TABLE   = "tblQxIYrbzd6YlJYV";
+const AIRTABLE_API   = "https://api.airtable.com/v0";
+const EVENTS_BASE_ID = "appSoIlSe0sNaJ4BZ";
+const EVENTS_TABLE   = "tblQxIYrbzd6YlJYV";
 
-// Travelgenix's own client record. Only this account is allowed admin
-// privileges. To grant access to additional users, add them as collaborators
-// on this client record (so they share the access code) — or extend the
-// auth check below to consult an "admin emails" list.
-var OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
+// Clients table — same base as Events Calendar — used to resolve the
+// signed-in user's email to a client record so we can check OWNER_CLIENT_ID.
+const CLIENTS_TABLE  = "tblUkzvBujc94Yali";
 
-// Clients table — same base as Events Calendar, used for auth verification
-var CLIENTS_TABLE = "Clients"; // Or update if your Clients table ID is different
+// Travelgenix's own client record. Only this account is allowed admin.
+const OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
+
+const ID_HOST = "https://id.travelify.io";
+
+const ALLOWED_ORIGINS = [
+  "https://luna-marketing.vercel.app",
+  "https://marketing.travelify.io"
+];
 
 // Field IDs on Events Calendar (stable)
-var FIELDS = {
+const FIELDS = {
   name:              "fldeCYUaMLwkWpv2u",
   dateStart:         "fld3kpR4x8CMyN5X5",
   dateEnd:           "fldwec6M9n8vwsLHz",
@@ -57,41 +61,85 @@ var FIELDS = {
   status:            "fldkJLEulZQJVR0hY",
 };
 
-var ALLOWED_STATUSES = ["pending", "approved", "rejected"];
+const ALLOWED_STATUSES = ["pending", "approved", "rejected"];
+
+// ── CORS ────────────────────────────────────────────
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
 
 // ── Auth ────────────────────────────────────────────
 
-// Verify the email + access code match a real client by calling the existing
-// /api/client-auth route. We do this server-side so the user's code is never
-// trusted by the admin endpoint without a fresh check, and we don't have to
-// duplicate the client-auth lookup logic here.
-async function verifyClientAuth(email, code, host) {
-  if (!email || !code) {
-    return { ok: false, status: 401, error: "missing email or access code" };
+function escFormula(s) {
+  return String(s || "").replace(/'/g, "\\'");
+}
+
+// Resolve the SSO session → email → client record. Returns { ok: true, email, clientId }
+// when the signed-in user is the Travelgenix owner, otherwise { ok: false, status, error }.
+async function verifyOwner(req) {
+  const cookie = req.headers.cookie || "";
+  if (!cookie.match(/(?:^|;\s*)tg_session=/)) {
+    return { ok: false, status: 401, error: "Not signed in" };
   }
 
-  // Build the URL to call our own client-auth endpoint. In Vercel, request the
-  // local function via the same host/protocol.
-  var protocol = "https://";
-  var url = protocol + host + "/api/client-auth";
-
+  // 1. Resolve email from the central session.
+  let meData;
   try {
-    var r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email, code: code }),
+    const meRes = await fetch(ID_HOST + "/api/auth/me", {
+      method: "GET",
+      headers: { cookie: cookie }
     });
-    var data = await r.json().catch(function () { return {}; });
-    if (!r.ok || !data || !data.profile) {
-      return { ok: false, status: 401, error: "invalid email or access code" };
-    }
-    if (data.profile.id !== OWNER_CLIENT_ID) {
-      return { ok: false, status: 403, error: "not authorised for admin actions" };
-    }
-    return { ok: true, profile: data.profile };
-  } catch (err) {
-    return { ok: false, status: 500, error: "auth verification failed" };
+    if (meRes.status === 401) return { ok: false, status: 401, error: "Session expired" };
+    if (!meRes.ok) return { ok: false, status: 502, error: "Auth check failed" };
+    meData = await meRes.json();
+  } catch (e) {
+    return { ok: false, status: 502, error: "Auth check failed" };
   }
+  if (!meData || !meData.ok || !meData.user || !meData.user.email) {
+    return { ok: false, status: 401, error: "Invalid session" };
+  }
+
+  const email = String(meData.user.email).trim().toLowerCase();
+
+  // 2. Look up the client(s) keyed by Monthly Report Email and check one of
+  //    them is the Travelgenix owner record.
+  const atKey = process.env.AIRTABLE_KEY;
+  if (!atKey) return { ok: false, status: 500, error: "Server not configured" };
+
+  const formula = encodeURIComponent(
+    "LOWER({Monthly Report Email})='" + escFormula(email) + "'"
+  );
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + CLIENTS_TABLE
+    + "?filterByFormula=" + formula + "&maxRecords=10";
+
+  let records = [];
+  try {
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + atKey } });
+    if (!r.ok) return { ok: false, status: 502, error: "Client lookup failed" };
+    const data = await r.json();
+    records = (data && data.records) || [];
+  } catch (e) {
+    return { ok: false, status: 502, error: "Client lookup failed" };
+  }
+
+  if (records.length === 0) {
+    return { ok: false, status: 403, error: "No client linked to your account" };
+  }
+
+  const isOwner = records.some(function (rec) { return rec.id === OWNER_CLIENT_ID; });
+  if (!isOwner) {
+    return { ok: false, status: 403, error: "Not authorised for admin actions" };
+  }
+
+  return { ok: true, email: email, clientId: OWNER_CLIENT_ID };
 }
 
 // ── Airtable helpers ────────────────────────────────
@@ -104,10 +152,10 @@ function getPat() {
 }
 
 async function listByStatus(status) {
-  var pat = getPat();
+  const pat = getPat();
   if (!pat) throw new Error("airtable PAT not configured");
 
-  var params = new URLSearchParams();
+  const params = new URLSearchParams();
   params.set("returnFieldsByFieldId", "true");
   params.set("pageSize", "100");
   if (status === "pending") {
@@ -121,21 +169,21 @@ async function listByStatus(status) {
   params.append("sort[0][field]", "Date Start");
   params.append("sort[0][direction]", "asc");
 
-  var baseUrl = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "?" + params.toString();
-  var out = [];
-  var offset = "";
-  var pages = 0;
+  const baseUrl = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "?" + params.toString();
+  const out = [];
+  let offset = "";
+  let pages = 0;
 
   while (pages < 5) {
-    var url = offset ? baseUrl + "&offset=" + offset : baseUrl;
-    var r = await fetch(url, { headers: { Authorization: "Bearer " + pat } });
+    const url = offset ? baseUrl + "&offset=" + encodeURIComponent(offset) : baseUrl;
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + pat } });
     if (!r.ok) {
-      var body = await r.text().catch(function () { return ""; });
+      const body = await r.text().catch(function () { return ""; });
       throw new Error("airtable-list-" + r.status + ": " + body.slice(0, 200));
     }
-    var data = await r.json();
+    const data = await r.json();
     (data.records || []).forEach(function (rec) {
-      var f = rec.fields || {};
+      const f = rec.fields || {};
       out.push({
         id: rec.id,
         name:              f[FIELDS.name] || "",
@@ -161,30 +209,30 @@ async function listByStatus(status) {
 }
 
 async function setStatus(recordId, newStatus) {
-  var pat = getPat();
+  const pat = getPat();
   if (!pat) throw new Error("airtable PAT not configured");
-  var url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + recordId;
-  var body = { fields: {}, typecast: true };
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + recordId;
+  const body = { fields: {}, typecast: true };
   body.fields[FIELDS.status] = newStatus;
-  var r = await fetch(url, {
+  const r = await fetch(url, {
     method: "PATCH",
     headers: { Authorization: "Bearer " + pat, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!r.ok) {
-    var resp = await r.text().catch(function () { return ""; });
+    const resp = await r.text().catch(function () { return ""; });
     throw new Error("airtable-patch-" + r.status + ": " + resp.slice(0, 200));
   }
   return await r.json();
 }
 
 async function deleteRecord(recordId) {
-  var pat = getPat();
+  const pat = getPat();
   if (!pat) throw new Error("airtable PAT not configured");
-  var url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + recordId;
-  var r = await fetch(url, { method: "DELETE", headers: { Authorization: "Bearer " + pat } });
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + recordId;
+  const r = await fetch(url, { method: "DELETE", headers: { Authorization: "Bearer " + pat } });
   if (!r.ok) {
-    var resp = await r.text().catch(function () { return ""; });
+    const resp = await r.text().catch(function () { return ""; });
     throw new Error("airtable-delete-" + r.status + ": " + resp.slice(0, 200));
   }
   return await r.json();
@@ -193,36 +241,39 @@ async function deleteRecord(recordId) {
 // ── Handler ─────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
+  applyCors(req, res);
   res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ success: false, error: "method not allowed" });
   }
 
-  var body = req.body || {};
+  // Auth via SSO cookie — must be the Travelgenix owner.
+  const auth = await verifyOwner(req);
+  if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
+
+  let body = req.body || {};
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch (e) { body = {}; }
   }
 
-  // Verify auth via client-auth round-trip
-  var host = (req.headers && req.headers.host) || "";
-  var auth = await verifyClientAuth(body.email, body.code, host);
-  if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
-
   try {
-    var action = (body.action || "").toLowerCase();
+    const action = (body.action || "").toLowerCase();
 
     if (action === "list") {
-      var status = (body.status || "pending").toLowerCase();
+      const status = (body.status || "pending").toLowerCase();
       if (["pending", "approved", "rejected", "all"].indexOf(status) === -1) {
         return res.status(400).json({ success: false, error: "invalid status filter" });
       }
-      var events = await listByStatus(status);
+      const events = await listByStatus(status);
       return res.status(200).json({ success: true, count: events.length, events: events });
     }
 
-    var id = (body.id || "").trim();
+    const id = (body.id || "").trim();
     if (!id || !/^rec[A-Za-z0-9]{14}$/.test(id)) {
       return res.status(400).json({ success: false, error: "invalid or missing record id" });
     }
@@ -240,7 +291,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, id: id, deleted: true });
     }
     if (action === "set_status") {
-      var newStatus = (body.status || "").toLowerCase();
+      const newStatus = (body.status || "").toLowerCase();
       if (ALLOWED_STATUSES.indexOf(newStatus) === -1) {
         return res.status(400).json({ success: false, error: "status must be one of: " + ALLOWED_STATUSES.join(", ") });
       }

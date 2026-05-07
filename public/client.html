@@ -2656,12 +2656,18 @@ function postsListHTML(posts) {
     return '<div class="dash-empty">No posts in the queue right now. Luna\'s content cron runs Mon/Wed/Fri at 7am UTC.</div>';
   }
   return '<div class="card" style="padding:0;margin-bottom:0">' + posts.map(function(p, i) {
-    return '<div class="dash-post-row" data-post-idx="' + i + '">' +
+    var overdueBadge = p.isOverdue
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,0.1);color:var(--tg-error);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;font-family:var(--tg-font-mono);margin-right:8px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Overdue</span>'
+      : '';
+    var timeStyle = p.isOverdue
+      ? 'color:var(--tg-error);font-weight:600'
+      : '';
+    return '<div class="dash-post-row" data-post-idx="' + i + '"' + (p.isOverdue ? ' style="background:rgba(239,68,68,0.025)"' : '') + '>' +
       '<div style="flex:1;min-width:0">' +
-      '<div class="dash-post-title">' + esc(p.title) + '</div>' +
+      '<div class="dash-post-title">' + overdueBadge + esc(p.title) + '</div>' +
       '<div class="dash-post-meta"><strong>' + esc(p.targetChannel) + '</strong>' + (p.contentPillar ? ' \u00b7 ' + esc(p.contentPillar) : '') + '</div>' +
       '</div>' +
-      '<div class="dash-post-time">' + esc(p.scheduledFor) + '</div>' +
+      '<div class="dash-post-time" style="' + timeStyle + '">' + esc(p.scheduledFor) + '</div>' +
       '</div>';
   }).join('') + '</div>';
 }
@@ -3727,12 +3733,13 @@ var WELCOME_MIN_APPROVED_POSTS = 5;
 // drawDashboard, the help button, and graduation logic all read from the
 // same source. Returns { show, steps[3], progress, hasMetrics, ... }.
 function computeWelcomeState(d) {
-  // Owner sees their own dashboard like everyone else, but shouldn't be
-  // welcomed. We're Travelgenix, we built the thing.
+  // PREVIEW MODE — owner exemption disabled so Travelgenix can see the full
+  // welcome experience. Re-enable before going live to other clients (see
+  // SETUP.md for the line to uncomment).
   var p = state.profile || {};
-  if (p.id === OWNER_CLIENT_ID) {
-    return { show: false };
-  }
+  // if (p.id === OWNER_CLIENT_ID) {
+  //   return { show: false };
+  // }
 
   // Step 1 — platforms connected? Check both standard + personal arrays.
   var platforms = (p.connected_platforms && p.connected_platforms.length) || 0;
@@ -4174,16 +4181,21 @@ function attachShowcaseHandlers() {
 // Auto-show showcase on first login (if welcome state is active and they
 // haven't already seen it). Called from drawDashboard after each render —
 // internally guards against re-running if already shown this session.
+
+// PREVIEW MODE — expose openShowcase globally so the floating preview
+// button can trigger it. Remove this line before going live.
+window.openShowcase = openShowcase;
+
 var _showcaseAutoShown = false;
 function maybeAutoShowShowcase() {
   if (_showcaseAutoShown) return;
-  if (!state.profile || state.profile.id === OWNER_CLIENT_ID) return;
-  var seen = false;
-  try { seen = localStorage.getItem(SHOWCASE_STORAGE_KEY) === '1'; } catch (e) {}
-  if (seen) {
-    _showcaseAutoShown = true; // don't keep checking
-    return;
-  }
+  if (!state.profile) return;
+  // PREVIEW MODE — owner check disabled, "seen" flag ignored. Re-enable both
+  // before going live (see SETUP-PREVIEW.md).
+  // if (state.profile.id === OWNER_CLIENT_ID) return;
+  // var seen = false;
+  // try { seen = localStorage.getItem(SHOWCASE_STORAGE_KEY) === '1'; } catch (e) {}
+  // if (seen) { _showcaseAutoShown = true; return; }
   // Only auto-show if they're in welcome state
   var data = (typeof dashState !== 'undefined' && dashState.data) ? dashState.data : null;
   if (!data) return;
@@ -4197,6 +4209,13 @@ function maybeAutoShowShowcase() {
 
 })();
 </script>
+<!-- PREVIEW MODE: persistent button to trigger the showcase from anywhere.
+     Remove this block before going live to other clients. -->
+<button class="welcome-help-btn" id="preview-showcase-btn" onclick="(function(){var fn=window.openShowcase;if(fn)fn('manual');})()" type="button">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  Show me Luna
+</button>
+
 <!-- Showcase modal — hidden by default, populated by openShowcase() -->
 <div id="showcase-overlay" class="showcase-overlay" role="dialog" aria-modal="true" aria-labelledby="showcase-headline" hidden>
   <div class="showcase-modal" id="showcase-modal" tabindex="-1">

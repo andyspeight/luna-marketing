@@ -568,8 +568,8 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   width: 36px; height: 36px;
   border-radius: 50%;
   background: rgba(255,255,255,0.1);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,255,255,0.8);
+  position: relative;
+  color: rgba(255,255,255,0.85);
   font-weight: 700; font-size: var(--text-sm);
   border: 2px solid rgba(255,255,255,0.15);
   transition: all var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -580,10 +580,23 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   color: #fff;
   transform: scale(1.05);
 }
-.welcome-step-icon svg { width: 18px; height: 18px; opacity: 0; transform: scale(0.5); transition: all var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1); }
+.welcome-step-icon-num {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.welcome-step-icon svg {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px; height: 18px;
+  opacity: 0; transform: scale(0.5);
+  transition: all var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .welcome-step.done .welcome-step-icon svg { opacity: 1; transform: scale(1); }
-.welcome-step:not(.done) .welcome-step-icon-num { display: inline; }
-.welcome-step.done .welcome-step-icon-num { display: none; }
+.welcome-step.done .welcome-step-icon-num { opacity: 0; }
 
 .welcome-step-body { flex: 1; min-width: 0; }
 .welcome-step-title { font-size: var(--text-sm); font-weight: 600; color: #fff; margin-bottom: 2px; }
@@ -592,14 +605,15 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 
 .welcome-step-cta {
   flex-shrink: 0;
-  height: 32px; padding: 0 14px;
+  height: 36px; padding: 0 18px;
+  min-width: 110px;
   border-radius: var(--radius-md);
   background: var(--tg-accent);
   color: #fff;
-  font-size: var(--text-xs); font-weight: 600;
+  font-size: var(--text-sm); font-weight: 600;
   border: none; cursor: pointer;
   font-family: var(--tg-font-body);
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   transition: all var(--duration-fast);
 }
 .welcome-step-cta:hover { background: var(--tg-accent-light); transform: translateX(2px); }

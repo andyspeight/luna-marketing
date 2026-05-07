@@ -13,8 +13,12 @@
       "schedule": "0 8 * * 1-5"
     },
     {
-      "path": "/api/events-topup?mode=cron",
-      "schedule": "0 9 1 * *"
+      "path": "/api/events-discover?mode=cron",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/events-verify-cron",
+      "schedule": "0 4 * * *"
     }
   ],
   "functions": {
@@ -35,6 +39,8 @@
     "api/email-render.js": { "maxDuration": 30 },
     "api/event-verify.js": { "maxDuration": 60 },
     "api/events-verify-batch.js": { "maxDuration": 300 },
+    "api/events-verify-cron.js": { "maxDuration": 300 },
+    "api/events-discover.js": { "maxDuration": 300 },
     "api/audiences.js": { "maxDuration": 30 },
     "api/brevo-webhook.js": { "maxDuration": 30 },
     "api/buska-webhook.js": { "maxDuration": 30 },

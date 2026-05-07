@@ -134,6 +134,7 @@ module.exports = async (req, res) => {
       recipientEmail,
       scheduledSend,
       emailType,
+      sectionsJson,
     } = body;
 
     // Validation
@@ -190,13 +191,41 @@ module.exports = async (req, res) => {
 
     // Create the record
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(EMAIL_QUEUE_TABLE)}`;
-    const created = await airtableFetch(url, {
-      method: "POST",
-      body: JSON.stringify({
-        records: [{ fields }],
-        typecast: true,
-      }),
-    });
+
+    // If sectionsJson was provided (from the section builder), try to store it
+    // for round-tripping when the user edits later. The field "Sections JSON"
+    // may not exist on the Email Queue table yet — if the create fails with
+    // UNKNOWN_FIELD_NAME we retry without it. This is a graceful upgrade path
+    // so the builder works whether or not the field has been added.
+    let created;
+    let storedSections = false;
+    if (sectionsJson && typeof sectionsJson === "string" && sectionsJson.length < 200000) {
+      try {
+        created = await airtableFetch(url, {
+          method: "POST",
+          body: JSON.stringify({
+            records: [{ fields: { ...fields, "Sections JSON": sectionsJson } }],
+            typecast: true,
+          }),
+        });
+        storedSections = true;
+      } catch (e) {
+        if (e.message && e.message.includes("UNKNOWN_FIELD_NAME")) {
+          console.warn("[email-compose] Sections JSON field missing on Email Queue. Falling back to no-sections write.");
+        } else {
+          throw e;
+        }
+      }
+    }
+    if (!created) {
+      created = await airtableFetch(url, {
+        method: "POST",
+        body: JSON.stringify({
+          records: [{ fields }],
+          typecast: true,
+        }),
+      });
+    }
 
     const emailId = created.records[0].id;
 
@@ -210,6 +239,7 @@ module.exports = async (req, res) => {
         subject: fields["Subject"],
         audience: fields["Audience"],
         recipient: fields["Recipient Email"] || fields["Audience Segment"] || "(audience-based)",
+        sectionsStored: storedSections,
       },
       ip,
     });

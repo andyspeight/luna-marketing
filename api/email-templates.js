@@ -13,7 +13,7 @@
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const CLIENTS_TABLE = "Clients";
-const TEMPLATES_TABLE = "Email Templates";
+const TEMPLATES_TABLE = "tblEJaTMeop8dy4d5";  // Email Templates
 
 async function airtableFetch(url, options = {}) {
   const r = await fetch(url, {

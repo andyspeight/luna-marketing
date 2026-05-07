@@ -1119,6 +1119,11 @@ function drawEventsAdminInto(targetEl){
     if(e.contentSuggestion)h+='<div style="grid-column:1/-1;background:rgba(0,180,216,0.04);border:1px solid rgba(0,180,216,0.12);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;font-family:var(--tg-font-mono)">Content Suggestion</div><div style="font-size:12px;color:var(--tg-text-primary);line-height:1.5">'+esc(e.contentSuggestion)+'</div></div>';
     h+='</div>';
 
+    // Verification panel — visible if Verified At is set
+    if(e.verifiedAt){
+      h+=renderVerificationPanel(e);
+    }
+
     // Actions row
     h+='<div style="display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--tg-border-light);flex-wrap:wrap">';
     var s=(e.status||'pending').toLowerCase();
@@ -1132,14 +1137,172 @@ function drawEventsAdminInto(targetEl){
       h+='<span style="height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.08);color:var(--tg-error);border-radius:8px;font-size:12px;font-weight:600">Rejected</span>';
       h+='<button data-admin-action="approve" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:var(--tg-success);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Approve</button>';
     }
+    h+='<button data-admin-action="edit" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>';
     h+='<button data-admin-action="delete" data-id="'+esc(e.id)+'" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:transparent;color:var(--tg-error);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:flex;align-items:center;gap:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Delete</button>';
     h+='<a href="https://airtable.com/appSoIlSe0sNaJ4BZ/tblQxIYrbzd6YlJYV/'+esc(e.id)+'" target="_blank" rel="noopener" style="margin-left:auto;height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:transparent;color:var(--tg-text-secondary);font-size:12px;font-weight:500;font-family:var(--tg-font-body);text-decoration:none;display:inline-flex;align-items:center;gap:6px">Open in Airtable<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>';
     h+='</div>';
+
+    // Inline edit form (hidden by default — shown when Edit clicked)
+    h+=renderEditForm(e);
 
     h+='</div>';
   });
 
   targetEl.innerHTML=h;
+}
+
+// Render the AI verification panel for a single event card. Returns HTML string.
+function renderVerificationPanel(e){
+  var conf=(e.verificationConfidence||'').toLowerCase();
+  var palette={
+    high:      {bg:'rgba(16,185,129,0.08)',  bd:'rgba(16,185,129,0.25)', fg:'#059669', label:'High confidence'},
+    medium:    {bg:'rgba(245,158,11,0.08)',  bd:'rgba(245,158,11,0.25)', fg:'#B45309', label:'Medium confidence'},
+    low:       {bg:'rgba(249,115,22,0.08)',  bd:'rgba(249,115,22,0.25)', fg:'#C2410C', label:'Low confidence'},
+    not_found: {bg:'rgba(239,68,68,0.08)',   bd:'rgba(239,68,68,0.25)',  fg:'#DC2626', label:'Not found'}
+  };
+  var p=palette[conf]||palette.low;
+
+  var notes=e.verificationNotes||'';
+  // Parse notes structure: lines until "Sources:" are summary; after are sources
+  var parsed=parseVerificationNotes(notes);
+
+  var icon=conf==='high'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+    : conf==='not_found'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+  var h='';
+  h+='<div style="margin-bottom:14px;background:'+p.bg+';border:1px solid '+p.bd+';border-radius:8px;padding:12px 14px">';
+
+  // Header row: badge + summary action
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">';
+  h+='<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:11px;background:'+p.fg+';color:#fff;font-size:11px;font-weight:600">'+icon+esc(p.label)+'</span>';
+  if(parsed.recommendedAction){
+    var actionLabel={approve:'Auto-approved',update_dates:'Dates corrected & approved',reject:'Auto-rejected',manual_review:'Needs your review'}[parsed.recommendedAction]||parsed.recommendedAction;
+    h+='<span style="font-size:11px;color:'+p.fg+';font-weight:600">'+esc(actionLabel)+'</span>';
+  }
+  if(parsed.verifiedDateStart&&parsed.datesMatch===false){
+    var range=parsed.verifiedDateStart;
+    if(parsed.verifiedDateEnd&&parsed.verifiedDateEnd!==parsed.verifiedDateStart){
+      range+=' to '+parsed.verifiedDateEnd;
+    }
+    h+='<span style="font-size:11px;color:var(--tg-text-secondary);font-variant-numeric:tabular-nums">Verifier suggests: <strong style="color:var(--tg-text-primary)">'+esc(range)+'</strong></span>';
+  }
+  h+='</div>';
+
+  // Summary text
+  if(parsed.summary){
+    h+='<div style="font-size:12px;color:var(--tg-text-primary);line-height:1.55;margin-bottom:'+(parsed.sources.length?'10px':'0')+'">'+esc(parsed.summary)+'</div>';
+  }
+
+  // Sources (collapsed by default)
+  if(parsed.sources.length){
+    h+='<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;font-weight:600;color:'+p.fg+';list-style:none;display:inline-flex;align-items:center;gap:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.15s"><polyline points="9 18 15 12 9 6"/></svg>'+parsed.sources.length+' source'+(parsed.sources.length===1?'':'s')+' cited</summary>';
+    h+='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed '+p.bd+';font-size:11px;line-height:1.6">';
+    parsed.sources.forEach(function(s,i){
+      h+='<div style="margin-bottom:6px"><span style="color:var(--tg-text-tertiary)">'+(i+1)+'.</span> ';
+      if(s.url){
+        h+='<a href="'+esc(s.url)+'" target="_blank" rel="noopener" style="color:'+p.fg+';font-weight:500;text-decoration:none">'+esc(s.publisher||s.url)+'</a>';
+      }else{
+        h+='<span style="color:var(--tg-text-primary);font-weight:500">'+esc(s.publisher||'Unknown')+'</span>';
+      }
+      if(s.claim){
+        h+='<div style="margin-left:14px;margin-top:2px;color:var(--tg-text-secondary)">'+esc(s.claim)+'</div>';
+      }
+      h+='</div>';
+    });
+    h+='</div></details>';
+  }
+
+  h+='</div>';
+  return h;
+}
+
+// Parse the structured Verification Notes block written by events-verify-batch.
+// Format follows buildNotesText() in that file. This is a forgiving parser —
+// missing pieces fall back to defaults.
+function parseVerificationNotes(notes){
+  var out={summary:'',sources:[],recommendedAction:'',datesMatch:null,verifiedDateStart:'',verifiedDateEnd:''};
+  if(!notes)return out;
+  // Header lines
+  var headerMatch={};
+  notes.split('\n').slice(0,6).forEach(function(line){
+    var m=line.match(/^(Confidence|Dates match stored|Verified start|Verified end|Action taken):\s*(.+)$/);
+    if(m)headerMatch[m[1]]=m[2].trim();
+  });
+  out.recommendedAction=headerMatch['Action taken']||'';
+  if(headerMatch['Dates match stored'])out.datesMatch=headerMatch['Dates match stored']==='yes';
+  out.verifiedDateStart=headerMatch['Verified start']||'';
+  out.verifiedDateEnd=headerMatch['Verified end']||'';
+
+  // Summary block: between "Summary:" and "Sources:" (or end)
+  var sumIdx=notes.indexOf('\nSummary:');
+  var srcIdx=notes.indexOf('\nSources:');
+  if(sumIdx>=0){
+    var sumStart=sumIdx+'\nSummary:'.length;
+    var sumEnd=srcIdx>=0?srcIdx:notes.length;
+    out.summary=notes.slice(sumStart,sumEnd).trim();
+  }
+
+  // Sources block: each entry is "  N. Publisher — url" then "     Claim..."
+  if(srcIdx>=0){
+    var srcText=notes.slice(srcIdx+'\nSources:'.length).trim();
+    var lines=srcText.split('\n');
+    var current=null;
+    lines.forEach(function(line){
+      var m=line.match(/^\s*\d+\.\s+(.+?)(?:\s+—\s+(https?:\/\/\S+))?$/);
+      if(m){
+        if(current)out.sources.push(current);
+        current={publisher:m[1].trim(),url:m[2]||'',claim:''};
+      }else if(current){
+        var t=line.trim();
+        if(t)current.claim=(current.claim?current.claim+' ':'')+t;
+      }
+    });
+    if(current)out.sources.push(current);
+  }
+  return out;
+}
+
+// Render the inline edit form for a card. Hidden by default; shown when Edit
+// button is clicked. All edits POST to /api/events-admin action=update.
+function renderEditForm(e){
+  var h='<div class="evt-admin-edit" data-edit-id="'+esc(e.id)+'" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--tg-border-light);background:rgba(0,180,216,0.03);border-radius:8px;padding:14px;border:1px solid rgba(0,180,216,0.18)">';
+  h+='<div style="font-size:11px;font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;font-family:var(--tg-font-mono)">Edit event</div>';
+
+  // Two-column grid for form
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
+
+  // Name (full width)
+  h+='<div style="grid-column:1/-1"><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">Event name</label><input type="text" data-edit-field="name" value="'+esc(e.name||'')+'" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body)"></div>';
+
+  // Date Start
+  h+='<div><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">Start date</label><input type="date" data-edit-field="dateStart" value="'+esc(e.dateStart||'')+'" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body)"></div>';
+
+  // Date End
+  h+='<div><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">End date</label><input type="date" data-edit-field="dateEnd" value="'+esc(e.dateEnd||'')+'" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body)"></div>';
+
+  // Country
+  h+='<div><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">Country / region</label><input type="text" data-edit-field="countries" value="'+esc(e.countries||'')+'" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body)"></div>';
+
+  // Destinations
+  h+='<div><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">Destinations / cities</label><input type="text" data-edit-field="destinations" value="'+esc(e.destinations||'')+'" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body)"></div>';
+
+  // Travel angle (full width, textarea)
+  h+='<div style="grid-column:1/-1"><label style="display:block;font-size:11px;color:var(--tg-text-secondary);margin-bottom:4px;font-weight:500">Travel angle</label><textarea data-edit-field="travelAngle" rows="2" style="width:100%;padding:8px 12px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);color:var(--tg-text-primary);font-size:13px;font-family:var(--tg-font-body);resize:vertical">'+esc(e.travelAngle||'')+'</textarea></div>';
+
+  h+='</div>';
+
+  // Save / Cancel
+  h+='<div style="display:flex;gap:8px;align-items:center">';
+  h+='<button data-admin-action="save-edit" data-id="'+esc(e.id)+'" style="height:34px;padding:0 16px;border-radius:8px;border:none;background:var(--tg-accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Save changes</button>';
+  h+='<button data-admin-action="cancel-edit" data-id="'+esc(e.id)+'" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Cancel</button>';
+  h+='<span class="evt-edit-status" data-edit-status="'+esc(e.id)+'" style="font-size:11px;color:var(--tg-text-tertiary);margin-left:6px"></span>';
+  h+='</div>';
+
+  h+='</div>';
+  return h;
 }
 
 // Admin filter switcher + action handler
@@ -1304,6 +1467,24 @@ function renderVerifySummary(processed){
 
 
 async function handleAdminAction(action,id){
+  // Local-only actions: just toggle the inline edit form, no API call
+  if(action==='edit'){
+    var editBox=document.querySelector('[data-edit-id="'+CSS.escape(id)+'"]');
+    if(editBox){
+      var isOpen=editBox.style.display!=='none';
+      editBox.style.display=isOpen?'none':'block';
+    }
+    return;
+  }
+  if(action==='cancel-edit'){
+    var box=document.querySelector('[data-edit-id="'+CSS.escape(id)+'"]');
+    if(box)box.style.display='none';
+    return;
+  }
+  if(action==='save-edit'){
+    return saveEditedEvent(id);
+  }
+
   if(action==='delete'){
     if(!confirm('Delete this event permanently? This cannot be undone.'))return;
   }
@@ -1333,6 +1514,57 @@ async function handleAdminAction(action,id){
   }catch(err){
     showEvtToast('Error: '+err.message,'error');
     if(card)card.classList.remove('processing');
+  }
+}
+
+// Save inline edits to the event. Reads all data-edit-field inputs in the
+// matching edit box, posts them to /api/events-admin action=update, then
+// reflects the changes locally and re-renders so the card shows fresh values.
+async function saveEditedEvent(id){
+  var box=document.querySelector('[data-edit-id="'+CSS.escape(id)+'"]');
+  if(!box)return;
+  var statusEl=box.querySelector('[data-edit-status="'+CSS.escape(id)+'"]');
+
+  var updates={};
+  box.querySelectorAll('[data-edit-field]').forEach(function(input){
+    updates[input.getAttribute('data-edit-field')]=input.value;
+  });
+
+  // Light client-side validation
+  var dateRe=/^\d{4}-\d{2}-\d{2}$/;
+  if(updates.dateStart&&!dateRe.test(updates.dateStart)){
+    if(statusEl){statusEl.textContent='Start date must be YYYY-MM-DD';statusEl.style.color='var(--tg-error)';}
+    return;
+  }
+  if(updates.dateEnd&&!dateRe.test(updates.dateEnd)){
+    if(statusEl){statusEl.textContent='End date must be YYYY-MM-DD';statusEl.style.color='var(--tg-error)';}
+    return;
+  }
+
+  if(statusEl){statusEl.textContent='Saving...';statusEl.style.color='var(--tg-text-tertiary)';}
+
+  try{
+    var res=await fetch('/api/events-admin',{
+      method:'POST',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'update',id:id,updates:updates})
+    });
+    var d=await res.json();
+    if(!d.success)throw new Error(d.error||'Save failed');
+
+    // Reflect changes in local state so the card re-renders with new values
+    var idx=evtAdminState.adminEvents.findIndex(function(x){return x.id===id});
+    if(idx>=0){
+      Object.keys(updates).forEach(function(k){
+        evtAdminState.adminEvents[idx][k]=updates[k];
+      });
+    }
+    showEvtToast('Event updated','success');
+    drawEventsView(); // closes the form via re-render
+  }catch(err){
+    if(statusEl){statusEl.textContent='Error: '+err.message;statusEl.style.color='var(--tg-error)';}
+    showEvtToast('Error: '+err.message,'error');
   }
 }
 function renderCalendar(){

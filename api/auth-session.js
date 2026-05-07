@@ -166,8 +166,21 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Build candidate summary (always returned, useful for header / switcher)
-    const candidates = records.map(function (rec) {
+    // Build candidate summary (always returned, useful for header / switcher).
+    // We only include records that look populated. If a record has no Client Type
+    // set, it's almost certainly a stale test record left over from setup, so we
+    // hide it from candidates AND skip it when auto-picking. This prevents the
+    // silent wrong-record bug we saw on first cutover.
+    const populated = records.filter(function (rec) {
+      const f = rec.fields || {};
+      return !!f[FID.clientType];
+    });
+
+    // If everything looks unpopulated, fall back to the raw list so the user
+    // can at least see something rather than getting a misleading 404.
+    const usable = populated.length > 0 ? populated : records;
+
+    const candidates = usable.map(function (rec) {
       const f = rec.fields || {};
       return {
         id: rec.id,
@@ -178,12 +191,14 @@ module.exports = async function handler(req, res) {
     // 3. Pick the right one
     let chosen = null;
     if (requestedClientId) {
+      // Honour explicit picks even if they're across the unpopulated set,
+      // since the front-end might be letting the user resolve a problem.
       chosen = records.find(function (r) { return r.id === requestedClientId; });
       if (!chosen) {
         return res.status(403).json({ error: 'Requested client not linked to your account' });
       }
-    } else if (records.length === 1) {
-      chosen = records[0];
+    } else if (usable.length === 1) {
+      chosen = usable[0];
     }
 
     return res.status(200).json({

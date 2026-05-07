@@ -252,13 +252,40 @@ async function buildPendingPosts(businessName) {
     `AND(OR({Status}='Awaiting Approval', {Status}='Generated', {Status}='Pending', {Status}='Queued'), ${clientFilter})`
   )}&sort%5B0%5D%5Bfield%5D=Scheduled Date&sort%5B0%5D%5Bdirection%5D=asc&maxRecords=8`;
   const posts = await listAll(POST_QUEUE_TABLE, params);
-  return posts.map(p => ({
-    id: p.id,
-    title: p.fields["Post Title"] || "(no title)",
-    targetChannel: p.fields["Target Channel"] || "Unknown",
-    contentPillar: p.fields["Content Pillar"] || p.fields["Content Type"] || "",
-    scheduledFor: formatScheduled(p.fields["Scheduled Date"], p.fields["Scheduled Time"]),
-  }));
+
+  // Today at 00:00 in server local time. Anything scheduled before this
+  // is "overdue" — should have published by now but hasn't. We surface
+  // these in the UI so they can be re-queued or rejected.
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+
+  const mapped = posts.map(p => {
+    const dateStr = p.fields["Scheduled Date"];
+    let scheduledIso = "";
+    let isOverdue = false;
+    if (dateStr) {
+      const d = new Date(dateStr);
+      scheduledIso = d.toISOString();
+      isOverdue = d.getTime() < todayMidnight.getTime();
+    }
+    return {
+      id: p.id,
+      title: p.fields["Post Title"] || "(no title)",
+      targetChannel: p.fields["Target Channel"] || "Unknown",
+      contentPillar: p.fields["Content Pillar"] || p.fields["Content Type"] || "",
+      scheduledFor: formatScheduled(p.fields["Scheduled Date"], p.fields["Scheduled Time"]),
+      scheduledIso: scheduledIso,
+      isOverdue: isOverdue,
+    };
+  });
+
+  // Sort: overdue first (most urgent), then by ascending date for the rest.
+  mapped.sort((a, b) => {
+    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+    return (a.scheduledIso || "").localeCompare(b.scheduledIso || "");
+  });
+
+  return mapped;
 }
 
 async function buildHotLeads() {

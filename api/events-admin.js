@@ -59,6 +59,9 @@ const FIELDS = {
   contentSuggestion: "fld3r8C281SlFUd7X",
   leadTimeWeeks:     "fldikCV1FNGgxZOys",
   status:            "fldkJLEulZQJVR0hY",
+  verifiedAt:        "fldPRpt68nR72gaxz",
+  vConfidence:       "fld8oVlV8dMGWYPJZ",
+  vNotes:            "fldkGbSYEimyTqghd",
 };
 
 const ALLOWED_STATUSES = ["pending", "approved", "rejected"];
@@ -199,6 +202,9 @@ async function listByStatus(status) {
         contentSuggestion: f[FIELDS.contentSuggestion] || "",
         leadTimeWeeks:     f[FIELDS.leadTimeWeeks] || null,
         status:            f[FIELDS.status] || "",
+        verifiedAt:        f[FIELDS.verifiedAt] || "",
+        verificationConfidence: f[FIELDS.vConfidence] || "",
+        verificationNotes: f[FIELDS.vNotes] || "",
       });
     });
     offset = data.offset || "";

@@ -134,6 +134,7 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 .dash-kpi-delta { font-size:var(--text-xs); font-weight:600; margin-top:var(--space-1); font-family:var(--tg-font-mono); }
 .dash-kpi-delta.up { color:var(--tg-success); }
 .dash-kpi-delta.down { color:var(--tg-error); }
+.dash-kpi-delta.neutral { color:var(--tg-text-tertiary); font-weight:500; }
 .dash-lead-card { background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); padding:var(--space-5); cursor:pointer; transition:all var(--duration-fast); margin-bottom:var(--space-3); }
 .dash-lead-card:hover { border-color:var(--tg-accent); transform:translateY(-1px); box-shadow:var(--shadow-md); }
 .dash-lead-grid { display:grid; grid-template-columns:90px 1fr; gap:var(--space-4); align-items:start; }
@@ -2110,12 +2111,12 @@ function ledeText(d) {
       : top.type === 'Brand Mention' ? 'mentioned Travelgenix'
       : top.type === 'Competitor Mention' ? 'flagged a competitor discussion'
       : 'is worth a look';
-    return total + ' thing' + (total === 1 ? '' : 's') + ' waiting for you' +
+    return total + ' thing' + (total === 1 ? '' : 's') + ' ready for you' +
       (matters > 0 ? ', and ' + matters + ' of them really matter' : '') + '. <strong>' +
       esc(top.author) + '</strong> from ' + esc(top.company || 'their company') + ' ' +
       verb + ' and scored <strong>' + top.score + ' out of 10</strong>. <em>Worth your morning.</em>';
   }
-  return total + ' thing' + (total === 1 ? '' : 's') + ' waiting for you. Tap the cards below to work through them.';
+  return total + ' thing' + (total === 1 ? '' : 's') + ' ready for you. Tap the cards below to work through them.';
 }
 
 function actionCardsHTML(a) {
@@ -2176,19 +2177,38 @@ function kpiStripHTML(k) {
     var arrow = up ? '\u2191' : '\u2193';
     return '<div class="dash-kpi-delta ' + (up ? 'up' : 'down') + '">' + arrow + ' ' + d.replace(/^[+\-]/, '') + ' vs prev 30d</div>';
   }
+  // For tiles with no data yet, show a neutral "no data" line instead of a
+  // red ↓ 0% which makes new clients feel like they're failing on day one.
+  function deltaOrEmpty(value, deltaStr) {
+    if (!value || value === 0) {
+      return '<div class="dash-kpi-delta neutral">No data yet</div>';
+    }
+    return delta(deltaStr);
+  }
   return '<div class="dash-kpi-grid">' +
-    '<div class="dash-kpi"><div class="dash-kpi-label">Demos booked</div><div class="dash-kpi-value">' + k.demoBookings + '</div>' + delta(k.demoBookingsDelta) + '</div>' +
-    '<div class="dash-kpi"><div class="dash-kpi-label">Reach</div><div class="dash-kpi-value">' + formatBig(k.postReach) + '</div>' + delta(k.postReachDelta) + '</div>' +
-    '<div class="dash-kpi"><div class="dash-kpi-label">Site clicks</div><div class="dash-kpi-value">' + k.websiteClicks + '</div>' + delta(k.websiteClicksDelta) + '</div>' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Demos booked</div><div class="dash-kpi-value">' + k.demoBookings + '</div>' + deltaOrEmpty(k.demoBookings, k.demoBookingsDelta) + '</div>' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Reach</div><div class="dash-kpi-value">' + formatBig(k.postReach) + '</div>' + deltaOrEmpty(k.postReach, k.postReachDelta) + '</div>' +
+    '<div class="dash-kpi"><div class="dash-kpi-label">Site clicks</div><div class="dash-kpi-value">' + k.websiteClicks + '</div>' + deltaOrEmpty(k.websiteClicks, k.websiteClicksDelta) + '</div>' +
     '</div>';
 }
 
 function tickerHTML(k) {
-  function deltaPill(d) {
+  function deltaPill(d, value) {
+    // No delta at all → flat dash
     if (!d) return '<span class="dash-ticker-delta flat">\u2013</span>';
+    // No data yet (value is 0) → flat dash regardless of what delta says.
+    // Avoids "↓ 0%" looking like things are getting worse on day one.
+    if (!value || value === 0 || value === '0' || value === '0%' || value === '0.0%') {
+      return '<span class="dash-ticker-delta flat">\u2013</span>';
+    }
     var ch = d.charAt(0);
     var up = ch === '+';
     var down = ch === '-';
+    // Treat ±0% as flat
+    var num = parseFloat(d.replace(/^[+\-]/, ''));
+    if (num === 0) {
+      return '<span class="dash-ticker-delta flat">\u2013</span>';
+    }
     var cls = up ? 'up' : (down ? 'down' : 'flat');
     var arrow = up ? '\u25B2' : (down ? '\u25BC' : '\u2013');
     return '<span class="dash-ticker-delta ' + cls + '">' + arrow + ' ' + d.replace(/^[+\-]/, '') + '</span>';
@@ -2198,7 +2218,7 @@ function tickerHTML(k) {
     return s;
   }
   function item(label, value, deltaStr) {
-    var d = (deltaStr === undefined || deltaStr === null) ? '' : deltaPill(deltaStr);
+    var d = (deltaStr === undefined || deltaStr === null) ? '' : deltaPill(deltaStr, value);
     return '<div class="dash-ticker-item"><span class="dash-ticker-label">' + label + '</span><span class="dash-ticker-value">' + value + '</span>' + d + '</div>';
   }
   // Build the ticker payload once
@@ -2227,7 +2247,7 @@ function leadColour(score) {
 
 function hotLeadsHTML(leads) {
   if (!leads || leads.length === 0) {
-    return '<div class="dash-empty">No hot leads with drafted comments right now. New signals will appear here once Buska finds them.</div>';
+    return '<div class="dash-empty">We\'re scanning LinkedIn for buying signals, brand mentions and competitor chatter. Hot leads will appear here as they\'re found \u2014 typically within the first few weeks.</div>';
   }
   return leads.map(function(l, i) {
     var colour = leadColour(l.score);

@@ -1165,6 +1165,10 @@ document.addEventListener('click',function(e){
     }
     return;
   }
+  if(e.target.closest('#evt-verify-refresh-list')){
+    loadAdminEvents();
+    return;
+  }
 });
 
 // Verify driver — chunked loop, polls /api/events-verify-batch until done.
@@ -1196,7 +1200,7 @@ async function runVerifyBatch(force){
         method:'POST',
         credentials:'include',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({chunk:5,force:force})
+        body:JSON.stringify({chunk:3,force:force})
       });
       var d=await res.json();
       if(!d.success){
@@ -1220,8 +1224,9 @@ async function runVerifyBatch(force){
 
   evtVerifyState.running=false;
   renderVerifySummary(processed);
-  // Reload the pending list so auto-actioned events drop off and counts update.
-  loadAdminEvents();
+  // Note: we deliberately do NOT auto-reload the pending list here.
+  // That would wipe the post-run summary the user just got. The summary
+  // includes a "Refresh list" button which calls loadAdminEvents() on demand.
 }
 
 function renderVerifyProgress(processed,remaining){
@@ -1288,8 +1293,11 @@ function renderVerifySummary(processed){
   h+=bucket('Date corrected & approved','update_dates','#0891b2','Dates were updated to match authoritative sources, then auto-approved.');
   h+=bucket('Auto-rejected','reject','#dc2626','No credible sources found — these events likely don\'t exist as stored.');
   h+=bucket('Flagged for manual review','manual_review','#ea580c','Sources disagreed or only one source was found. Open the table to read the verification notes and decide.');
-  h+=bucket('Errors','error','#dc2626','These events errored during verification — try running again, or check the verification notes.');
-  h+='<div style="margin-top:12px;font-size:11px;color:var(--tg-text-tertiary)">Auto-approved events have been removed from this list. Click <strong>Approved</strong> filter above to see them.</div>';
+  h+=bucket('Errors','error','#dc2626','These events errored during verification. They\'ve been stamped so future runs skip them. Click "Re-verify all" to retry.');
+  h+='<div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+  h+=  '<button id="evt-verify-refresh-list" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-accent);background:var(--tg-accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Refresh pending list</button>';
+  h+=  '<span style="font-size:11px;color:var(--tg-text-tertiary)">Auto-approved events are removed from this list once you refresh.</span>';
+  h+='</div>';
   h+='</div>';
   prog.innerHTML=h;
 }

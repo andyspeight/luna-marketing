@@ -20,35 +20,36 @@ const ALLOWED_ORIGINS = [
   'https://marketing.travelify.io'
 ];
 
-// Field IDs on the Clients table (appSoIlSe0sNaJ4BZ / tblUkzvBujc94Yali).
-// Using IDs not names so renames in Airtable don't break us.
+// Field NAMES on the Clients table. Airtable's REST API returns fields keyed
+// by name by default (unlike the MCP tools which use IDs). If a name changes
+// in Airtable we'll need to update this map; that's the trade-off.
 const FID = {
-  businessName:           'fldIBkVU6xOCm95cy',
-  tradingName:            'fldhNfu7bY4e8HjuO',
-  websiteUrl:             'fldgv4GmsPOMWWeOe',
-  package:                'fldXUROehrQsHIyCq',
-  status:                 'fldVPZuB3fI2um8cK',
-  specialisms:            'fldDbUfLTlNyrGF46',
-  logoUrl:                'fldlQSB7rqFSitLaM',
-  primaryColour:          'fldWYYXPvzk42wJnU',
-  secondaryColour:        'fld9xCsKU7Zx5I3nv',
-  toneKeywords:           'fld1ALmkdItdmqZ3F',
-  emojiUsage:             'fld8qul3kCo8DGpbK',
-  formality:              'fldynl4q7lisKLjrS',
-  sentenceStyle:          'fldhJSJcvps6vXA9k',
-  ctaStyle:               'fldmPd4oIBzGfkKSD',
-  postingFrequency:       'fldW96enokyPijYpl',
-  postingDays:            'fldytRUBlDQHiTw8g',
-  monthlyReportEmail:     'fldFR0KXsHpyypXYw',
-  destinations:           'fldUZUIeTMyRiCq6x',
-  autoPublish:            'fldgkMcxabHbYvQX2',
-  metricoolBlogId:        'fldD0bqBzdaG1zYVU',
-  connectedPlatforms:     'fldSBwHXwUh7adpvX',
-  clientType:             'fldofYODfrsaJhaEq',
-  contentPillars:         'fldGaU3McKraAcIbc',
-  targetChannels:         'fldlAuZ8A6wg48UvL',
-  metricoolBlogIdPersonal:'fld1WPjPnAKXyNxFF',
-  connectedPlatformsPersonal:'fldnXw1vILLapELaY'
+  businessName:               'Business Name',
+  tradingName:                'Trading Name',
+  websiteUrl:                 'Website URL',
+  package:                    'Package',
+  status:                     'Status',
+  specialisms:                'Specialisms',
+  logoUrl:                    'Logo URL',
+  primaryColour:              'Primary Colour',
+  secondaryColour:            'Secondary Colour',
+  toneKeywords:               'Tone Keywords',
+  emojiUsage:                 'Emoji Usage',
+  formality:                  'Formality',
+  sentenceStyle:              'Sentence Style',
+  ctaStyle:                   'CTA Style',
+  postingFrequency:           'Posting Frequency',
+  postingDays:                'Posting Days',
+  monthlyReportEmail:         'Monthly Report Email',
+  destinations:               'Destinations',
+  autoPublish:                'Auto Publish',
+  metricoolBlogId:            'Metricool Blog ID',
+  connectedPlatforms:         'Connected Platforms',
+  clientType:                 'Client Type',
+  contentPillars:             'Content Pillars',
+  targetChannels:             'Target Channels',
+  metricoolBlogIdPersonal:    'Metricool Blog ID - Personal',
+  connectedPlatformsPersonal: 'Connected Platforms Personal'
 };
 
 function applyCors(req, res) {

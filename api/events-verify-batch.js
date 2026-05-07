@@ -281,8 +281,22 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, error: "method not allowed" });
   }
 
-  const auth = await verifyOwner(req);
-  if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
+  // Two auth paths:
+  //   1. mode=cron + Bearer CRON_SECRET — used by /api/events-discover and the
+  //      verification cron schedule. Lets background jobs trigger verification
+  //      without a browser session.
+  //   2. SSO cookie — used by the Pending Review UI in client.html.
+  const mode = String((req.query && req.query.mode) || "");
+  if (mode === "cron") {
+    const expected = process.env.CRON_SECRET;
+    if (!expected) return res.status(500).json({ success: false, error: "CRON_SECRET not configured" });
+    const got = req.headers.authorization || req.headers["x-cron-secret"] || "";
+    const token = typeof got === "string" && got.startsWith("Bearer ") ? got.slice(7) : got;
+    if (token !== expected) return res.status(401).json({ success: false, error: "Unauthorised" });
+  } else {
+    const auth = await verifyOwner(req);
+    if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
+  }
 
   let body = req.body || {};
   if (typeof body === "string") {

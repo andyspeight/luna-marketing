@@ -46,7 +46,7 @@
     "api/connections.js": { "maxDuration": 30 },
     "api/clients.js": { "maxDuration": 30 },
     "api/posts.js": { "maxDuration": 30 },
-    "api/client-auth.js": { "maxDuration": 15 },
+    "api/auth-session.js": { "maxDuration": 15 },
     "api/schedule.js": { "maxDuration": 15 },
     "api/events.js": { "maxDuration": 15 },
     "api/event-post.js": { "maxDuration": 60 },

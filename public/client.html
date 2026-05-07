@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Travelgenix unified auth gate. Validates the SSO cookie set by id.travelify.io,
+     bounces to signin if missing/expired, shows a no-access page if signed in but
+     lacks luna_marketing permission. Fires window event 'tg-auth-ready' when good. -->
+<script src="https://id.travelify.io/tg-auth-gate.js" data-product="luna_marketing"></script>
 <style>
 /* ══════════════════════════════════════════
    DESIGN TOKENS (Travelgenix Design Skill)
@@ -515,18 +519,6 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 </head>
 <body data-theme="light">
 
-<!-- Login -->
-<div class="login-screen" id="loginScreen">
-<div class="login-box">
-  <div class="hdr-logo" style="width:56px;height:56px;border-radius:var(--radius-xl);font-size:var(--text-2xl);margin:0 auto var(--space-5)">L</div>
-  <h2>Luna Marketing</h2><p class="sub">Client Portal</p>
-  <div class="login-field"><label class="input-label" for="loginEmail">Email address</label><input class="input" id="loginEmail" placeholder="your@email.com" type="email"></div>
-  <div class="login-field"><label class="input-label" for="loginCode">Access code</label><div class="pw-wrap"><input class="input" id="loginCode" placeholder="Your unique access code" type="password"><button type="button" class="pw-eye" id="codeEye" aria-label="Toggle code visibility"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
-  <button class="login-submit" id="loginBtn">Sign In</button>
-  <div class="login-err" id="loginErr"></div>
-  <p style="margin-top:var(--space-4);font-size:var(--text-sm);color:var(--tg-text-tertiary)">Don't have an access code? Contact your account manager.</p>
-</div></div>
-
 <!-- App -->
 <div class="shell hide" id="app">
   <header class="header">
@@ -577,13 +569,37 @@ function applyTheme(){document.body.setAttribute('data-theme',state.theme);$('su
 applyTheme();
 $('themeBtn').onclick=function(){state.theme=state.theme==='light'?'dark':'light';try{localStorage.setItem(TK,state.theme)}catch(e){}applyTheme()};
 
-// Login
-$('loginBtn').onclick=doLogin;$('loginCode').onkeydown=function(e){if(e.key==='Enter')doLogin()};$('loginEmail').onkeydown=function(e){if(e.key==='Enter')$('loginCode').focus()};$('logoutBtn').onclick=doLogout;
-$('codeEye').onclick=function(){var i=$('loginCode');var h=i.type==='password';i.type=h?'text':'password';this.innerHTML=h?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'};
-async function doLogin(){var email=$('loginEmail').value.trim(),code=$('loginCode').value.trim(),err=$('loginErr');if(!email){err.textContent='Please enter your email address';err.classList.add('show');return}if(!code){err.textContent='Please enter your access code';err.classList.add('show');return}$('loginBtn').disabled=true;$('loginBtn').textContent='Signing in...';try{var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,code:code})});var d=await r.json();if(!r.ok)throw new Error(d.error);state.profile=d.profile;adminCreds.email=email;adminCreds.code=code;try{sessionStorage.setItem(SK,JSON.stringify({e:email,c:code,t:Date.now()}))}catch(e){}showApp()}catch(e){err.textContent=e.message;err.classList.add('show')}finally{$('loginBtn').disabled=false;$('loginBtn').textContent='Sign In'}}
-function doLogout(){try{sessionStorage.removeItem(SK)}catch(e){}state.profile=null;$('loginScreen').classList.remove('hidden');$('app').classList.add('hide')}
-(async function(){try{var s=JSON.parse(sessionStorage.getItem(SK));if(s&&Date.now()-s.t<MAX){var r=await fetch('/api/client-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:s.e,code:s.c})});var d=await r.json();if(r.ok){state.profile=d.profile;adminCreds.email=s.e;adminCreds.code=s.c;showApp()}}}catch(e){}})();
-function showApp(){$('loginScreen').classList.add('hidden');$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+// Logout — uses the unified gate to clear SSO cookie and bounce to signin.
+$('logoutBtn').onclick=function(){if(window.tgAuth&&window.tgAuth.signOut){window.tgAuth.signOut()}else{window.location.href='https://id.travelify.io/signin.html'}};
+
+// Auth — wait for tg-auth-gate.js to confirm the SSO session, then call our
+// /api/auth-session to look up which Luna Marketing client this user owns.
+window.addEventListener('tg-auth-ready',async function(){
+  try{
+    var r=await fetch('/api/auth-session',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Sign in failed');
+    if(!d.profile){
+      // Multiple candidates — should be rare. Take the first by default.
+      if(d.candidates&&d.candidates.length){
+        var pick=await fetch('/api/auth-session',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:d.candidates[0].id})});
+        d=await pick.json();
+        if(!pick.ok||!d.profile)throw new Error(d.error||'Could not load client');
+      }else{
+        throw new Error('No Luna Marketing client linked to your account.');
+      }
+    }
+    state.profile=d.profile;
+    // Captured for any admin endpoints that still expect creds (events-admin
+    // is on the to-do list for the same SSO migration).
+    adminCreds.email=(d.account&&d.account.email)||'';
+    adminCreds.code='';
+    showApp();
+  }catch(e){
+    document.body.innerHTML='<div style="font-family:system-ui;max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 6px rgba(0,0,0,.06)"><h1 style="font-size:20px;margin:0 0 12px;color:#0F172A">Could not load your portal</h1><p style="color:#64748B;line-height:1.5;margin:0 0 24px">'+e.message+'</p><a href="https://id.travelify.io" style="display:inline-block;padding:10px 20px;background:#00B4D8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Back to Apps</a></div>';
+  }
+});
+function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
 document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails()};

@@ -159,30 +159,45 @@ async function callClaude(event) {
     ]
   };
 
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
+  // Retry once on 429 with backoff. Anthropic returns retry-after in seconds;
+  // if absent, default to 35s so the per-minute window has time to drain.
+  const maxAttempts = 2;
+  let lastErr = "";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
 
-  if (!r.ok) {
+    if (r.ok) {
+      const data = await r.json();
+      const textOut = (data.content || [])
+        .filter(function (b) { return b && b.type === "text"; })
+        .map(function (b) { return b.text || ""; })
+        .join("\n")
+        .trim();
+      return textOut;
+    }
+
     const txt = await r.text().catch(function () { return ""; });
-    throw new Error("anthropic-" + r.status + ": " + txt.slice(0, 300));
+    lastErr = "anthropic-" + r.status + ": " + txt.slice(0, 300);
+
+    // Only retry on 429 and 529 (overloaded). Honour retry-after if provided.
+    if ((r.status === 429 || r.status === 529) && attempt < maxAttempts) {
+      const retryAfterSec = parseInt(r.headers.get("retry-after") || "0", 10);
+      const waitMs = retryAfterSec > 0 ? Math.min(retryAfterSec * 1000, 65000) : 35000;
+      await new Promise(function (resolve) { setTimeout(resolve, waitMs); });
+      continue;
+    }
+    break;
   }
 
-  const data = await r.json();
-  // Concatenate all text blocks (tool_use / tool_result blocks are skipped).
-  const textOut = (data.content || [])
-    .filter(function (b) { return b && b.type === "text"; })
-    .map(function (b) { return b.text || ""; })
-    .join("\n")
-    .trim();
-
-  return textOut;
+  throw new Error(lastErr || "anthropic-unknown-error");
 }
 
 function parseClaudeJson(text) {

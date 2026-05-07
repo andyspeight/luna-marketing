@@ -243,6 +243,31 @@ async function applyResult(eventRecord, result) {
   }
 }
 
+// Stamp a verification error against the event so re-runs skip it. We DELIBERATELY
+// set Verified At so the default formula filters this record out of future runs.
+// Use force=true on the next run if you want to retry these.
+async function stampError(eventRecord, err) {
+  const pat = getPat();
+  if (!pat) return; // best-effort — don't let stamping fail crash the loop
+
+  const fields = {};
+  fields[FIELDS.verifiedAt]  = new Date().toISOString();
+  fields[FIELDS.vConfidence] = "low"; // closest singleSelect option for "errored"
+  fields[FIELDS.vNotes]      = "VERIFICATION ERROR — re-run with force to retry.\n\n" +
+    String((err && err.message) || err).slice(0, 1500);
+
+  const url = AIRTABLE_API + "/" + EVENTS_BASE_ID + "/" + EVENTS_TABLE + "/" + eventRecord.id;
+  try {
+    await fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer " + pat, "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: fields, typecast: true })
+    });
+  } catch (e) {
+    console.error("stampError failed for " + eventRecord.id, e);
+  }
+}
+
 // ── Handler ─────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -286,6 +311,9 @@ module.exports = async function handler(req, res) {
         ok++;
       } catch (err) {
         console.error("verify-batch event error", ev.id, err);
+        // Stamp the event so it doesn't get retried in the same loop or future
+        // non-force runs. The verification notes capture the error for review.
+        await stampError(ev, err);
         processed.push({
           id: ev.id,
           name: ev.name,

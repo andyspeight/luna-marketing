@@ -77,6 +77,67 @@ const ALLOWED_IMPACT   = [
   'Medium',
 ];
 
+// SSO owner verification — used when this endpoint is called from the
+// Pending Review UI in client.html. Mirrors the pattern in events-admin.js
+// and events-verify-batch.js.
+const ID_HOST = 'https://id.travelify.io';
+const CLIENTS_TABLE  = 'tblUkzvBujc94Yali';
+const OWNER_CLIENT_ID = 'recFXQY7be6gMr4In';
+
+const ALLOWED_ORIGINS = [
+  'https://luna-marketing.vercel.app',
+  'https://marketing.travelify.io'
+];
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function escFormulaSso(s) {
+  return String(s || '').replace(/'/g, "\\'");
+}
+
+async function verifyOwnerSso(req) {
+  const cookie = req.headers.cookie || '';
+  if (!cookie.match(/(?:^|;\s*)tg_session=/)) {
+    return { ok: false, status: 401, error: 'Not signed in' };
+  }
+  let meData;
+  try {
+    const meRes = await fetch(ID_HOST + '/api/auth/me', {
+      method: 'GET', headers: { cookie: cookie }
+    });
+    if (meRes.status === 401) return { ok: false, status: 401, error: 'Session expired' };
+    if (!meRes.ok) return { ok: false, status: 502, error: 'Auth check failed' };
+    meData = await meRes.json();
+  } catch (e) { return { ok: false, status: 502, error: 'Auth check failed' }; }
+  if (!meData || !meData.ok || !meData.user || !meData.user.email) {
+    return { ok: false, status: 401, error: 'Invalid session' };
+  }
+  const email = String(meData.user.email).trim().toLowerCase();
+  const atKey = process.env.AIRTABLE_KEY;
+  if (!atKey) return { ok: false, status: 500, error: 'Server not configured' };
+  const formula = encodeURIComponent("LOWER({Monthly Report Email})='" + escFormulaSso(email) + "'");
+  const url = AIRTABLE_API + '/' + EVENTS_BASE_ID + '/' + CLIENTS_TABLE + '?filterByFormula=' + formula + '&maxRecords=10';
+  let records = [];
+  try {
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + atKey } });
+    if (!r.ok) return { ok: false, status: 502, error: 'Client lookup failed' };
+    records = ((await r.json()).records) || [];
+  } catch (e) { return { ok: false, status: 502, error: 'Client lookup failed' }; }
+  if (records.length === 0) return { ok: false, status: 403, error: 'No client linked' };
+  const isOwner = records.some(rec => rec.id === OWNER_CLIENT_ID);
+  if (!isOwner) return { ok: false, status: 403, error: 'Not authorised' };
+  return { ok: true };
+}
+
 // ── Helpers ──────────────────────────────────────────
 
 function safeStr(v, max = 500) {
@@ -458,7 +519,10 @@ function buildWindows() {
 // ── Main handler ────────────────────────────────────
 
 module.exports = async function handler(req, res) {
+  applyCors(req, res);
   res.setHeader('Cache-Control', 'no-store');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
@@ -467,13 +531,20 @@ module.exports = async function handler(req, res) {
 
   const mode = String((req.query && req.query.mode) || 'manual');
 
-  // Auth — same pattern as events-topup.js
+  // Three auth paths:
+  //   - cron   : Vercel cron, requires CRON_SECRET
+  //   - manual : curl/CLI, requires ADMIN_KEY
+  //   - ui     : browser-driven from Pending Review tab, requires SSO cookie
+  //              and the user must be the Travelgenix owner
   if (mode === 'cron') {
     const expected = process.env.CRON_SECRET;
     if (!expected) return res.status(500).json({ error: 'CRON_SECRET not configured' });
     const got = req.headers.authorization || req.headers['x-cron-secret'] || '';
     const token = typeof got === 'string' && got.startsWith('Bearer ') ? got.slice(7) : got;
     if (token !== expected) return res.status(401).json({ error: 'Unauthorised' });
+  } else if (mode === 'ui') {
+    const auth = await verifyOwnerSso(req);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
   } else {
     const expected = process.env.ADMIN_KEY;
     const got = req.headers['x-admin-key'] || (req.query && req.query.key) || '';

@@ -1066,6 +1066,25 @@ function drawEventsAdminInto(targetEl){
   h+='<a href="https://airtable.com/appSoIlSe0sNaJ4BZ/tblQxIYrbzd6YlJYV" target="_blank" rel="noopener" style="font-size:12px;color:var(--tg-text-tertiary);text-decoration:none;display:inline-flex;align-items:center;gap:4px">Open table<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>';
   h+='</div>';
 
+  // Verify panel — only on the pending filter
+  if(evtAdminState.adminFilter==='pending'){
+    var unverified=events.filter(function(x){return !x.verifiedAt}).length;
+    var verified=events.length-unverified;
+    h+='<div id="evt-verify-panel" style="margin-bottom:20px;padding:16px 18px;border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary)">';
+    h+=  '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">';
+    h+=    '<div style="display:flex;align-items:center;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.39 0 4.68.94 6.36 2.64"/></svg>';
+    h+=    '<div><div style="font-size:13px;font-weight:600;color:var(--tg-text-primary)">AI verification</div>';
+    h+=    '<div style="font-size:11px;color:var(--tg-text-tertiary);margin-top:2px">'+unverified+' unverified, '+verified+' already verified</div></div></div>';
+    h+=    '<div style="flex:1;min-width:8px"></div>';
+    h+=    '<button id="evt-verify-start" '+(unverified===0?'disabled ':'')+'style="height:34px;padding:0 16px;border-radius:8px;border:1px solid '+(unverified?'var(--tg-accent)':'var(--tg-border)')+';background:'+(unverified?'var(--tg-accent)':'var(--tg-bg-tertiary)')+';color:'+(unverified?'#fff':'var(--tg-text-tertiary)')+';font-size:12px;font-weight:600;cursor:'+(unverified?'pointer':'not-allowed')+';font-family:var(--tg-font-body)">'+(unverified?'Verify '+unverified+' unverified':'Nothing to verify')+'</button>';
+    if(verified>0){
+      h+=  '<button id="evt-verify-rerun" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Re-verify all</button>';
+    }
+    h+=  '</div>';
+    h+=  '<div id="evt-verify-progress" style="display:none;margin-top:14px"></div>';
+    h+='</div>';
+  }
+
   if(!events.length){
     var msg=evtAdminState.adminFilter==='pending'?'No pending events to review. The cron adds new ones on the 1st of each month.':'No events in this filter.';
     h+='<div style="text-align:center;padding:60px 20px;background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="1.5" style="margin-bottom:12px;opacity:0.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div style="font-size:14px;font-weight:600;color:var(--tg-text-primary);margin-bottom:4px">All caught up</div><div style="font-size:12px;color:var(--tg-text-tertiary)">'+esc(msg)+'</div></div>';
@@ -1136,7 +1155,145 @@ document.addEventListener('click',function(e){
     handleAdminAction(ab.getAttribute('data-admin-action'),ab.getAttribute('data-id'));
     return;
   }
+  if(e.target.closest('#evt-verify-start')){
+    runVerifyBatch(false);
+    return;
+  }
+  if(e.target.closest('#evt-verify-rerun')){
+    if(confirm('Re-verify all pending events, including those already checked? This will overwrite their verification notes and may reverse previous auto-decisions. Continue?')){
+      runVerifyBatch(true);
+    }
+    return;
+  }
 });
+
+// Verify driver — chunked loop, polls /api/events-verify-batch until done.
+// Updates the progress panel live, then renders a post-run summary.
+var evtVerifyState={running:false,totals:{approve:0,update_dates:0,reject:0,manual_review:0,error:0,ok:0,errors:0,total:0}};
+async function runVerifyBatch(force){
+  if(evtVerifyState.running)return;
+  evtVerifyState.running=true;
+  evtVerifyState.totals={approve:0,update_dates:0,reject:0,manual_review:0,error:0,ok:0,errors:0,total:0};
+
+  var startBtn=$('evt-verify-start');
+  var rerunBtn=$('evt-verify-rerun');
+  if(startBtn){startBtn.disabled=true;startBtn.textContent='Verifying...';}
+  if(rerunBtn){rerunBtn.disabled=true;rerunBtn.style.opacity='0.5';}
+
+  var prog=$('evt-verify-progress');
+  if(prog){
+    prog.style.display='block';
+    prog.innerHTML='<div style="font-size:12px;color:var(--tg-text-secondary)">Starting verification — checking each event against authoritative web sources. This typically takes 8-12 seconds per event.</div>';
+  }
+
+  var processed=[];
+  var safetyMax=40; // hard cap on chunk loops (40 × 5 = 200 events max)
+  var loops=0;
+  while(loops<safetyMax){
+    loops++;
+    try{
+      var res=await fetch('/api/events-verify-batch',{
+        method:'POST',
+        credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({chunk:5,force:force})
+      });
+      var d=await res.json();
+      if(!d.success){
+        if(prog)prog.innerHTML+='<div style="margin-top:8px;color:var(--tg-error);font-size:12px">Error: '+esc(d.error||'unknown')+'</div>';
+        break;
+      }
+      (d.processed||[]).forEach(function(p){
+        processed.push(p);
+        var key=p.action||'manual_review';
+        if(typeof evtVerifyState.totals[key]==='number'){evtVerifyState.totals[key]++;}
+        if(p.action==='error'){evtVerifyState.totals.errors++;}else{evtVerifyState.totals.ok++;}
+        evtVerifyState.totals.total++;
+      });
+      renderVerifyProgress(processed,d.remaining);
+      if(d.done||(d.processed||[]).length===0)break;
+    }catch(err){
+      if(prog)prog.innerHTML+='<div style="margin-top:8px;color:var(--tg-error);font-size:12px">Network error: '+esc(err.message)+'</div>';
+      break;
+    }
+  }
+
+  evtVerifyState.running=false;
+  renderVerifySummary(processed);
+  // Reload the pending list so auto-actioned events drop off and counts update.
+  loadAdminEvents();
+}
+
+function renderVerifyProgress(processed,remaining){
+  var prog=$('evt-verify-progress');if(!prog)return;
+  var t=evtVerifyState.totals;
+  var done=processed.length;
+  var total=done+(remaining||0);
+  var pct=total>0?Math.round((done/total)*100):0;
+  var bar='<div style="height:6px;background:var(--tg-bg-tertiary);border-radius:3px;overflow:hidden;margin-bottom:10px"><div style="height:100%;background:var(--tg-accent);width:'+pct+'%;transition:width 0.3s"></div></div>';
+  var statline='<div style="font-size:12px;color:var(--tg-text-secondary);margin-bottom:8px">'+done+' processed · '+(remaining||0)+' remaining · '+t.approve+' approved, '+t.update_dates+' date-corrected, '+t.reject+' rejected, '+t.manual_review+' flagged'+(t.errors?', '+t.errors+' errors':'')+'</div>';
+  // Show last 5 results as a live ticker
+  var recent=processed.slice(-5).reverse();
+  var ticker='<div style="font-size:11px;color:var(--tg-text-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.7">';
+  recent.forEach(function(p){
+    var icon='·';var color='var(--tg-text-tertiary)';
+    if(p.action==='approve'){icon='✓';color='#16a34a';}
+    else if(p.action==='update_dates'){icon='✎';color='#0891b2';}
+    else if(p.action==='reject'){icon='✗';color='#dc2626';}
+    else if(p.action==='manual_review'){icon='?';color='#ea580c';}
+    else if(p.action==='error'){icon='!';color='#dc2626';}
+    ticker+='<div><span style="color:'+color+';font-weight:600">'+icon+'</span> '+esc((p.name||'').slice(0,80))+' <span style="color:var(--tg-text-tertiary)">— '+esc(p.action||'')+(p.confidence?' ('+esc(p.confidence)+')':'')+'</span></div>';
+  });
+  ticker+='</div>';
+  prog.innerHTML=bar+statline+ticker;
+}
+
+function renderVerifySummary(processed){
+  var prog=$('evt-verify-progress');if(!prog)return;
+  var t=evtVerifyState.totals;
+  var groups={approve:[],update_dates:[],reject:[],manual_review:[],error:[]};
+  processed.forEach(function(p){var k=p.action||'manual_review';if(groups[k])groups[k].push(p);});
+
+  var h='<div style="margin-top:6px"><div style="font-size:13px;font-weight:600;color:var(--tg-text-primary);margin-bottom:8px">Verification complete</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px">';
+  var tiles=[
+    ['Approved',t.approve,'#16a34a'],
+    ['Dates fixed',t.update_dates,'#0891b2'],
+    ['Rejected',t.reject,'#dc2626'],
+    ['For review',t.manual_review,'#ea580c'],
+    ['Errors',t.errors,'#dc2626']
+  ];
+  tiles.forEach(function(tl){
+    h+='<div style="padding:10px 12px;border:1px solid var(--tg-border);border-radius:8px;background:var(--tg-bg-secondary)"><div style="font-size:20px;font-weight:700;color:'+tl[2]+';line-height:1">'+tl[1]+'</div><div style="font-size:11px;color:var(--tg-text-tertiary);margin-top:4px">'+tl[0]+'</div></div>';
+  });
+  h+='</div>';
+
+  // Detail accordions for non-empty non-approved buckets
+  function bucket(label,key,colour,note){
+    if(!groups[key]||!groups[key].length)return '';
+    var s='<details style="margin-bottom:6px;border:1px solid var(--tg-border);border-radius:8px;background:var(--tg-bg-secondary)">';
+    s+='<summary style="padding:10px 12px;cursor:pointer;font-size:12px;font-weight:600;color:'+colour+'">'+label+' ('+groups[key].length+')</summary>';
+    s+='<div style="padding:0 12px 12px;font-size:11px;color:var(--tg-text-secondary);line-height:1.6">';
+    if(note)s+='<div style="margin-bottom:8px;color:var(--tg-text-tertiary)">'+esc(note)+'</div>';
+    groups[key].forEach(function(p){
+      s+='<div style="padding:4px 0;border-bottom:1px dashed var(--tg-border)">';
+      s+=esc(p.name||'(unnamed)');
+      if(p.confidence)s+=' <span style="color:var(--tg-text-tertiary)">— '+esc(p.confidence)+'</span>';
+      if(p.error)s+=' <span style="color:var(--tg-error)">— '+esc(p.error)+'</span>';
+      s+='</div>';
+    });
+    s+='</div></details>';
+    return s;
+  }
+  h+=bucket('Date corrected & approved','update_dates','#0891b2','Dates were updated to match authoritative sources, then auto-approved.');
+  h+=bucket('Auto-rejected','reject','#dc2626','No credible sources found — these events likely don\'t exist as stored.');
+  h+=bucket('Flagged for manual review','manual_review','#ea580c','Sources disagreed or only one source was found. Open the table to read the verification notes and decide.');
+  h+=bucket('Errors','error','#dc2626','These events errored during verification — try running again, or check the verification notes.');
+  h+='<div style="margin-top:12px;font-size:11px;color:var(--tg-text-tertiary)">Auto-approved events have been removed from this list. Click <strong>Approved</strong> filter above to see them.</div>';
+  h+='</div>';
+  prog.innerHTML=h;
+}
+
 
 async function handleAdminAction(action,id){
   if(action==='delete'){

@@ -516,6 +516,380 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   .email-drawer-meta-grid { grid-template-columns:1fr; }
 }
 
+/* ═══════════════════════════════════════════════════════
+   Welcome State — shown on dashboard for new clients
+   until they've completed onboarding milestones.
+   Auto-graduates after 7 days + 5 approved posts + connected platforms.
+═══════════════════════════════════════════════════════ */
+
+.welcome-hero {
+  background: linear-gradient(135deg, var(--tg-primary) 0%, var(--tg-primary-light) 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  color: #fff;
+  margin-bottom: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+.welcome-hero::before {
+  content: '';
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(0,180,216,0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+.welcome-hero-grid { position: relative; display: grid; grid-template-columns: 1fr auto; gap: var(--space-6); align-items: start; }
+@media (max-width: 768px) { .welcome-hero-grid { grid-template-columns: 1fr; } }
+
+.welcome-greeting { font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.5px; margin: 0 0 var(--space-2) 0; color: #fff; }
+.welcome-greeting-accent { color: var(--tg-accent-light); }
+.welcome-tagline { font-size: var(--text-base); line-height: 1.55; margin: 0 0 var(--space-5) 0; color: rgba(255,255,255,0.82); max-width: 540px; }
+
+.welcome-progress-strip { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-6); }
+.welcome-progress-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+.welcome-progress-fill { height: 100%; background: linear-gradient(90deg, var(--tg-accent-light), var(--tg-accent)); border-radius: 3px; transition: width var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1); }
+.welcome-progress-text { font-size: var(--text-xs); font-weight: 600; color: rgba(255,255,255,0.78); font-family: var(--tg-font-mono); white-space: nowrap; }
+
+.welcome-checklist { display: flex; flex-direction: column; gap: var(--space-3); }
+.welcome-step {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+  transition: all var(--duration-fast);
+}
+.welcome-step.done { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4); }
+.welcome-step:not(.done):hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+.welcome-step-icon {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.8);
+  font-weight: 700; font-size: var(--text-sm);
+  border: 2px solid rgba(255,255,255,0.15);
+  transition: all var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.welcome-step.done .welcome-step-icon {
+  background: var(--tg-success);
+  border-color: var(--tg-success);
+  color: #fff;
+  transform: scale(1.05);
+}
+.welcome-step-icon svg { width: 18px; height: 18px; opacity: 0; transform: scale(0.5); transition: all var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1); }
+.welcome-step.done .welcome-step-icon svg { opacity: 1; transform: scale(1); }
+.welcome-step:not(.done) .welcome-step-icon-num { display: inline; }
+.welcome-step.done .welcome-step-icon-num { display: none; }
+
+.welcome-step-body { flex: 1; min-width: 0; }
+.welcome-step-title { font-size: var(--text-sm); font-weight: 600; color: #fff; margin-bottom: 2px; }
+.welcome-step.done .welcome-step-title { color: rgba(255,255,255,0.65); text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.3); }
+.welcome-step-desc { font-size: var(--text-xs); color: rgba(255,255,255,0.6); line-height: 1.4; }
+
+.welcome-step-cta {
+  flex-shrink: 0;
+  height: 32px; padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--tg-accent);
+  color: #fff;
+  font-size: var(--text-xs); font-weight: 600;
+  border: none; cursor: pointer;
+  font-family: var(--tg-font-body);
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all var(--duration-fast);
+}
+.welcome-step-cta:hover { background: var(--tg-accent-light); transform: translateX(2px); }
+.welcome-step.done .welcome-step-cta { display: none; }
+
+.welcome-aside {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  min-width: 220px;
+  padding: var(--space-4);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-lg);
+}
+@media (max-width: 768px) { .welcome-aside { min-width: 0; } }
+.welcome-aside-title { font-size: var(--text-xs); font-weight: 700; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--tg-font-mono); }
+.welcome-aside-cta {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(0,180,216,0.18);
+  border: 1px solid rgba(0,180,216,0.4);
+  border-radius: var(--radius-md);
+  color: #fff; font-size: var(--text-sm); font-weight: 600;
+  cursor: pointer; transition: all var(--duration-fast);
+  text-align: left; width: 100%;
+  font-family: var(--tg-font-body);
+}
+.welcome-aside-cta:hover { background: rgba(0,180,216,0.3); border-color: rgba(0,180,216,0.6); }
+.welcome-aside-cta-icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
+
+.welcome-numbers-panel {
+  background: var(--tg-bg-primary);
+  border: 1px dashed var(--tg-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+.welcome-numbers-icon {
+  width: 48px; height: 48px;
+  margin: 0 auto var(--space-3);
+  border-radius: 50%;
+  background: rgba(0,180,216,0.1);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tg-accent);
+}
+.welcome-numbers-title { font-size: var(--text-base); font-weight: 600; color: var(--tg-text-primary); margin-bottom: var(--space-2); }
+.welcome-numbers-body { font-size: var(--text-sm); color: var(--tg-text-secondary); line-height: 1.55; max-width: 480px; margin: 0 auto; }
+
+/* Help button (persistent, opens showcase) */
+.welcome-help-btn {
+  position: fixed; bottom: 24px; right: 24px;
+  height: 44px; padding: 0 18px;
+  border-radius: var(--radius-full);
+  background: var(--tg-accent);
+  color: #fff;
+  border: none; cursor: pointer;
+  font-size: var(--text-sm); font-weight: 600;
+  font-family: var(--tg-font-body);
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 8px 24px rgba(0,180,216,0.35);
+  z-index: 50;
+  transition: all var(--duration-fast);
+}
+.welcome-help-btn:hover { background: var(--tg-accent-light); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,180,216,0.45); }
+
+/* ═══════════════════════════════════════════════════════
+   Showcase Modal — interactive 7-chapter tour
+═══════════════════════════════════════════════════════ */
+
+.showcase-overlay {
+  position: fixed; inset: 0;
+  background: rgba(8, 14, 32, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal);
+}
+.showcase-overlay.active { opacity: 1; pointer-events: auto; }
+
+.showcase-modal {
+  position: relative;
+  width: 100%; max-width: 920px;
+  height: min(720px, 90vh);
+  background: linear-gradient(180deg, #0d1733 0%, #111d3e 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.showcase-overlay.active .showcase-modal { transform: scale(1); }
+
+.showcase-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10;
+  transition: all var(--duration-fast);
+}
+.showcase-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+.showcase-skip {
+  position: absolute; top: 24px; left: 24px;
+  background: transparent; border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: var(--text-xs); font-weight: 500;
+  font-family: var(--tg-font-body);
+  cursor: pointer;
+  z-index: 10;
+  letter-spacing: 0.3px;
+  transition: color var(--duration-fast);
+}
+.showcase-skip:hover { color: rgba(255,255,255,0.85); }
+
+.showcase-stage {
+  flex: 1; min-height: 0;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-12) var(--space-8) var(--space-6);
+  overflow: hidden;
+}
+
+.showcase-chapter {
+  position: absolute;
+  inset: var(--space-12) var(--space-8) var(--space-6);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.showcase-chapter.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+.showcase-chapter-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+  align-items: center;
+  width: 100%; max-width: 800px;
+}
+@media (max-width: 768px) {
+  .showcase-chapter-grid { grid-template-columns: 1fr; gap: var(--space-5); }
+  .showcase-stage { padding: var(--space-10) var(--space-5) var(--space-5); }
+  .showcase-chapter { inset: var(--space-10) var(--space-5) var(--space-5); }
+}
+
+.showcase-text { color: #fff; }
+.showcase-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--text-xs); font-weight: 700;
+  color: var(--tg-accent-light);
+  text-transform: uppercase; letter-spacing: 1px;
+  font-family: var(--tg-font-mono);
+  margin-bottom: var(--space-3);
+}
+.showcase-eyebrow::before { content: ''; display: inline-block; width: 24px; height: 1px; background: var(--tg-accent); }
+.showcase-headline {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  margin: 0 0 var(--space-4) 0;
+  color: #fff;
+}
+.showcase-headline em { color: var(--tg-accent-light); font-style: normal; }
+.showcase-body {
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: rgba(255,255,255,0.78);
+  margin: 0;
+  max-width: 420px;
+}
+
+.showcase-visual {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 280px;
+}
+
+.scene-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; max-width: 320px; padding: var(--space-4); background: rgba(255,255,255,0.04); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.08); }
+.scene-cal-day { aspect-ratio: 1; border-radius: 6px; background: rgba(255,255,255,0.04); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 2px; min-height: 36px; }
+.scene-cal-day-num { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.4); font-family: var(--tg-font-mono); }
+.scene-cal-day.has-post { background: rgba(0,180,216,0.18); border: 1px solid rgba(0,180,216,0.35); }
+.scene-cal-day.has-post .scene-cal-day-num { color: var(--tg-accent-light); }
+.scene-cal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--tg-accent); display: none; }
+.scene-cal-day.has-post .scene-cal-dot { display: block; }
+.showcase-chapter.active .scene-cal-day.has-post { animation: calFillIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+@keyframes calFillIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+
+.scene-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: var(--space-4); width: 100%; max-width: 360px; }
+.scene-card-label { font-size: 10px; font-weight: 700; color: var(--tg-accent-light); text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--tg-font-mono); margin-bottom: var(--space-2); }
+.scene-card-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); font-size: 12px; }
+.scene-card-row:last-child { border-bottom: none; }
+.scene-card-key { color: rgba(255,255,255,0.55); }
+.scene-card-val { color: #fff; font-weight: 500; }
+.scene-arrow { font-size: 24px; color: var(--tg-accent); text-align: center; padding: var(--space-2) 0; }
+.scene-post { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: var(--space-4); width: 100%; max-width: 360px; font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+.scene-post-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+.scene-post-avatar { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--tg-accent), var(--tg-primary)); }
+.scene-post-name { font-weight: 600; color: #fff; font-size: 11px; }
+
+.scene-timeline { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 340px; }
+.scene-timeline-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.05); border-left: 3px solid var(--tg-accent); border-radius: 6px; }
+.scene-timeline-date { font-size: 10px; font-weight: 700; color: var(--tg-accent-light); font-family: var(--tg-font-mono); white-space: nowrap; }
+.scene-timeline-event { font-size: 12px; color: #fff; flex: 1; }
+.scene-timeline-tag { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(0,180,216,0.2); color: var(--tg-accent-light); font-weight: 600; }
+
+.scene-lead { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: var(--space-4); width: 100%; max-width: 360px; }
+.scene-lead-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.scene-lead-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #ec4899, #8b5cf6); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; }
+.scene-lead-name { font-size: 13px; font-weight: 600; color: #fff; }
+.scene-lead-meta { font-size: 10px; color: rgba(255,255,255,0.5); font-family: var(--tg-font-mono); }
+.scene-lead-quote { font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.5; padding: 10px; background: rgba(255,255,255,0.03); border-left: 2px solid var(--tg-accent); border-radius: 4px; margin-bottom: 10px; }
+.scene-lead-reply { padding: 10px; background: rgba(0,180,216,0.1); border: 1px solid rgba(0,180,216,0.25); border-radius: 6px; font-size: 11px; color: rgba(255,255,255,0.9); line-height: 1.5; }
+.scene-lead-reply-label { font-size: 9px; font-weight: 700; color: var(--tg-accent-light); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; font-family: var(--tg-font-mono); }
+.scene-lead-score { display: inline-block; padding: 3px 8px; border-radius: 10px; background: rgba(16,185,129,0.18); color: #6EE7B7; font-size: 10px; font-weight: 700; font-family: var(--tg-font-mono); margin-left: auto; }
+
+.scene-email-stack { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); width: 100%; max-width: 380px; }
+.scene-email-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: var(--space-3); }
+.scene-email-bar { display: flex; align-items: center; gap: 6px; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+.scene-email-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tg-accent); }
+.scene-email-line { height: 6px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-bottom: 5px; }
+.scene-email-line.short { width: 60%; }
+.scene-email-line.med { width: 85%; }
+.scene-email-stat { font-size: 18px; font-weight: 700; color: var(--tg-accent-light); margin-bottom: 2px; font-family: var(--tg-font-mono); }
+.scene-email-stat-lbl { font-size: 9px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; font-family: var(--tg-font-mono); }
+
+.scene-payoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); width: 100%; max-width: 380px; }
+.scene-payoff-card { padding: var(--space-4); background: linear-gradient(135deg, rgba(0,180,216,0.08), rgba(0,180,216,0.02)); border: 1px solid rgba(0,180,216,0.2); border-radius: var(--radius-lg); text-align: center; }
+.scene-payoff-num { font-size: 28px; font-weight: 800; color: var(--tg-accent-light); font-family: var(--tg-font-mono); line-height: 1; margin-bottom: 4px; letter-spacing: -1px; }
+.scene-payoff-lbl { font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 500; }
+.scene-payoff-sub { font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px; font-family: var(--tg-font-mono); }
+
+.scene-closing { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-8); }
+.scene-closing-mark { width: 72px; height: 72px; margin: 0 auto var(--space-5); border-radius: 50%; background: linear-gradient(135deg, var(--tg-accent), var(--tg-accent-dark)); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(0,180,216,0.4); }
+
+.showcase-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.showcase-dots { display: flex; gap: 6px; }
+.showcase-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: none; cursor: pointer;
+  padding: 0;
+  transition: all var(--duration-fast);
+}
+.showcase-dot:hover { background: rgba(255,255,255,0.3); }
+.showcase-dot.active { background: var(--tg-accent); width: 24px; border-radius: 4px; }
+.showcase-dot.visited { background: rgba(0,180,216,0.4); }
+
+.showcase-nav { display: flex; gap: var(--space-2); }
+.showcase-btn {
+  height: 38px; padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.85);
+  font-size: var(--text-sm); font-weight: 600;
+  font-family: var(--tg-font-body);
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all var(--duration-fast);
+}
+.showcase-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.25); }
+.showcase-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.showcase-btn.primary { background: var(--tg-accent); border-color: var(--tg-accent); color: #fff; }
+.showcase-btn.primary:hover { background: var(--tg-accent-light); border-color: var(--tg-accent-light); }
+
+@media (max-width: 768px) {
+  .showcase-modal { height: 100vh; max-height: 100vh; border-radius: 0; }
+  .showcase-headline { font-size: 22px; }
+  .showcase-body { font-size: 14px; }
+}
+
 </style>
 </head>
 <body data-theme="light">
@@ -2048,6 +2422,17 @@ function dashboardSkeletonHTML() {
 function drawDashboard(el, d) {
   var h = '';
 
+  // ── Welcome state (new clients only) ──
+  // Renders the welcome hero + checklist when the client hasn't yet graduated.
+  // Graduation: 3/3 steps complete + 5+ approved posts + 7+ days since first login.
+  var welcomeState = computeWelcomeState(d);
+  if (welcomeState.show) {
+    h += welcomeHeroHTML(welcomeState);
+    if (!welcomeState.hasMetrics) {
+      h += welcomeNumbersPanelHTML();
+    }
+  }
+
   // ── Live ticker ──
   h += tickerHTML(d.kpis);
 
@@ -2097,6 +2482,10 @@ function drawDashboard(el, d) {
 
   el.innerHTML = h;
   attachDashboardHandlers();
+  // Welcome state + showcase wiring (no-op when not in welcome state)
+  attachWelcomeHandlers();
+  attachShowcaseHandlers();
+  maybeAutoShowShowcase();
 }
 
 function ledeText(d) {
@@ -3325,7 +3714,512 @@ window.__emailSubTab = function(tab) {
 // === EMAILS TAB DAY B ADDITIONS END ===
 
 
+// ═══════════════════════════════════════════════════════
+// WELCOME STATE — onboarding scaffolding for new clients
+// ═══════════════════════════════════════════════════════
+
+var WELCOME_STORAGE_KEY = 'luna_first_seen_at';
+var SHOWCASE_STORAGE_KEY = 'luna_showcase_seen';
+var WELCOME_GRADUATION_DAYS = 7;
+var WELCOME_MIN_APPROVED_POSTS = 5;
+
+// Compute everything the welcome panel needs to render. Centralised so
+// drawDashboard, the help button, and graduation logic all read from the
+// same source. Returns { show, steps[3], progress, hasMetrics, ... }.
+function computeWelcomeState(d) {
+  // Owner sees their own dashboard like everyone else, but shouldn't be
+  // welcomed. We're Travelgenix, we built the thing.
+  var p = state.profile || {};
+  if (p.id === OWNER_CLIENT_ID) {
+    return { show: false };
+  }
+
+  // Step 1 — platforms connected? Check both standard + personal arrays.
+  var platforms = (p.connected_platforms && p.connected_platforms.length) || 0;
+  var personal  = (p.connected_platforms_personal && p.connected_platforms_personal.length) || 0;
+  var step1Done = platforms > 0 || personal > 0;
+
+  // Step 2 — first post reviewed? We count any post that's not in 'pending'
+  // status as having been "reviewed" (approved, rejected, queued, posted).
+  // state.allPosts is loaded by loadPosts() — may be empty if user hasn't
+  // visited the Posts tab yet. We also fall back to dashboard hints.
+  var allPosts = (state && state.allPosts) || [];
+  var reviewedCount = allPosts.filter(function (p) {
+    var s = (p.status || '').toLowerCase();
+    return s && s !== 'pending' && s !== 'awaiting approval' && s !== 'awaiting_approval';
+  }).length;
+  var approvedCount = allPosts.filter(function (p) {
+    var s = (p.status || '').toLowerCase();
+    return s === 'approved' || s === 'queued' || s === 'posted' || s === 'published';
+  }).length;
+  var step2Done = reviewedCount > 0;
+
+  // Step 3 — first week of approved posts done? 5+ approved + zero in queue.
+  var stillToApprove = (d && d.actions && d.actions.postsAwaitingApproval) || 0;
+  var step3Done = approvedCount >= WELCOME_MIN_APPROVED_POSTS && stillToApprove === 0;
+
+  // First-seen timestamp — we record it the first time we ever render
+  // the welcome state, so the 7-day graduation timer starts from real
+  // user activity (not from when their account was created in Airtable).
+  var firstSeenAt = 0;
+  try {
+    var stored = localStorage.getItem(WELCOME_STORAGE_KEY + ':' + p.id);
+    if (stored) {
+      firstSeenAt = parseInt(stored, 10) || 0;
+    }
+  } catch (e) { /* localStorage disabled — fine */ }
+
+  if (!firstSeenAt) {
+    firstSeenAt = Date.now();
+    try { localStorage.setItem(WELCOME_STORAGE_KEY + ':' + p.id, String(firstSeenAt)); }
+    catch (e) { /* fine, just means timer won't persist between sessions */ }
+  }
+
+  var daysSeen = Math.floor((Date.now() - firstSeenAt) / 86400000);
+  var allStepsDone = step1Done && step2Done && step3Done;
+  var hasGraduatedByTime = daysSeen >= WELCOME_GRADUATION_DAYS;
+
+  // Hide welcome state once they've ticked all 3 AND been around at least
+  // 7 days. The time guard ensures someone who clicks through fast still
+  // gets the educational period.
+  var graduated = allStepsDone && hasGraduatedByTime;
+
+  // Also check: do they have ANY metric data yet? If yes, even partially,
+  // the welcome panel makes less sense — they're already getting value.
+  var k = (d && d.kpis) || {};
+  var hasMetrics = (k.postsPublished > 0) || (k.postReach > 0) ||
+                   (k.demoBookings > 0) || (k.websiteClicks > 0);
+
+  // If they've been around 7+ days AND have metrics, we definitely graduate.
+  if (hasGraduatedByTime && hasMetrics) {
+    graduated = true;
+  }
+
+  return {
+    show: !graduated,
+    hasMetrics: hasMetrics,
+    daysSeen: daysSeen,
+    progress: [step1Done, step2Done, step3Done].filter(Boolean).length,
+    progressTotal: 3,
+    steps: [
+      { done: step1Done, title: 'Connect your social platforms',  desc: 'Tell Luna where to post — Facebook, Instagram, LinkedIn and the rest.', target: 'platforms' },
+      { done: step2Done, title: 'Review your first drafted posts', desc: 'We\'ve already written some based on your brand voice. Approve or refine.', target: 'posts' },
+      { done: step3Done, title: 'Approve your first week',         desc: 'Get 5+ posts approved and queued. Then you\'re live.', target: 'posts' }
+    ]
+  };
+}
+
+function welcomeHeroHTML(w) {
+  var p = state.profile || {};
+  var name = esc(p.trading_name || p.business_name || 'there');
+  var pct = Math.round((w.progress / w.progressTotal) * 100);
+
+  var stepsHtml = w.steps.map(function (s, i) {
+    var num = i + 1;
+    var ctaLabel = i === 0 ? 'Connect' : i === 1 ? 'Review' : 'Open';
+    return '<div class="welcome-step ' + (s.done ? 'done' : '') + '" data-welcome-step="' + s.target + '">' +
+      '<div class="welcome-step-icon">' +
+        '<span class="welcome-step-icon-num">' + num + '</span>' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '</div>' +
+      '<div class="welcome-step-body">' +
+        '<div class="welcome-step-title">' + esc(s.title) + '</div>' +
+        '<div class="welcome-step-desc">' + esc(s.desc) + '</div>' +
+      '</div>' +
+      '<button class="welcome-step-cta" data-welcome-cta="' + s.target + '">' +
+        ctaLabel +
+        '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>' +
+      '</button>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="welcome-hero" id="welcome-hero">' +
+    '<div class="welcome-hero-grid">' +
+      '<div>' +
+        '<h1 class="welcome-greeting">Welcome to Luna, <span class="welcome-greeting-accent">' + name + '</span></h1>' +
+        '<p class="welcome-tagline">We\'ve started drafting posts based on your brand voice. Three short steps and you\'ll be live across your channels.</p>' +
+        '<div class="welcome-progress-strip">' +
+          '<div class="welcome-progress-bar"><div class="welcome-progress-fill" style="width:' + pct + '%"></div></div>' +
+          '<div class="welcome-progress-text">' + w.progress + ' OF ' + w.progressTotal + ' COMPLETE</div>' +
+        '</div>' +
+        '<div class="welcome-checklist">' + stepsHtml + '</div>' +
+      '</div>' +
+      '<div class="welcome-aside">' +
+        '<div class="welcome-aside-title">First time here?</div>' +
+        '<button class="welcome-aside-cta" id="welcome-tour-btn" type="button">' +
+          '<span class="welcome-aside-cta-icon">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>' +
+          '</span>' +
+          '<span>See what Luna can do<br><span style="font-weight:400;font-size:11px;color:rgba(255,255,255,0.65)">3 minutes \u00b7 7 chapters</span></span>' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function welcomeNumbersPanelHTML() {
+  return '<div class="welcome-numbers-panel">' +
+    '<div class="welcome-numbers-icon">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>' +
+    '</div>' +
+    '<div class="welcome-numbers-title">Your numbers will appear here</div>' +
+    '<div class="welcome-numbers-body">Reach, clicks and demo bookings start landing 7\u201314 days after your first posts go out. We\'ll email you a weekly summary so you see the trend before you see the numbers.</div>' +
+  '</div>';
+}
+
+// Wire welcome hero CTAs to the relevant tabs. Called after every dashboard render.
+function attachWelcomeHandlers() {
+  document.querySelectorAll('[data-welcome-cta]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var target = btn.getAttribute('data-welcome-cta');
+      // 'posts' → Posts tab, 'platforms' → Settings tab (Platforms section)
+      var tabBtn = null;
+      if (target === 'posts') {
+        tabBtn = $('postsTab');
+      } else if (target === 'platforms') {
+        tabBtn = $('settingsTab') || $('platformsTab');
+      }
+      if (tabBtn) tabBtn.click();
+    });
+  });
+  var tourBtn = $('welcome-tour-btn');
+  if (tourBtn) tourBtn.addEventListener('click', function () { openShowcase('manual'); });
+}
+
+// ═══════════════════════════════════════════════════════
+// SHOWCASE MODAL — 7-chapter interactive value tour
+// ═══════════════════════════════════════════════════════
+
+var showcaseState = { current: 0, visited: [], chapters: [] };
+
+// Build chapter content. Kept as a pure function so the same data drives
+// both the in-app modal and (later) a marketing page version.
+function buildShowcaseChapters() {
+  // Ch 1: Sunday-night posting hook
+  var ch1Calendar = (function () {
+    var days = [];
+    for (var i = 1; i <= 14; i++) {
+      var hasPost = [2,3,5,7,9,10,12,13].indexOf(i) >= 0;
+      days.push('<div class="scene-cal-day' + (hasPost ? ' has-post' : '') + '" style="animation-delay:' + (i * 50) + 'ms">' +
+        '<div class="scene-cal-day-num">' + i + '</div>' +
+        '<div class="scene-cal-dot"></div>' +
+      '</div>');
+    }
+    return '<div class="scene-calendar">' + days.join('') + '</div>';
+  })();
+
+  // Ch 2: brand voice → post
+  var ch2 =
+    '<div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px">' +
+      '<div class="scene-card">' +
+        '<div class="scene-card-label">Your brand voice</div>' +
+        '<div class="scene-card-row"><span class="scene-card-key">Tone</span><span class="scene-card-val">Warm, expert</span></div>' +
+        '<div class="scene-card-row"><span class="scene-card-key">Formality</span><span class="scene-card-val">Conversational</span></div>' +
+        '<div class="scene-card-row"><span class="scene-card-key">Specialism</span><span class="scene-card-val">Greek Islands</span></div>' +
+      '</div>' +
+      '<div class="scene-arrow">\u2193</div>' +
+      '<div class="scene-post">' +
+        '<div class="scene-post-meta">' +
+          '<div class="scene-post-avatar"></div>' +
+          '<span class="scene-post-name">Your Brand</span>' +
+        '</div>' +
+        'Lindos is everyone\u2019s love-at-first-sight, but Pefkos five minutes south is where families actually stay. Same beach, same sunsets, half the crowds. Anyone heading to Rhodes this summer\u2014which side do you fancy?' +
+      '</div>' +
+    '</div>';
+
+  // Ch 3: events timeline
+  var ch3 =
+    '<div class="scene-timeline">' +
+      '<div class="scene-timeline-item"><div class="scene-timeline-date">24 May</div><div class="scene-timeline-event">Eurovision 2026</div><div class="scene-timeline-tag">CULTURE</div></div>' +
+      '<div class="scene-timeline-item"><div class="scene-timeline-date">29 Jun</div><div class="scene-timeline-event">Glastonbury Festival</div><div class="scene-timeline-tag">DRIVER</div></div>' +
+      '<div class="scene-timeline-item"><div class="scene-timeline-date">1 Aug</div><div class="scene-timeline-event">UK Bank Holiday</div><div class="scene-timeline-tag">HOLIDAY</div></div>' +
+      '<div class="scene-timeline-item"><div class="scene-timeline-date">7 Nov</div><div class="scene-timeline-event">Diwali</div><div class="scene-timeline-tag">CULTURE</div></div>' +
+    '</div>';
+
+  // Ch 4: hot lead
+  var ch4 =
+    '<div class="scene-lead">' +
+      '<div class="scene-lead-header">' +
+        '<div class="scene-lead-avatar">SM</div>' +
+        '<div style="flex:1">' +
+          '<div class="scene-lead-name">Sarah Mitchell</div>' +
+          '<div class="scene-lead-meta">FOUNDER \u00b7 BLUE HORIZON RETREATS</div>' +
+        '</div>' +
+        '<span class="scene-lead-score">9.2</span>' +
+      '</div>' +
+      '<div class="scene-lead-quote">Anyone got a recommended UK travel agent who actually understands solo female travellers? Asking for our community.</div>' +
+      '<div class="scene-lead-reply">' +
+        '<div class="scene-lead-reply-label">Drafted reply</div>' +
+        'Hi Sarah \u2014 we work with quite a few solo female travellers; happy to share what we\u2019ve learned about destinations and itinerary safety. DM if useful.' +
+      '</div>' +
+    '</div>';
+
+  // Ch 5: email + metrics
+  var ch5 =
+    '<div class="scene-email-stack">' +
+      '<div class="scene-email-card" style="grid-column:1/-1">' +
+        '<div class="scene-email-bar">' +
+          '<div class="scene-email-dot"></div>' +
+          '<div style="font-size:10px;color:rgba(255,255,255,0.7);font-weight:600">Your June Newsletter</div>' +
+        '</div>' +
+        '<div class="scene-email-line med"></div>' +
+        '<div class="scene-email-line"></div>' +
+        '<div class="scene-email-line short"></div>' +
+      '</div>' +
+      '<div class="scene-email-card">' +
+        '<div class="scene-email-stat">42%</div>' +
+        '<div class="scene-email-stat-lbl">Open rate</div>' +
+      '</div>' +
+      '<div class="scene-email-card">' +
+        '<div class="scene-email-stat">8</div>' +
+        '<div class="scene-email-stat-lbl">Demo clicks</div>' +
+      '</div>' +
+    '</div>';
+
+  // Ch 6: payoff numbers
+  var ch6 =
+    '<div class="scene-payoff-grid">' +
+      '<div class="scene-payoff-card"><div class="scene-payoff-num">90</div><div class="scene-payoff-lbl">posts published</div><div class="scene-payoff-sub">3 / week, 30 weeks</div></div>' +
+      '<div class="scene-payoff-card"><div class="scene-payoff-num">12k</div><div class="scene-payoff-lbl">impressions</div><div class="scene-payoff-sub">across all channels</div></div>' +
+      '<div class="scene-payoff-card"><div class="scene-payoff-num">42</div><div class="scene-payoff-lbl">hours saved</div><div class="scene-payoff-sub">vs writing yourself</div></div>' +
+      '<div class="scene-payoff-card"><div class="scene-payoff-num">\u00a32k</div><div class="scene-payoff-lbl">agency value</div><div class="scene-payoff-sub">at typical rates</div></div>' +
+    '</div>';
+
+  // Ch 7: closing
+  var ch7 =
+    '<div class="scene-closing">' +
+      '<div class="scene-closing-mark">' +
+        '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '</div>' +
+      '<h2 class="showcase-headline" style="text-align:center;margin-bottom:16px">Ready when you are.</h2>' +
+      '<p class="showcase-body" style="text-align:center;margin:0 auto 20px;max-width:380px">Connect a platform, review the first batch of posts, hit approve. Luna takes it from there.</p>' +
+    '</div>';
+
+  return [
+    {
+      eyebrow: 'CHAPTER 1',
+      headline: 'It\'s 9pm Sunday. <em>You haven\'t posted this week.</em>',
+      body: 'Same as last week. The week before that. Meanwhile Luna\'s already drafted ten posts for you, scheduled across the next fortnight, ready for you to skim and approve.',
+      visual: ch1Calendar
+    },
+    {
+      eyebrow: 'CHAPTER 2',
+      headline: 'We write in <em>your</em> voice. Not generic AI.',
+      body: 'Tell us your tone, formality, specialisms. Every post sounds like you wrote it yourself. Just faster, and at 3am if needed.',
+      visual: ch2
+    },
+    {
+      eyebrow: 'CHAPTER 3',
+      headline: 'We catch the <em>moments that matter</em>.',
+      body: 'Glastonbury announces dates. Diwali approaches. A Royal Wedding lands in the calendar. Luna sees them coming and writes the post weeks ahead — so you\'re first to the conversation, not last.',
+      visual: ch3
+    },
+    {
+      eyebrow: 'CHAPTER 4',
+      headline: 'We find <em>buyers</em>, not just an audience.',
+      body: 'Every day Luna scans LinkedIn for people asking for travel agents, mentioning your competitors, or signalling buying intent. We draft the reply. You hit send.',
+      visual: ch4
+    },
+    {
+      eyebrow: 'CHAPTER 5',
+      headline: 'Email isn\'t dead. <em>Yours just isn\'t getting written.</em>',
+      body: 'Monthly newsletters. Drip sequences for new leads. Drafted, designed, sent — all in your voice. Open rates and clicks tracked end-to-end.',
+      visual: ch5
+    },
+    {
+      eyebrow: 'CHAPTER 6',
+      headline: 'By month three, the maths starts to look <em>silly</em>.',
+      body: 'Ninety posts. Twelve thousand impressions. Forty-two hours back in your week. The kind of output that would cost £2k a month at an agency.',
+      visual: ch6
+    },
+    {
+      eyebrow: 'BEGIN',
+      headline: '',
+      body: '',
+      visual: ch7,
+      isClosing: true
+    }
+  ];
+}
+
+function openShowcase(source) {
+  showcaseState.chapters = buildShowcaseChapters();
+  showcaseState.current = 0;
+  showcaseState.visited = [0];
+
+  var overlay = $('showcase-overlay');
+  var stage = $('showcase-stage');
+  if (!overlay || !stage) return;
+
+  // Build chapter HTML
+  var chaptersHtml = showcaseState.chapters.map(function (ch, idx) {
+    if (ch.isClosing) {
+      return '<div class="showcase-chapter" data-chapter-idx="' + idx + '">' + ch.visual + '</div>';
+    }
+    return '<div class="showcase-chapter" data-chapter-idx="' + idx + '">' +
+      '<div class="showcase-chapter-grid">' +
+        '<div class="showcase-text">' +
+          '<div class="showcase-eyebrow">' + esc(ch.eyebrow) + '</div>' +
+          '<h2 class="showcase-headline" id="showcase-headline-' + idx + '">' + ch.headline + '</h2>' +
+          '<p class="showcase-body">' + esc(ch.body) + '</p>' +
+        '</div>' +
+        '<div class="showcase-visual">' + ch.visual + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  stage.innerHTML = chaptersHtml;
+
+  // Build dots
+  var dotsHtml = showcaseState.chapters.map(function (_, idx) {
+    return '<button class="showcase-dot" data-dot-idx="' + idx + '" role="tab" aria-label="Chapter ' + (idx + 1) + '"></button>';
+  }).join('');
+  $('showcase-dots').innerHTML = dotsHtml;
+
+  // Show
+  overlay.hidden = false;
+  setTimeout(function () { overlay.classList.add('active'); }, 10);
+  setTimeout(function () { showcaseGoTo(0); }, 50);
+  document.body.style.overflow = 'hidden';
+
+  // Mark seen
+  try { localStorage.setItem(SHOWCASE_STORAGE_KEY, '1'); } catch (e) {}
+
+  // Focus management
+  setTimeout(function () { $('showcase-modal').focus(); }, 100);
+}
+
+function closeShowcase() {
+  var overlay = $('showcase-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('active');
+  setTimeout(function () { overlay.hidden = true; }, 300);
+  document.body.style.overflow = '';
+}
+
+function showcaseGoTo(idx) {
+  var max = showcaseState.chapters.length - 1;
+  if (idx < 0) idx = 0;
+  if (idx > max) idx = max;
+  showcaseState.current = idx;
+  if (showcaseState.visited.indexOf(idx) === -1) {
+    showcaseState.visited.push(idx);
+  }
+
+  // Update chapters
+  document.querySelectorAll('.showcase-chapter').forEach(function (el) {
+    var i = parseInt(el.getAttribute('data-chapter-idx'), 10);
+    el.classList.toggle('active', i === idx);
+  });
+
+  // Update dots
+  document.querySelectorAll('.showcase-dot').forEach(function (el) {
+    var i = parseInt(el.getAttribute('data-dot-idx'), 10);
+    el.classList.toggle('active', i === idx);
+    el.classList.toggle('visited', i !== idx && showcaseState.visited.indexOf(i) >= 0);
+  });
+
+  // Update buttons
+  var prev = $('showcase-prev');
+  var next = $('showcase-next');
+  if (prev) prev.disabled = idx === 0;
+  if (next) {
+    if (idx === max) {
+      next.innerHTML = 'Get started<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else {
+      next.innerHTML = 'Next<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>';
+    }
+  }
+}
+
+// Wire showcase controls (one-time setup, runs on every render is harmless
+// because we use closest() and ID-bound handlers).
+function attachShowcaseHandlers() {
+  var overlay = $('showcase-overlay');
+  if (!overlay || overlay._wired) return;
+  overlay._wired = true;
+
+  $('showcase-close').addEventListener('click', closeShowcase);
+  $('showcase-skip').addEventListener('click', closeShowcase);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeShowcase();
+  });
+
+  $('showcase-prev').addEventListener('click', function () {
+    showcaseGoTo(showcaseState.current - 1);
+  });
+  $('showcase-next').addEventListener('click', function () {
+    var max = showcaseState.chapters.length - 1;
+    if (showcaseState.current === max) {
+      closeShowcase();
+    } else {
+      showcaseGoTo(showcaseState.current + 1);
+    }
+  });
+
+  $('showcase-dots').addEventListener('click', function (e) {
+    var dot = e.target.closest('[data-dot-idx]');
+    if (!dot) return;
+    showcaseGoTo(parseInt(dot.getAttribute('data-dot-idx'), 10));
+  });
+
+  // Keyboard nav
+  document.addEventListener('keydown', function (e) {
+    if (overlay.hidden) return;
+    if (e.key === 'Escape') closeShowcase();
+    else if (e.key === 'ArrowRight') showcaseGoTo(showcaseState.current + 1);
+    else if (e.key === 'ArrowLeft') showcaseGoTo(showcaseState.current - 1);
+  });
+}
+
+// Auto-show showcase on first login (if welcome state is active and they
+// haven't already seen it). Called from drawDashboard after each render —
+// internally guards against re-running if already shown this session.
+var _showcaseAutoShown = false;
+function maybeAutoShowShowcase() {
+  if (_showcaseAutoShown) return;
+  if (!state.profile || state.profile.id === OWNER_CLIENT_ID) return;
+  var seen = false;
+  try { seen = localStorage.getItem(SHOWCASE_STORAGE_KEY) === '1'; } catch (e) {}
+  if (seen) {
+    _showcaseAutoShown = true; // don't keep checking
+    return;
+  }
+  // Only auto-show if they're in welcome state
+  var data = (typeof dashState !== 'undefined' && dashState.data) ? dashState.data : null;
+  if (!data) return;
+  var w = computeWelcomeState(data);
+  if (w.show) {
+    _showcaseAutoShown = true;
+    setTimeout(function () { openShowcase('auto'); }, 1500);
+  }
+}
+
+
 })();
 </script>
+<!-- Showcase modal — hidden by default, populated by openShowcase() -->
+<div id="showcase-overlay" class="showcase-overlay" role="dialog" aria-modal="true" aria-labelledby="showcase-headline" hidden>
+  <div class="showcase-modal" id="showcase-modal" tabindex="-1">
+    <button class="showcase-skip" id="showcase-skip" aria-label="Skip tour">Skip</button>
+    <button class="showcase-close" id="showcase-close" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="showcase-stage" id="showcase-stage"></div>
+    <div class="showcase-footer">
+      <div class="showcase-dots" id="showcase-dots" role="tablist" aria-label="Chapter navigation"></div>
+      <div class="showcase-nav">
+        <button class="showcase-btn" id="showcase-prev" aria-label="Previous chapter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+        <button class="showcase-btn primary" id="showcase-next" aria-label="Next chapter">
+          Next
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

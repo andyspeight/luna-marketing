@@ -904,6 +904,296 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   .showcase-body { font-size: 14px; }
 }
 
+/* ═══ EMAIL BUILDER — three-panel section editor ═══ */
+
+.email-builder-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+.email-builder-topbar-right { display: flex; gap: 8px; }
+.email-builder-btn {
+  height: 38px; padding: 0 18px;
+  border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  font-family: var(--tg-font-body);
+  transition: all var(--duration-fast);
+  border: 1px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.email-builder-btn-ghost {
+  background: transparent;
+  border-color: var(--tg-border);
+  color: var(--tg-text-secondary);
+}
+.email-builder-btn-ghost:hover { border-color: var(--tg-text-tertiary); color: var(--tg-text-primary); }
+.email-builder-btn-primary { background: var(--tg-accent); color: #fff; }
+.email-builder-btn-primary:hover { background: var(--tg-accent-light); }
+.email-builder-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Metadata strip */
+.email-builder-metastrip {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  align-items: flex-end;
+}
+.email-builder-meta-field { flex: 1 1 200px; min-width: 0; }
+.email-builder-meta-label {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--tg-text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  margin-bottom: 4px; font-family: var(--tg-font-mono);
+}
+.email-builder-input {
+  width: 100%; height: 36px; padding: 0 10px;
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--tg-font-body); font-size: 13px;
+  background: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  transition: border-color var(--duration-fast);
+}
+.email-builder-input:focus { border-color: var(--tg-accent); outline: none; }
+textarea.email-builder-input { padding: 8px 10px; height: auto; line-height: 1.5; resize: vertical; min-height: 60px; }
+select.email-builder-input { cursor: pointer; }
+
+.email-builder-recipient-strip {
+  display: flex; align-items: center;
+  background: var(--tg-bg-secondary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap; gap: 8px;
+}
+
+/* Three panels */
+.email-builder-panels {
+  display: grid;
+  grid-template-columns: 280px 320px 1fr;
+  gap: 12px;
+  height: calc(100vh - 360px);
+  min-height: 540px;
+}
+.email-builder-left, .email-builder-middle, .email-builder-right {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-md);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.email-builder-panel-header {
+  padding: 12px 16px;
+  font-size: 11px; font-weight: 700;
+  color: var(--tg-text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  font-family: var(--tg-font-mono);
+  border-bottom: 1px solid var(--tg-border);
+  flex-shrink: 0;
+}
+
+/* Section list */
+.email-builder-section-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px;
+}
+.email-builder-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--tg-text-tertiary);
+}
+.email-builder-section-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+}
+.email-builder-section-row:hover { background: var(--tg-bg-secondary); }
+.email-builder-section-row.active {
+  background: rgba(0,180,216,0.08);
+  border-color: rgba(0,180,216,0.3);
+}
+.email-builder-section-row.drop-target-above { box-shadow: 0 -2px 0 var(--tg-accent); }
+.email-builder-section-row.drop-target-below { box-shadow: 0 2px 0 var(--tg-accent); }
+.email-builder-section-handle {
+  flex-shrink: 0;
+  color: var(--tg-text-tertiary);
+  cursor: grab;
+  padding: 4px;
+  display: flex; align-items: center;
+}
+.email-builder-section-handle:active { cursor: grabbing; }
+.email-builder-section-info { flex: 1; min-width: 0; }
+.email-builder-section-type {
+  font-size: 13px; font-weight: 600;
+  color: var(--tg-text-primary);
+  margin-bottom: 2px;
+}
+.email-builder-section-summary {
+  font-size: 11px;
+  color: var(--tg-text-tertiary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--tg-font-mono);
+}
+.email-builder-section-delete {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--tg-text-tertiary);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all var(--duration-fast);
+  display: flex; align-items: center; justify-content: center;
+}
+.email-builder-section-row:hover .email-builder-section-delete { opacity: 1; }
+.email-builder-section-delete:hover { background: rgba(239,68,68,0.1); color: var(--tg-error); }
+
+/* Add section panel */
+.email-builder-add-section {
+  border-top: 1px solid var(--tg-border);
+  padding: 8px 12px 12px;
+  flex-shrink: 0;
+  background: var(--tg-bg-secondary);
+}
+.email-builder-add-section .email-builder-panel-header {
+  background: transparent; border: none;
+  padding: 8px 4px; margin-bottom: 4px;
+}
+.email-builder-section-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.email-builder-section-type-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 6px;
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--tg-font-body);
+  font-size: 11px; font-weight: 500;
+  color: var(--tg-text-secondary);
+  transition: all var(--duration-fast);
+}
+.email-builder-section-type-btn:hover {
+  border-color: var(--tg-accent);
+  color: var(--tg-accent-dark);
+  background: rgba(0,180,216,0.04);
+}
+
+/* Properties panel */
+.email-builder-properties {
+  flex: 1; overflow-y: auto;
+}
+.email-builder-prop-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--tg-border);
+}
+.email-builder-prop-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--tg-text-primary);
+  margin-bottom: 2px;
+}
+.email-builder-prop-desc {
+  font-size: 12px;
+  color: var(--tg-text-tertiary);
+}
+.email-builder-prop-fields { padding: 14px 16px; }
+.email-builder-prop-field { margin-bottom: 14px; }
+.email-builder-prop-label {
+  display: block;
+  font-size: 12px; font-weight: 600;
+  color: var(--tg-text-secondary);
+  margin-bottom: 4px;
+}
+.email-builder-prop-input {
+  width: 100%; height: 34px; padding: 0 10px;
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--tg-font-body); font-size: 13px;
+  background: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  transition: border-color var(--duration-fast);
+}
+.email-builder-prop-input:focus { border-color: var(--tg-accent); outline: none; }
+textarea.email-builder-prop-input { padding: 8px 10px; height: auto; line-height: 1.5; resize: vertical; min-height: 70px; }
+select.email-builder-prop-input { cursor: pointer; height: 34px; }
+.email-builder-prop-checkbox {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--tg-text-secondary);
+  cursor: pointer; user-select: none;
+}
+.email-builder-prop-checkbox input { cursor: pointer; }
+
+/* Preview */
+.email-builder-preview-mode {
+  width: 28px; height: 24px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tg-text-tertiary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--duration-fast);
+}
+.email-builder-preview-mode:hover { color: var(--tg-text-primary); background: var(--tg-bg-secondary); }
+.email-builder-preview-mode.active {
+  background: rgba(0,180,216,0.1);
+  border-color: rgba(0,180,216,0.3);
+  color: var(--tg-accent-dark);
+}
+.email-builder-preview-wrap {
+  flex: 1;
+  background: #f3f4f6;
+  display: flex; align-items: flex-start; justify-content: center;
+  overflow-y: auto;
+  padding: 16px;
+  position: relative;
+}
+.email-builder-preview-wrap.is-mobile { padding: 16px 50px; }
+.email-builder-preview-frame {
+  width: 100%; max-width: 600px; height: 100%; min-height: 540px;
+  border: 1px solid var(--tg-border);
+  border-radius: 4px;
+  background: #fff;
+  transition: max-width var(--duration-normal);
+}
+.email-builder-preview-wrap.is-mobile .email-builder-preview-frame { max-width: 380px; }
+.email-builder-preview-loading {
+  position: absolute; top: 16px; right: 24px;
+  background: rgba(0,0,0,0.7); color: #fff;
+  font-size: 11px; font-weight: 600;
+  padding: 6px 10px; border-radius: 4px;
+  font-family: var(--tg-font-mono);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .email-builder-panels {
+    grid-template-columns: 240px 280px 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .email-builder-panels {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .email-builder-left, .email-builder-middle, .email-builder-right {
+    min-height: 300px;
+  }
+}
+
 </style>
 </head>
 <body data-theme="light">
@@ -2883,6 +3173,10 @@ function renderEmails() {
     '<div class="dash-skeleton" style="height:60px;margin-bottom:8px"></div>' +
     '<div class="dash-skeleton" style="height:60px"></div>';
   loadEmails();
+  // Eagerly load email templates in the background so they're ready when Compose is clicked
+  if (typeof loadEmailTemplates === 'function' && !emailState.templates) {
+    loadEmailTemplates();
+  }
 }
 
 async function loadEmails() {
@@ -3401,104 +3695,629 @@ window.__emailComposeClose = function() {
     scheduledSend: '',
     emailType: 'Newsletter',
   };
+  emailState.builderInitialised = false;
+  emailState.builderSections = null;
+  emailState.selectedSectionId = null;
+  emailState.previewHTML = '';
   drawEmails();
 };
 
 function hasComposeContent() {
   var d = emailState.composeData;
-  return !!(d.subject || d.previewText || d.bodyHTML || d.bodyPlain || d.recipientEmail);
+  if (d.subject || d.previewText || d.recipientEmail) return true;
+  // Builder content: more than just defaults?
+  var s = emailState.builderSections;
+  if (!s || s.length === 0) return false;
+  // Anything added beyond the 4 starter sections counts
+  if (s.length > 4) return true;
+  // If user customised hero/text props beyond defaults
+  for (var i = 0; i < s.length; i++) {
+    var p = s[i].props || {};
+    if (s[i].type === 'hero' && p.headline && p.headline !== 'Your headline here') return true;
+    if (s[i].type === 'text' && p.body && p.body !== 'Write your main content here. Keep it short, friendly and human. Aim for two or three short paragraphs.') return true;
+    if (s[i].type === 'cta' && p.headline && p.headline !== 'Ready to get started?') return true;
+  }
+  return false;
 }
 
 function drawComposeForm() {
   var el = $('view-emails');
   var d = emailState.composeData;
 
+  // Initialise builder state on first open
+  if (!emailState.builderInitialised) {
+    initBuilder();
+  }
+
+  var sections = emailState.builderSections;
+  var selectedId = emailState.selectedSectionId;
+  var selectedSection = sections.find(function(s) { return s.id === selectedId; });
+
   var h = '';
-  // Header
-  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">';
-  h += '<div><h2 style="font-size:var(--text-xl);font-weight:700;color:var(--tg-text-primary);margin:0">Compose Email</h2>';
-  h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:4px 0 0">Saved as Awaiting Approval. Email crons paused so this won\'t auto-send.</p></div>';
-  h += '<div style="display:flex;gap:8px">';
-  h += '<button onclick="window.__emailComposeClose()" style="height:40px;padding:0 16px;border-radius:var(--radius-md);background:transparent;border:1px solid var(--tg-border);color:var(--tg-text-secondary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Cancel</button>';
-  h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" style="height:40px;padding:0 20px;border-radius:var(--radius-md);background:var(--tg-accent);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body)">Save as Draft</button>';
-  h += '</div></div>';
 
-  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">';
+  // ─── TOP BAR ───
+  h += '<div class="email-builder-topbar">';
+  h += '<div class="email-builder-topbar-left">';
+  h += '<h2 style="font-size:var(--text-xl);font-weight:700;color:var(--tg-text-primary);margin:0">Compose Email</h2>';
+  h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:4px 0 0">Saved as Awaiting Approval. Email crons paused so this won\'t auto-send.</p>';
+  h += '</div>';
+  h += '<div class="email-builder-topbar-right">';
+  h += '<button onclick="window.__emailComposeClose()" class="email-builder-btn email-builder-btn-ghost">Cancel</button>';
+  h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" class="email-builder-btn email-builder-btn-primary">Save as Draft</button>';
+  h += '</div>';
+  h += '</div>';
 
-  // LEFT COLUMN: Metadata
-  h += '<div>';
-
-  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5);margin-bottom:var(--space-4)">';
-  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--space-3);font-family:var(--tg-font-mono)">Metadata</div>';
+  // ─── METADATA STRIP ───
+  h += '<div class="email-builder-metastrip">';
 
   // Subject
-  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Subject</label>';
-  h += '<input id="composeSubject" type="text" value="' + esc(d.subject) + '" maxlength="200" placeholder="Subject line of the email" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'subject\',this.value)"></div>';
+  h += '<div class="email-builder-meta-field">';
+  h += '<label class="email-builder-meta-label">Subject</label>';
+  h += '<input id="composeSubject" type="text" value="' + esc(d.subject) + '" maxlength="200" placeholder="Subject line" class="email-builder-input" oninput="window.__composeUpdate(\'subject\',this.value)">';
+  h += '</div>';
 
   // Preview text
-  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Preview text <span style="color:var(--tg-text-tertiary);font-weight:400">(shown in inbox preview, max 200 chars)</span></label>';
-  h += '<input id="composePreview" type="text" value="' + esc(d.previewText) + '" maxlength="200" placeholder="A taster line that shows under the subject in inboxes" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'previewText\',this.value)"></div>';
+  h += '<div class="email-builder-meta-field">';
+  h += '<label class="email-builder-meta-label">Preview text</label>';
+  h += '<input id="composePreview" type="text" value="' + esc(d.previewText) + '" maxlength="200" placeholder="Inbox preview line" class="email-builder-input" oninput="window.__composeUpdate(\'previewText\',this.value);window.__builderPreviewDebounced()">';
+  h += '</div>';
 
   // Audience
-  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Audience</label>';
-  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
+  h += '<label class="email-builder-meta-label">Audience</label>';
+  h += '<select onchange="window.__composeUpdate(\'audience\',this.value)" class="email-builder-input" style="width:130px">';
   ['Cold', 'Nurture', 'Client', 'Drip'].forEach(function(a) {
-    var active = d.audience === a;
-    h += '<button onclick="window.__composeUpdate(\'audience\',\'' + a + '\');window.__emailRedraw()" style="height:36px;padding:0 14px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:13px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + a + '</button>';
+    h += '<option value="' + a + '"' + (d.audience === a ? ' selected' : '') + '>' + a + '</option>';
   });
-  h += '</div></div>';
+  h += '</select>';
+  h += '</div>';
 
-  // Email type
-  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Type</label>';
-  h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  // Type
+  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
+  h += '<label class="email-builder-meta-label">Type</label>';
+  h += '<select onchange="window.__composeUpdate(\'emailType\',this.value)" class="email-builder-input" style="width:140px">';
   ['Newsletter', 'Promotion', 'Update', 'Drip'].forEach(function(t) {
-    var active = d.emailType === t;
-    h += '<button onclick="window.__composeUpdate(\'emailType\',\'' + t + '\');window.__emailRedraw()" style="height:32px;padding:0 12px;border-radius:var(--radius-md);border:1px solid ' + (active ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (active ? 'rgba(0,180,216,0.08)' : 'var(--tg-bg-primary)') + ';color:' + (active ? 'var(--tg-accent-dark)' : 'var(--tg-text-secondary)') + ';font-size:12px;font-weight:' + (active ? '600' : '500') + ';cursor:pointer;font-family:var(--tg-font-body)">' + t + '</button>';
+    h += '<option value="' + t + '"' + (d.emailType === t ? ' selected' : '') + '>' + t + '</option>';
   });
-  h += '</div></div>';
+  h += '</select>';
+  h += '</div>';
 
-  h += '</div>'; // end metadata card
-
-  // Recipient card
-  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5);margin-bottom:var(--space-4)">';
-  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--space-3);font-family:var(--tg-font-mono)">Recipient</div>';
-  h += '<p style="font-size:12px;color:var(--tg-text-tertiary);line-height:1.5;margin:0 0 12px">For Day B v1, only single-recipient sends are supported. Enter one email address. List sends arrive in Day C.</p>';
-
-  h += '<div style="margin-bottom:var(--space-3)"><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Recipient email</label>';
-  h += '<input id="composeRecipient" type="email" value="' + esc(d.recipientEmail) + '" placeholder="someone@example.com" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'recipientEmail\',this.value)"></div>';
-
-  h += '<div><label style="display:block;font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:4px">Audience segment label <span style="color:var(--tg-text-tertiary);font-weight:400">(optional)</span></label>';
-  h += '<input id="composeSegment" type="text" value="' + esc(d.audienceSegment) + '" placeholder="e.g. Travelgenix Clients" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-body);font-size:14px;background:var(--tg-bg-primary);color:var(--tg-text-primary)" oninput="window.__composeUpdate(\'audienceSegment\',this.value)"></div>';
-
-  h += '</div>'; // end recipient card
-
-  h += '</div>'; // end left column
-
-  // RIGHT COLUMN: Body
-  h += '<div>';
-  h += '<div style="background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:var(--space-5)">';
-  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">';
-  h += '<div style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.8px;font-family:var(--tg-font-mono)">Body</div>';
-  h += '<div style="display:flex;gap:4px">';
-  h += '<button onclick="window.__composeBodyMode(\'html\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + ((emailState.composeBodyMode || 'html') === 'html' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + ((emailState.composeBodyMode || 'html') === 'html' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">HTML</button>';
-  h += '<button onclick="window.__composeBodyMode(\'plain\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + (emailState.composeBodyMode === 'plain' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (emailState.composeBodyMode === 'plain' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">Plain</button>';
-  h += '<button onclick="window.__composeBodyMode(\'preview\')" style="height:28px;padding:0 12px;border-radius:6px;border:1px solid ' + (emailState.composeBodyMode === 'preview' ? 'var(--tg-accent)' : 'var(--tg-border)') + ';background:' + (emailState.composeBodyMode === 'preview' ? 'rgba(0,180,216,0.08)' : 'transparent') + ';color:var(--tg-text-secondary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--tg-font-mono)">Preview</button>';
-  h += '</div></div>';
-
-  var mode = emailState.composeBodyMode || 'html';
-  if (mode === 'html') {
-    h += '<textarea id="composeHTML" rows="20" placeholder="<p>Your HTML email body...</p>" style="width:100%;padding:12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-mono);font-size:12px;background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical;line-height:1.5" oninput="window.__composeUpdate(\'bodyHTML\',this.value)">' + esc(d.bodyHTML) + '</textarea>';
-  } else if (mode === 'plain') {
-    h += '<textarea id="composePlain" rows="20" placeholder="Plain-text version of the email (recommended for accessibility)" style="width:100%;padding:12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-family:var(--tg-font-mono);font-size:12px;background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical;line-height:1.5" oninput="window.__composeUpdate(\'bodyPlain\',this.value)">' + esc(d.bodyPlain) + '</textarea>';
+  // Template loader
+  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
+  h += '<label class="email-builder-meta-label">Start from template</label>';
+  h += '<select id="composeTemplate" onchange="window.__builderApplyTemplate(this.value);this.value=\'\'" class="email-builder-input" style="width:200px">';
+  h += '<option value="">Choose a template...</option>';
+  if (emailState.templates && emailState.templates.length) {
+    emailState.templates.forEach(function(t) {
+      h += '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
+    });
   } else {
-    h += '<div style="border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:16px;background:#fff;min-height:400px;max-height:600px;overflow-y:auto">' + (d.bodyHTML || '<em style="color:#999">Nothing to preview yet</em>') + '</div>';
+    h += '<option disabled>No templates loaded</option>';
   }
-  h += '</div>'; // end body card
-  h += '</div>'; // end right column
+  h += '</select>';
+  h += '</div>';
 
-  h += '</div>'; // end grid
+  h += '</div>';
+
+  // Recipient
+  h += '<div class="email-builder-recipient-strip">';
+  h += '<label class="email-builder-meta-label" style="margin-right:12px;flex-shrink:0">Send to (single recipient for now)</label>';
+  h += '<input id="composeRecipient" type="email" value="' + esc(d.recipientEmail) + '" placeholder="someone@example.com" class="email-builder-input" style="flex:1;max-width:340px" oninput="window.__composeUpdate(\'recipientEmail\',this.value)">';
+  h += '<input id="composeSegment" type="text" value="' + esc(d.audienceSegment) + '" placeholder="Audience label (optional)" class="email-builder-input" style="flex:1;max-width:240px;margin-left:8px" oninput="window.__composeUpdate(\'audienceSegment\',this.value)">';
+  h += '</div>';
+
+  // ─── THREE-PANEL BUILDER ───
+  h += '<div class="email-builder-panels">';
+
+  // ── LEFT: SECTION LIST ──
+  h += '<div class="email-builder-left">';
+  h += '<div class="email-builder-panel-header">Sections</div>';
+  h += '<div class="email-builder-section-list" id="builderSectionList">';
+  if (sections.length === 0) {
+    h += '<div class="email-builder-empty">No sections yet. Add one below.</div>';
+  } else {
+    sections.forEach(function(s, i) {
+      var meta = sectionMeta(s.type);
+      var summary = sectionSummary(s);
+      var active = s.id === selectedId;
+      h += '<div class="email-builder-section-row' + (active ? ' active' : '') + '"';
+      h += ' draggable="true"';
+      h += ' data-section-id="' + esc(s.id) + '"';
+      h += ' data-section-idx="' + i + '"';
+      h += ' onclick="window.__builderSelectSection(\'' + esc(s.id) + '\')"';
+      h += '>';
+      h += '<div class="email-builder-section-handle" title="Drag to reorder">';
+      h += '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><circle cx="3" cy="3" r="1.2" fill="currentColor"/><circle cx="9" cy="3" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="9" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11" r="1.2" fill="currentColor"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/></svg>';
+      h += '</div>';
+      h += '<div class="email-builder-section-info">';
+      h += '<div class="email-builder-section-type">' + esc(meta.label) + '</div>';
+      h += '<div class="email-builder-section-summary">' + esc(summary) + '</div>';
+      h += '</div>';
+      h += '<button class="email-builder-section-delete" onclick="event.stopPropagation();window.__builderDeleteSection(\'' + esc(s.id) + '\')" title="Remove section">';
+      h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+      h += '</button>';
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+
+  // Add section panel
+  h += '<div class="email-builder-add-section">';
+  h += '<div class="email-builder-panel-header" style="border-top:1px solid var(--tg-border);padding-top:12px;margin-top:0">Add a section</div>';
+  h += '<div class="email-builder-section-types">';
+  var addableTypes = [
+    { type: 'header', icon: '<rect x="2" y="4" width="20" height="4" rx="1"/>' },
+    { type: 'hero', icon: '<rect x="2" y="3" width="20" height="10" rx="1"/><line x1="6" y1="17" x2="18" y2="17"/><line x1="9" y1="20" x2="15" y2="20"/>' },
+    { type: 'text', icon: '<line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="4" y1="14" x2="14" y2="14"/>' },
+    { type: 'two-column', icon: '<rect x="2" y="4" width="9" height="16" rx="1"/><rect x="13" y="4" width="9" height="16" rx="1"/>' },
+    { type: 'cta', icon: '<rect x="5" y="9" width="14" height="6" rx="3"/>' },
+    { type: 'divider', icon: '<line x1="3" y1="12" x2="21" y2="12"/>' },
+    { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
+  ];
+  addableTypes.forEach(function(t) {
+    var meta = sectionMeta(t.type);
+    h += '<button class="email-builder-section-type-btn" onclick="window.__builderAddSection(\'' + t.type + '\')" title="' + esc(meta.description) + '">';
+    h += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
+    h += '<span>' + esc(meta.label) + '</span>';
+    h += '</button>';
+  });
+  h += '</div>';
+  h += '</div>';
+  h += '</div>'; // end left
+
+  // ── MIDDLE: PROPERTIES ──
+  h += '<div class="email-builder-middle">';
+  h += '<div class="email-builder-panel-header">Properties</div>';
+  h += '<div class="email-builder-properties" id="builderProperties">';
+  if (!selectedSection) {
+    h += '<div class="email-builder-empty" style="padding:40px 20px;text-align:center">';
+    h += '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px"><path d="M12 6V4M12 6a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>';
+    h += '<div style="font-size:13px">Select a section to edit its properties</div>';
+    h += '</div>';
+  } else {
+    h += renderPropertiesForm(selectedSection);
+  }
+  h += '</div>';
+  h += '</div>'; // end middle
+
+  // ── RIGHT: PREVIEW ──
+  h += '<div class="email-builder-right">';
+  h += '<div class="email-builder-panel-header" style="display:flex;justify-content:space-between;align-items:center">';
+  h += '<span>Live preview</span>';
+  h += '<div style="display:flex;gap:4px">';
+  h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'desktop' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'desktop\')" title="Desktop preview">';
+  h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="1"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+  h += '</button>';
+  h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'mobile' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'mobile\')" title="Mobile preview">';
+  h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>';
+  h += '</button>';
+  h += '</div>';
+  h += '</div>';
+  h += '<div class="email-builder-preview-wrap' + (emailState.previewMode === 'mobile' ? ' is-mobile' : '') + '">';
+  h += '<iframe id="builderPreviewFrame" class="email-builder-preview-frame" sandbox="allow-same-origin"></iframe>';
+  h += '<div id="builderPreviewLoading" class="email-builder-preview-loading" style="display:none">Rendering...</div>';
+  h += '</div>';
+  h += '</div>'; // end right
+
+  h += '</div>'; // end panels
 
   el.innerHTML = h;
+
+  // Wire up after DOM is in place
+  attachBuilderHandlers();
+
+  // Trigger initial preview render
+  setTimeout(function() { window.__builderRenderPreview(); }, 50);
+}
+
+// ═════════════════════════════════════════════════════════════
+// EMAIL BUILDER — STATE, HELPERS, HANDLERS
+// ═════════════════════════════════════════════════════════════
+
+function initBuilder() {
+  emailState.builderInitialised = true;
+  emailState.builderSections = emailState.builderSections || defaultStarterSections();
+  emailState.selectedSectionId = emailState.selectedSectionId || (emailState.builderSections[0] && emailState.builderSections[0].id) || null;
+  emailState.previewMode = emailState.previewMode || 'desktop';
+  emailState.previewHTML = '';
+
+  // Load templates if we haven't yet
+  if (!emailState.templates) {
+    loadEmailTemplates();
+  }
+}
+
+function genSectionId() {
+  return 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function defaultStarterSections() {
+  return [
+    { id: genSectionId(), type: 'header', props: { logoAlt: 'Travelgenix', logoLinkUrl: 'https://travelgenix.io' } },
+    { id: genSectionId(), type: 'hero', props: { headline: 'Your headline here', subhead: 'A short supporting line that draws the reader in.', ctaText: 'Read more', ctaUrl: 'https://travelgenix.io', accent: 'teal' } },
+    { id: genSectionId(), type: 'text', props: { body: 'Write your main content here. Keep it short, friendly and human. Aim for two or three short paragraphs.', align: 'left' } },
+    { id: genSectionId(), type: 'footer', props: { showUnsub: true } },
+  ];
+}
+
+// Section type metadata (label, description, fields)
+var SECTION_META = {
+  header: {
+    label: 'Header',
+    description: 'Logo at top of email with optional nav links',
+    fields: [
+      { key: 'logoUrl', label: 'Logo image URL', type: 'url' },
+      { key: 'logoAlt', label: 'Logo alt text', type: 'text' },
+      { key: 'logoLinkUrl', label: 'Logo links to', type: 'url' },
+    ],
+  },
+  hero: {
+    label: 'Hero',
+    description: 'Big image, headline and primary CTA',
+    fields: [
+      { key: 'imageUrl', label: 'Hero image URL', type: 'url' },
+      { key: 'imageAlt', label: 'Image alt text', type: 'text' },
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'subhead', label: 'Subhead', type: 'longText', maxLength: 280 },
+      { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 40 },
+      { key: 'ctaUrl', label: 'Button link', type: 'url' },
+      { key: 'accent', label: 'Accent bar', type: 'select', options: ['teal', 'pink', 'yellow', 'none'] },
+    ],
+  },
+  text: {
+    label: 'Text',
+    description: 'Headline and paragraphs of body copy',
+    fields: [
+      { key: 'headline', label: 'Headline', type: 'text', maxLength: 100 },
+      { key: 'subhead', label: 'Subhead', type: 'text', maxLength: 160 },
+      { key: 'body', label: 'Body', type: 'longText', required: true, maxLength: 2000 },
+      { key: 'align', label: 'Alignment', type: 'select', options: ['left', 'center'] },
+    ],
+  },
+  'two-column': {
+    label: 'Two columns',
+    description: 'Side-by-side blocks, stacks on mobile',
+    fields: [
+      { key: 'left.imageUrl', label: 'Left image URL', type: 'url' },
+      { key: 'left.headline', label: 'Left headline', type: 'text', maxLength: 60 },
+      { key: 'left.body', label: 'Left body', type: 'longText', maxLength: 400 },
+      { key: 'left.ctaText', label: 'Left button text', type: 'text', maxLength: 30 },
+      { key: 'left.ctaUrl', label: 'Left button link', type: 'url' },
+      { key: 'right.imageUrl', label: 'Right image URL', type: 'url' },
+      { key: 'right.headline', label: 'Right headline', type: 'text', maxLength: 60 },
+      { key: 'right.body', label: 'Right body', type: 'longText', maxLength: 400 },
+      { key: 'right.ctaText', label: 'Right button text', type: 'text', maxLength: 30 },
+      { key: 'right.ctaUrl', label: 'Right button link', type: 'url' },
+    ],
+  },
+  cta: {
+    label: 'Call to action',
+    description: 'Big button with surrounding copy',
+    fields: [
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 80 },
+      { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 200 },
+      { key: 'ctaText', label: 'Button text', type: 'text', required: true, maxLength: 40 },
+      { key: 'ctaUrl', label: 'Button link', type: 'url', required: true },
+      { key: 'variant', label: 'Style', type: 'select', options: ['tint', 'solid', 'plain'] },
+    ],
+  },
+  divider: {
+    label: 'Divider',
+    description: 'Visual break',
+    fields: [
+      { key: 'style', label: 'Style', type: 'select', options: ['thin', 'thick', 'dotted', 'space'] },
+    ],
+  },
+  footer: {
+    label: 'Footer',
+    description: 'Company info and unsubscribe link',
+    fields: [
+      { key: 'companyName', label: 'Company name', type: 'text' },
+      { key: 'companyAddress', label: 'Postal address', type: 'text' },
+      { key: 'tagline', label: 'Tagline', type: 'text', maxLength: 80 },
+      { key: 'showUnsub', label: 'Show unsubscribe link', type: 'boolean' },
+    ],
+  },
+};
+
+function sectionMeta(type) {
+  return SECTION_META[type] || { label: type, description: '', fields: [] };
+}
+
+function sectionSummary(section) {
+  var p = section.props || {};
+  switch (section.type) {
+    case 'header': return p.logoAlt || 'Travelgenix logo';
+    case 'hero': return p.headline || '(no headline)';
+    case 'text': return (p.headline || p.body || '(empty)').slice(0, 50);
+    case 'two-column': return ((p.left && p.left.headline) || 'Left') + ' | ' + ((p.right && p.right.headline) || 'Right');
+    case 'cta': return p.headline || '(no headline)';
+    case 'divider': return p.style || 'thin';
+    case 'footer': return p.tagline || 'Footer + unsubscribe';
+    default: return '';
+  }
+}
+
+function getNestedValue(obj, path) {
+  var parts = path.split('.');
+  var v = obj;
+  for (var i = 0; i < parts.length; i++) {
+    if (v == null) return undefined;
+    v = v[parts[i]];
+  }
+  return v;
+}
+
+function setNestedValue(obj, path, value) {
+  var parts = path.split('.');
+  var cursor = obj;
+  for (var i = 0; i < parts.length - 1; i++) {
+    if (cursor[parts[i]] == null || typeof cursor[parts[i]] !== 'object') {
+      cursor[parts[i]] = {};
+    }
+    cursor = cursor[parts[i]];
+  }
+  cursor[parts[parts.length - 1]] = value;
+}
+
+function renderPropertiesForm(section) {
+  var meta = sectionMeta(section.type);
+  var h = '';
+  h += '<div class="email-builder-prop-header">';
+  h += '<div class="email-builder-prop-title">' + esc(meta.label) + '</div>';
+  h += '<div class="email-builder-prop-desc">' + esc(meta.description) + '</div>';
+  h += '</div>';
+  h += '<div class="email-builder-prop-fields">';
+  meta.fields.forEach(function(field) {
+    var val = getNestedValue(section.props || {}, field.key);
+    if (val === undefined || val === null) val = '';
+    var fid = 'prop_' + section.id + '_' + field.key.replace(/\./g, '_');
+    h += '<div class="email-builder-prop-field">';
+    h += '<label for="' + fid + '" class="email-builder-prop-label">';
+    h += esc(field.label);
+    if (field.required) h += ' <span style="color:var(--tg-error)">*</span>';
+    h += '</label>';
+    if (field.type === 'longText') {
+      h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">' + esc(val) + '</textarea>';
+    } else if (field.type === 'select') {
+      h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
+      field.options.forEach(function(o) {
+        h += '<option value="' + esc(o) + '"' + (val === o ? ' selected' : '') + '>' + esc(o) + '</option>';
+      });
+      h += '</select>';
+    } else if (field.type === 'boolean') {
+      h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.checked)"> ' + esc(field.label) + '</label>';
+    } else {
+      var t = field.type === 'url' ? 'url' : 'text';
+      h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function attachBuilderHandlers() {
+  // Drag-to-reorder for section list
+  var list = document.getElementById('builderSectionList');
+  if (!list) return;
+  var dragSrc = null;
+  list.querySelectorAll('.email-builder-section-row').forEach(function(row) {
+    row.addEventListener('dragstart', function(e) {
+      dragSrc = row;
+      row.style.opacity = '0.4';
+      try { e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
+    });
+    row.addEventListener('dragend', function() {
+      row.style.opacity = '1';
+      list.querySelectorAll('.email-builder-section-row').forEach(function(r) {
+        r.classList.remove('drop-target-above', 'drop-target-below');
+      });
+    });
+    row.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === row) return;
+      var rect = row.getBoundingClientRect();
+      var midY = rect.top + rect.height / 2;
+      row.classList.toggle('drop-target-above', e.clientY < midY);
+      row.classList.toggle('drop-target-below', e.clientY >= midY);
+    });
+    row.addEventListener('dragleave', function() {
+      row.classList.remove('drop-target-above', 'drop-target-below');
+    });
+    row.addEventListener('drop', function(e) {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === row) return;
+      var srcId = dragSrc.getAttribute('data-section-id');
+      var dstId = row.getAttribute('data-section-id');
+      var rect = row.getBoundingClientRect();
+      var dropAfter = e.clientY > rect.top + rect.height / 2;
+      window.__builderReorderSection(srcId, dstId, dropAfter);
+    });
+  });
+}
+
+// ═════════════════════════════════════════════════════════════
+// BUILDER WINDOW HANDLERS
+// ═════════════════════════════════════════════════════════════
+
+window.__builderSelectSection = function(id) {
+  emailState.selectedSectionId = id;
+  drawEmails();
+};
+
+window.__builderAddSection = function(type) {
+  var defaults = defaultPropsForType(type);
+  var newSection = { id: genSectionId(), type: type, props: defaults };
+  emailState.builderSections = emailState.builderSections || [];
+
+  // Insert before footer if a footer exists, else append
+  var footerIdx = emailState.builderSections.findIndex(function(s) { return s.type === 'footer'; });
+  if (footerIdx >= 0 && type !== 'footer' && type !== 'header') {
+    emailState.builderSections.splice(footerIdx, 0, newSection);
+  } else if (type === 'header') {
+    emailState.builderSections.unshift(newSection);
+  } else {
+    emailState.builderSections.push(newSection);
+  }
+
+  emailState.selectedSectionId = newSection.id;
+  drawEmails();
+};
+
+window.__builderDeleteSection = function(id) {
+  if (!confirm('Remove this section?')) return;
+  emailState.builderSections = emailState.builderSections.filter(function(s) { return s.id !== id; });
+  if (emailState.selectedSectionId === id) {
+    emailState.selectedSectionId = (emailState.builderSections[0] || {}).id || null;
+  }
+  drawEmails();
+};
+
+window.__builderReorderSection = function(srcId, dstId, dropAfter) {
+  var arr = emailState.builderSections;
+  var srcIdx = arr.findIndex(function(s) { return s.id === srcId; });
+  if (srcIdx < 0) return;
+  var src = arr.splice(srcIdx, 1)[0];
+  var dstIdx = arr.findIndex(function(s) { return s.id === dstId; });
+  if (dstIdx < 0) {
+    arr.push(src);
+  } else {
+    arr.splice(dropAfter ? dstIdx + 1 : dstIdx, 0, src);
+  }
+  drawEmails();
+};
+
+window.__builderUpdateField = function(sectionId, key, value) {
+  var s = emailState.builderSections.find(function(x) { return x.id === sectionId; });
+  if (!s) return;
+  if (!s.props) s.props = {};
+  setNestedValue(s.props, key, value);
+  // Don't redraw the whole form (would lose focus). Just update the summary in left list and trigger preview.
+  updateSectionSummaryInDOM(sectionId);
+  window.__builderPreviewDebounced();
+};
+
+function updateSectionSummaryInDOM(sectionId) {
+  var section = emailState.builderSections.find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+  var row = document.querySelector('.email-builder-section-row[data-section-id="' + sectionId + '"]');
+  if (!row) return;
+  var summaryEl = row.querySelector('.email-builder-section-summary');
+  if (summaryEl) summaryEl.textContent = sectionSummary(section);
+}
+
+window.__builderPreviewMode = function(mode) {
+  emailState.previewMode = mode;
+  var wrap = document.querySelector('.email-builder-preview-wrap');
+  if (wrap) wrap.classList.toggle('is-mobile', mode === 'mobile');
+  // Update button states
+  document.querySelectorAll('.email-builder-preview-mode').forEach(function(b) { b.classList.remove('active'); });
+  var ev = window.event;
+  if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+};
+
+var __builderPreviewTimer = null;
+window.__builderPreviewDebounced = function() {
+  if (__builderPreviewTimer) clearTimeout(__builderPreviewTimer);
+  __builderPreviewTimer = setTimeout(function() {
+    window.__builderRenderPreview();
+  }, 500);
+};
+
+window.__builderRenderPreview = async function() {
+  if (!state.profile || !state.profile.id) return;
+  var sections = emailState.builderSections || [];
+  if (sections.length === 0) return;
+  var loading = document.getElementById('builderPreviewLoading');
+  if (loading) loading.style.display = 'block';
+  try {
+    var r = await fetch('/api/email-render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        sections: sections.map(function(s) { return { type: s.type, props: s.props || {} }; }),
+        previewText: emailState.composeData.previewText,
+        title: emailState.composeData.subject,
+      }),
+    });
+    var data = await r.json();
+    if (!data.success) throw new Error(data.error || 'Render failed');
+    emailState.previewHTML = data.html;
+    emailState.previewPlain = data.plainText;
+    var iframe = document.getElementById('builderPreviewFrame');
+    if (iframe) {
+      var doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(data.html);
+      doc.close();
+    }
+  } catch (e) {
+    console.error('Preview render failed:', e);
+    var iframe2 = document.getElementById('builderPreviewFrame');
+    if (iframe2) {
+      var doc2 = iframe2.contentDocument || iframe2.contentWindow.document;
+      doc2.open();
+      doc2.write('<body style="font-family:-apple-system,sans-serif;padding:20px;color:#999"><em>Preview failed: ' + esc(e.message) + '</em></body>');
+      doc2.close();
+    }
+  } finally {
+    if (loading) loading.style.display = 'none';
+  }
+};
+
+window.__builderApplyTemplate = function(templateId) {
+  if (!templateId) return;
+  var tmpl = (emailState.templates || []).find(function(t) { return t.id === templateId; });
+  if (!tmpl || !tmpl.sections) {
+    alert('Template not found or has no sections');
+    return;
+  }
+  if (emailState.builderSections.length > 0 && !confirm('Apply this template? Your current sections will be replaced.')) {
+    return;
+  }
+  // Clone sections, give each a new id
+  emailState.builderSections = tmpl.sections.map(function(s) {
+    return { id: genSectionId(), type: s.type, props: JSON.parse(JSON.stringify(s.props || {})) };
+  });
+  emailState.selectedSectionId = (emailState.builderSections[0] || {}).id || null;
+  // Apply suggested subject and preview text if currently empty
+  if (!emailState.composeData.subject && tmpl.subjectSuggestion) {
+    emailState.composeData.subject = tmpl.subjectSuggestion;
+  }
+  if (!emailState.composeData.previewText && tmpl.previewSuggestion) {
+    emailState.composeData.previewText = tmpl.previewSuggestion;
+  }
+  drawEmails();
+};
+
+async function loadEmailTemplates() {
+  try {
+    var r = await fetch('/api/email-templates?clientId=' + encodeURIComponent(state.profile && state.profile.id || ''));
+    var d = await r.json();
+    if (d.success && d.templates) {
+      emailState.templates = d.templates;
+    } else {
+      emailState.templates = [];
+    }
+  } catch (e) {
+    console.error('Templates load failed:', e);
+    emailState.templates = [];
+  }
+}
+
+function defaultPropsForType(type) {
+  switch (type) {
+    case 'header': return { logoAlt: 'Travelgenix', logoLinkUrl: 'https://travelgenix.io' };
+    case 'hero': return { headline: 'Your headline here', subhead: 'Supporting line.', ctaText: 'Learn more', ctaUrl: 'https://travelgenix.io', accent: 'teal' };
+    case 'text': return { body: 'Write your content here.', align: 'left' };
+    case 'two-column': return { left: { headline: 'Left heading', body: 'Left body copy.' }, right: { headline: 'Right heading', body: 'Right body copy.' } };
+    case 'cta': return { headline: 'Ready to get started?', ctaText: 'Get in touch', ctaUrl: 'https://travelgenix.io', variant: 'tint' };
+    case 'divider': return { style: 'thin' };
+    case 'footer': return { showUnsub: true };
+    default: return {};
+  }
 }
 
 window.__composeUpdate = function(key, value) {
@@ -3515,10 +4334,7 @@ window.__composeBodyMode = function(mode) {
 };
 
 window.__emailComposeSave = async function() {
-  // Pull latest values from textareas (in case user typed without onclick triggering)
   var d = emailState.composeData;
-  if ($('composeHTML')) d.bodyHTML = $('composeHTML').value;
-  if ($('composePlain')) d.bodyPlain = $('composePlain').value;
   if ($('composeSubject')) d.subject = $('composeSubject').value;
   if ($('composePreview')) d.previewText = $('composePreview').value;
   if ($('composeRecipient')) d.recipientEmail = $('composeRecipient').value;
@@ -3526,20 +4342,59 @@ window.__emailComposeSave = async function() {
 
   // Validate
   if (!d.subject.trim()) { alert('Subject is required'); return; }
-  if (!d.bodyHTML.trim() && !d.bodyPlain.trim()) { alert('Body (HTML or plain text) is required'); return; }
+  var sections = emailState.builderSections || [];
+  if (sections.length === 0) { alert('Add at least one section to the email'); return; }
   if (!d.audience) { alert('Pick an audience'); return; }
   if (d.recipientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.recipientEmail)) {
     alert('Recipient email is not valid'); return;
+  }
+
+  // Required-field check on hero/cta sections
+  for (var i = 0; i < sections.length; i++) {
+    var s = sections[i];
+    var meta = sectionMeta(s.type);
+    for (var j = 0; j < meta.fields.length; j++) {
+      var f = meta.fields[j];
+      if (f.required) {
+        var v = getNestedValue(s.props || {}, f.key);
+        if (!v || (typeof v === 'string' && !v.trim())) {
+          alert('Section "' + meta.label + '" is missing required field: ' + f.label);
+          return;
+        }
+      }
+    }
   }
 
   var btn = $('composeSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; btn.style.opacity = '0.6'; }
 
   try {
+    // Step 1: render sections to HTML + plain via the render API
+    var renderRes = await fetch('/api/email-render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        sections: sections.map(function(s) { return { type: s.type, props: s.props || {} }; }),
+        previewText: d.previewText,
+        title: d.subject,
+      }),
+    });
+    var renderData = await renderRes.json();
+    if (!renderData.success) throw new Error(renderData.error || 'Render failed');
+
+    // Step 2: post to email-compose with rendered HTML + plain + sections JSON for round-tripping
+    var payload = Object.assign({}, d, {
+      clientId: state.profile.id,
+      bodyHTML: renderData.html,
+      bodyPlain: renderData.plainText,
+      sectionsJson: JSON.stringify(sections.map(function(s) { return { type: s.type, props: s.props || {} }; })),
+    });
+
     var r = await fetch('/api/email-compose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ clientId: state.profile.id }, d)),
+      body: JSON.stringify(payload),
     });
     var data = await r.json();
     if (!data.success) throw new Error(data.error || 'Save failed');
@@ -3551,6 +4406,10 @@ window.__emailComposeSave = async function() {
       audience: 'Client', audienceSegment: '', recipientEmail: '',
       scheduledSend: '', emailType: 'Newsletter',
     };
+    emailState.builderInitialised = false;
+    emailState.builderSections = null;
+    emailState.selectedSectionId = null;
+    emailState.previewHTML = '';
     loadEmails();  // refresh queue
   } catch (e) {
     alert('Save failed: ' + e.message);

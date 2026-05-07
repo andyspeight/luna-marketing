@@ -1081,7 +1081,19 @@ function drawEventsAdminInto(targetEl){
       h+=  '<button id="evt-verify-rerun" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body)">Re-verify all</button>';
     }
     h+=  '</div>';
+
+    // Discovery row — secondary action, smaller, with explanatory tooltip
+    h+=  '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--tg-border);display:flex;align-items:center;gap:14px;flex-wrap:wrap">';
+    h+=    '<div style="display:flex;align-items:center;gap:8px">';
+    h+=      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    h+=      '<div style="font-size:11px;color:var(--tg-text-secondary)"><span style="font-weight:600">Event discovery</span><span style="color:var(--tg-text-tertiary)"> · runs automatically on the 1st of each month</span></div>';
+    h+=    '</div>';
+    h+=    '<div style="flex:1;min-width:8px"></div>';
+    h+=    '<button id="evt-discover-start" style="height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--tg-font-body);display:inline-flex;align-items:center;gap:6px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run discovery now</button>';
+    h+=  '</div>';
+
     h+=  '<div id="evt-verify-progress" style="display:none;margin-top:14px"></div>';
+    h+=  '<div id="evt-discover-progress" style="display:none;margin-top:14px"></div>';
     h+='</div>';
   }
 
@@ -1332,7 +1344,134 @@ document.addEventListener('click',function(e){
     loadAdminEvents();
     return;
   }
+  if(e.target.closest('#evt-discover-start')){
+    if(confirm('Run event discovery now?\n\nThis searches the next 18 months for notable events not yet in your calendar — across sport, culture, business, royal/political, music, food & drink, and awareness days.\n\nIt takes 3–6 minutes to complete and costs roughly £1–£3 in AI charges. Continue?')){
+      runDiscovery();
+    }
+    return;
+  }
 });
+
+// Discovery driver — fires events-discover with mode=ui (SSO cookie auth),
+// shows a progress panel while it runs, then renders a summary.
+var evtDiscoverState={running:false};
+async function runDiscovery(){
+  if(evtDiscoverState.running)return;
+  evtDiscoverState.running=true;
+
+  var btn=$('evt-discover-start');
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';btn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Discovering...';}
+
+  var prog=$('evt-discover-progress');
+  if(prog){
+    prog.style.display='block';
+    prog.innerHTML='<div style="padding:12px 14px;background:rgba(0,180,216,0.04);border:1px solid rgba(0,180,216,0.18);border-radius:8px">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2" style="animation:tgSpin 1.5s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>'+
+      '<span style="font-size:12px;font-weight:600;color:var(--tg-text-primary)">Discovery running</span></div>'+
+      '<div style="font-size:11px;color:var(--tg-text-secondary);line-height:1.5">Searching 6 × 3-month windows across the next 18 months. Each window takes 30–60 seconds. This will run for a few minutes — please don\'t close the tab.</div>'+
+      '</div>';
+  }
+
+  // Inject keyframe for the spinner if we haven't already
+  if(!document.getElementById('tg-spin-keyframe')){
+    var style=document.createElement('style');
+    style.id='tg-spin-keyframe';
+    style.textContent='@keyframes tgSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+  }
+
+  try{
+    var res=await fetch('/api/events-discover?mode=ui',{
+      method:'POST',
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({})
+    });
+    var d=await res.json();
+
+    evtDiscoverState.running=false;
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run discovery now';}
+
+    if(!d.success){
+      if(prog){
+        prog.innerHTML='<div style="padding:12px 14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;font-size:12px;color:var(--tg-error)">Discovery failed: '+esc(d.error||'unknown error')+'</div>';
+      }
+      return;
+    }
+
+    renderDiscoverySummary(d);
+    // Reload pending list so newly-added events show up
+    loadAdminEvents();
+  }catch(err){
+    evtDiscoverState.running=false;
+    if(btn){btn.disabled=false;btn.style.opacity='';btn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run discovery now';}
+    if(prog){
+      prog.innerHTML='<div style="padding:12px 14px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:8px;font-size:12px;color:var(--tg-error)">Network error: '+esc(err.message)+'</div>';
+    }
+  }
+}
+
+function renderDiscoverySummary(d){
+  var prog=$('evt-discover-progress');if(!prog)return;
+  var written=d.written||0;
+  var proposed=d.proposed||0;
+  var existing=d.existingCount||0;
+  var verifyFired=d.verifyTrigger&&d.verifyTrigger.fired;
+  var durationMin=Math.round((d.durationMs||0)/60000*10)/10;
+
+  var h='<div style="padding:14px 16px;background:rgba(0,180,216,0.04);border:1px solid rgba(0,180,216,0.18);border-radius:8px">';
+
+  // Header
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  h+='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  h+='<span style="font-size:13px;font-weight:600;color:var(--tg-text-primary)">Discovery complete</span>';
+  h+='<span style="font-size:11px;color:var(--tg-text-tertiary);margin-left:auto">'+durationMin+' min</span>';
+  h+='</div>';
+
+  // Tile row
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px">';
+  var tiles=[
+    ['Already in DB',existing,'var(--tg-text-secondary)'],
+    ['Proposed',proposed,'var(--tg-accent-dark)'],
+    ['Added',written,written>0?'#16a34a':'var(--tg-text-tertiary)'],
+    ['Filtered (dupes)',proposed-written,'var(--tg-text-tertiary)']
+  ];
+  tiles.forEach(function(t){
+    h+='<div style="padding:10px 12px;border:1px solid var(--tg-border);border-radius:8px;background:var(--tg-bg-primary)"><div style="font-size:20px;font-weight:700;color:'+t[2]+';line-height:1">'+t[1]+'</div><div style="font-size:10px;color:var(--tg-text-tertiary);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">'+t[0]+'</div></div>';
+  });
+  h+='</div>';
+
+  // Per-window breakdown
+  if(d.windows&&d.windows.length){
+    h+='<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--tg-text-secondary);list-style:none">▸ Per-window results</summary>';
+    h+='<div style="margin-top:8px;font-size:11px;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">';
+    d.windows.forEach(function(w){
+      var icon=w.error?'✗':(w.rawCount>0?'✓':'·');
+      var color=w.error?'#dc2626':(w.rawCount>0?'#16a34a':'var(--tg-text-tertiary)');
+      h+='<div><span style="color:'+color+';font-weight:600">'+icon+'</span> '+esc(w.window)+' <span style="color:var(--tg-text-tertiary)">— '+(w.error?esc('error: '+w.error.slice(0,80)):w.rawCount+' event'+(w.rawCount===1?'':'s'))+'</span></div>';
+    });
+    h+='</div></details>';
+  }
+
+  // Verification status
+  if(written>0){
+    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--tg-bg-secondary);border-radius:6px;font-size:11px;color:var(--tg-text-secondary);line-height:1.5">';
+    if(verifyFired){
+      h+='<strong style="color:var(--tg-text-primary)">Verification triggered</strong> — the '+written+' new event'+(written===1?' is':'s are')+' now being verified in the background. Refresh in 5–10 minutes to see results.';
+    }else{
+      h+='<strong style="color:var(--tg-error)">Verification trigger failed</strong> — events are saved but not yet verified. Click <strong>Verify '+written+' unverified</strong> above to verify them now.';
+    }
+    h+='</div>';
+  }else if(proposed>0){
+    h+='<div style="margin-top:10px;font-size:11px;color:var(--tg-text-tertiary)">All proposed events were duplicates of existing entries. Nothing was added.</div>';
+  }else{
+    h+='<div style="margin-top:10px;font-size:11px;color:var(--tg-text-tertiary)">Discovery returned no new events — your calendar is fully populated for the next 18 months.</div>';
+  }
+
+  h+='</div>';
+  prog.innerHTML=h;
+}
+
 
 // Verify driver — chunked loop, polls /api/events-verify-batch until done.
 // Updates the progress panel live, then renders a post-run summary.

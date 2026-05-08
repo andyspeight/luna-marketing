@@ -1136,6 +1136,112 @@ select.email-builder-prop-input { cursor: pointer; height: 34px; }
 }
 .email-builder-prop-checkbox input { cursor: pointer; }
 
+/* ── Offer filter editor ─────────────────────────────────────── */
+.of-editor { display: flex; flex-direction: column; gap: 12px; }
+.of-loading { padding: 12px; color: var(--tg-text-tertiary); font-size: 13px; font-style: italic; }
+.of-row { display: flex; flex-direction: column; gap: 4px; }
+.of-label { font-size: 11px; font-weight: 700; color: var(--tg-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+.of-input {
+  width: 100%; min-height: 34px; padding: 0 10px;
+  border: 1px solid var(--tg-border); border-radius: var(--radius-sm);
+  font-family: var(--tg-font-body); font-size: 13px;
+  background: var(--tg-bg-primary); color: var(--tg-text-primary);
+  transition: border-color var(--duration-fast);
+}
+.of-input:focus { border-color: var(--tg-accent); outline: none; }
+select.of-input { cursor: pointer; height: 34px; }
+.of-help { font-size: 11px; color: var(--tg-text-tertiary); line-height: 1.4; margin-top: 2px; }
+
+.of-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.of-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 6px;
+  border: 1px solid var(--tg-border); border-radius: var(--radius-sm);
+  background: var(--tg-bg-primary); min-height: 36px;
+  cursor: text;
+}
+.of-chips:focus-within { border-color: var(--tg-accent); }
+.of-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 4px 3px 10px; border-radius: 999px;
+  background: var(--tg-bg-tertiary); color: var(--tg-text-primary);
+  font-size: 12px; font-weight: 500;
+}
+.of-chip > button {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: none; background: transparent; color: var(--tg-text-tertiary);
+  font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.of-chip > button:hover { background: var(--tg-error); color: #fff; }
+.of-chip-input {
+  flex: 1; min-width: 100px; border: none; outline: none;
+  background: transparent; color: var(--tg-text-primary);
+  font-size: 13px; padding: 4px 6px;
+}
+
+.of-suggestions {
+  position: relative; max-height: 240px; overflow-y: auto;
+  border: 1px solid var(--tg-border); border-radius: var(--radius-sm);
+  background: var(--tg-bg-primary); margin-top: 2px;
+  box-shadow: var(--shadow-sm);
+}
+.of-suggestion {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 10px; border: none; background: transparent;
+  text-align: left; cursor: pointer; font-size: 13px;
+  color: var(--tg-text-primary);
+  font-family: var(--tg-font-body);
+}
+.of-suggestion:hover { background: var(--tg-bg-secondary); }
+.of-suggestion-kind {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px;
+  background: var(--tg-bg-tertiary); color: var(--tg-text-tertiary);
+  flex-shrink: 0; min-width: 50px; text-align: center;
+}
+.of-kind-country { background: rgba(0,180,216,0.12); color: #0284c7; }
+.of-kind-city { background: rgba(168,85,247,0.12); color: #9333ea; }
+.of-kind-resort { background: rgba(245,158,11,0.12); color: #d97706; }
+.of-kind-airport { background: rgba(16,185,129,0.12); color: #059669; }
+.of-suggestion-label { color: var(--tg-text-primary); }
+
+.of-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.of-toggle {
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--tg-border); background: var(--tg-bg-primary);
+  color: var(--tg-text-secondary); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all var(--duration-fast);
+  font-family: var(--tg-font-body);
+}
+.of-toggle:hover { border-color: var(--tg-accent); }
+.of-toggle.is-on {
+  background: var(--tg-accent); border-color: var(--tg-accent); color: #fff;
+}
+
+.of-disclosure { margin-top: 4px; border-top: 1px dashed var(--tg-border-light); padding-top: 12px; }
+.of-disclosure-btn {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 8px 0; border: none; background: transparent;
+  color: var(--tg-text-secondary); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: left;
+  font-family: var(--tg-font-body);
+}
+.of-disclosure-chev { font-size: 9px; color: var(--tg-text-tertiary); width: 12px; }
+.of-disclosure-badge {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--tg-success); color: #fff; margin-left: 4px;
+}
+.of-disclosure-body { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+
+.of-summary {
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--tg-bg-secondary); border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--tg-text-secondary); line-height: 1.5;
+  font-style: italic;
+}
+
 /* Preview */
 .email-builder-preview-mode {
   width: 28px; height: 24px;
@@ -4034,8 +4140,7 @@ var SECTION_META = {
     label: 'Offer · Single hero',
     description: 'One full-width offer with image, price and CTA — the default block',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'e.g. {"destinations":["TFS"],"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'fetch', label: 'Pick the offer', type: 'offer-filter' },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
       { key: 'headline', label: 'Headline override (optional)', type: 'text', maxLength: 120 },
       { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 30 },
@@ -4045,8 +4150,7 @@ var SECTION_META = {
     label: 'Offer · Three-up grid',
     description: 'Three offers side by side, stacks on mobile — workhorse for newsletters',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'e.g. {"destinations":["GR"],"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'fetch', label: 'Pick the offers', type: 'offer-filter' },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
       { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
       { key: 'ctaText', label: 'Per-card link text', type: 'text', maxLength: 16 },
@@ -4056,8 +4160,7 @@ var SECTION_META = {
     label: 'Offer · Last-minute urgency',
     description: 'Single offer with urgency strip and price-drop callout — highest converter',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'Recommend {"sort":"departure:asc","DatesMax":14} for genuine last-minute' },
+      { key: 'fetch', label: 'Pick the offer', type: 'offer-filter' },
       { key: 'urgencyText', label: 'Urgency strip text', type: 'text', maxLength: 60 },
       { key: 'scarcityText', label: 'Scarcity strip (right)', type: 'text', maxLength: 30 },
       { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 20 },
@@ -4067,8 +4170,7 @@ var SECTION_META = {
     label: 'Offer · Compact list',
     description: 'Stacked rows, image left, details right — bombproof across email clients',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'e.g. {"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'fetch', label: 'Pick the offers', type: 'offer-filter' },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
       { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
       { key: 'maxItems', label: 'Max offers shown', type: 'select',
@@ -4079,8 +4181,7 @@ var SECTION_META = {
     label: 'Offer · Two-up split',
     description: 'Two offers side by side — roomy and easier to digest than three-up',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'e.g. {"destinations":["ES","PT"]}' },
+      { key: 'fetch', label: 'Pick the offers', type: 'offer-filter' },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
       { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
     ],
@@ -4089,8 +4190,7 @@ var SECTION_META = {
     label: 'Offer · Editorial feature',
     description: 'Big image, narrative paragraph — for nurture, not pushy selling',
     fields: [
-      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
-        help: 'e.g. {"minRating":5,"sort":"price:desc"} for premium picks' },
+      { key: 'fetch', label: 'Pick the offer', type: 'offer-filter' },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
       { key: 'headline', label: 'Headline override (optional)', type: 'text', maxLength: 120 },
       { key: 'body', label: 'Editorial paragraph', type: 'longText', maxLength: 600 },
@@ -4172,15 +4272,11 @@ function renderPropertiesForm(section) {
     h += '</label>';
     if (field.type === 'longText') {
       h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">' + esc(val) + '</textarea>';
-    } else if (field.type === 'json') {
-      // JSON object editor — stores the parsed object on props but the
-      // textarea shows pretty-printed JSON. On blur we parse + validate.
-      var jsonStr = '';
-      try {
-        if (val && typeof val === 'object') jsonStr = JSON.stringify(val, null, 2);
-        else if (typeof val === 'string') jsonStr = val;
-      } catch (e) { jsonStr = ''; }
-      h += '<textarea id="' + fid + '" rows="4" placeholder="{ }" class="email-builder-prop-input" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;" onblur="window.__builderUpdateJsonField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this)">' + esc(jsonStr) + '</textarea>';
+    } else if (field.type === 'offer-filter') {
+      // The proper offer-filter editor — chips, dropdowns, sliders.
+      // Renders into a host div the script then hydrates so we can add
+      // listeners safely without HTML-injecting handlers.
+      h += renderOfferFilter(section, field, val);
     } else if (field.type === 'select') {
       h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
       field.options.forEach(function(o) {
@@ -4240,6 +4336,10 @@ function attachBuilderHandlers() {
       window.__builderReorderSection(srcId, dstId, dropAfter);
     });
   });
+
+  // Hydrate the offer-filter editor (chips, dropdowns, disclosure).
+  // No-op if the selected section isn't an offers-* section.
+  if (typeof hydrateOfferFilters === 'function') hydrateOfferFilters();
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -4335,6 +4435,717 @@ window.__builderUpdateJsonField = function(sectionId, key, el) {
     el.title = 'Invalid JSON: ' + e.message;
   }
 };
+
+// ═════════════════════════════════════════════════════════════
+// OFFER FILTER EDITOR
+// ═════════════════════════════════════════════════════════════
+//
+// A proper structured editor that produces a Travelify-spec filter
+// object on the section's props. No JSON, no destination codes to
+// remember, no field names to look up.
+//
+// Six controls:
+//   • Quick start preset (collapses all the choices into one click)
+//   • Destinations chip multi-select (typeahead from the destination DB)
+//   • Departing from chip multi-select (UK airports + GB)
+//   • Trip type (Any / Hotels / Packages / Flights)
+//   • Sort (Cheapest / Most expensive / Random)
+//   • Filters disclosure: rating, board, cabin, budget, duration, date window
+//
+// State lives on section.props.fetch. Every change calls
+// markFilterChanged() which redraws the chip rows + previews.
+//
+// UK airport list mirrors the offers widget editor.
+
+var UK_AIRPORTS_BUILDER = [
+  { code: 'LHR', label: 'London — Heathrow' },
+  { code: 'LGW', label: 'London — Gatwick' },
+  { code: 'STN', label: 'London — Stansted' },
+  { code: 'LTN', label: 'London — Luton' },
+  { code: 'LCY', label: 'London — City' },
+  { code: 'SEN', label: 'Southend' },
+  { code: 'MAN', label: 'Manchester' },
+  { code: 'BHX', label: 'Birmingham' },
+  { code: 'EMA', label: 'East Midlands' },
+  { code: 'EDI', label: 'Edinburgh' },
+  { code: 'GLA', label: 'Glasgow' },
+  { code: 'PIK', label: 'Glasgow — Prestwick' },
+  { code: 'NCL', label: 'Newcastle' },
+  { code: 'LBA', label: 'Leeds Bradford' },
+  { code: 'BRS', label: 'Bristol' },
+  { code: 'CWL', label: 'Cardiff' },
+  { code: 'LPL', label: 'Liverpool' },
+  { code: 'BFS', label: 'Belfast Intl' },
+  { code: 'BHD', label: 'Belfast City' },
+  { code: 'ABZ', label: 'Aberdeen' },
+  { code: 'INV', label: 'Inverness' },
+  { code: 'SOU', label: 'Southampton' },
+  { code: 'EXT', label: 'Exeter' },
+  { code: 'BOH', label: 'Bournemouth' },
+  { code: 'NWI', label: 'Norwich' },
+  { code: 'HUY', label: 'Humberside' },
+  { code: 'DUB', label: 'Dublin' },
+  { code: 'ORK', label: 'Cork' },
+  { code: 'JER', label: 'Jersey' },
+  { code: 'GCI', label: 'Guernsey' },
+  { code: 'GB',  label: 'Any UK airport' },
+];
+
+// Quick-start presets. Click one and the form populates accordingly.
+// "Custom" means none of the presets describe what they want — they
+// proceed to the controls below.
+var OFFER_PRESETS = [
+  {
+    id: 'cheapest-anywhere',
+    label: 'Cheapest first, anywhere',
+    desc: 'No filters — just the lowest prices',
+    config: { sort: 'price:asc' },
+  },
+  {
+    id: 'last-minute',
+    label: 'Last-minute departures',
+    desc: 'Going in the next 30 days, cheapest first',
+    config: { DatesMin: 1, DatesMax: 30, sort: 'price:asc' },
+  },
+  {
+    id: 'family-beach',
+    label: 'Family beach holidays',
+    desc: 'Spain, Greece, Turkey · packages · under £1,500pp',
+    config: {
+      type: 'BothPackages',
+      destinations: ['ES', 'GR', 'TR'],
+      origins: ['GB'],
+      budgetMax: 1500,
+      durationMax: 14,
+      sort: 'price:asc',
+    },
+  },
+  {
+    id: 'all-inclusive-greece',
+    label: 'All-inclusive Greek packages',
+    desc: 'Operator-named packages to Greece, AI only',
+    config: {
+      type: 'PackageHolidays',
+      destinations: ['GR'],
+      boardBases: ['AllInclusive'],
+      origins: ['GB'],
+      sort: 'price:asc',
+    },
+  },
+  {
+    id: 'luxury',
+    label: 'Luxury escapes',
+    desc: '5-star hotels, sorted by highest price',
+    config: { type: 'Accommodation', ratingMin: 5, sort: 'price:desc' },
+  },
+  {
+    id: 'cheap-flights',
+    label: 'Cheap flights from UK majors',
+    desc: 'Flights from LGW/MAN/STN to Europe',
+    config: {
+      type: 'Flights',
+      origins: ['LGW', 'MAN', 'STN'],
+      destinations: ['ES', 'IT', 'GR', 'PT'],
+      sort: 'price:asc',
+    },
+  },
+];
+
+// Destination typeahead cache — populated lazily on first focus
+var destSearchCache = Object.create(null);
+var destSearchInflight = Object.create(null);
+var destSearchFailed = false;
+
+function offerFilterFid(section, suffix) {
+  return 'of_' + section.id + '_' + suffix;
+}
+
+function getFilter(section) {
+  if (!section.props) section.props = {};
+  if (!section.props.fetch || typeof section.props.fetch !== 'object') {
+    section.props.fetch = {};
+  }
+  return section.props.fetch;
+}
+
+function renderOfferFilter(section, field, val) {
+  var f = (val && typeof val === 'object') ? val : {};
+  var hostId = offerFilterFid(section, 'host');
+  // Render an empty host — the script populates it post-mount via
+  // hydrateOfferFilters() below. This avoids escaping nightmares with
+  // chip lists and inline event handlers.
+  var h = '';
+  h += '<div class="of-editor" data-section-id="' + esc(section.id) + '" id="' + hostId + '">';
+  h += '<div class="of-loading">Loading filter editor…</div>';
+  h += '</div>';
+  return h;
+}
+
+// Build the editor DOM into a host div.
+function buildOfferFilterDom(host, section) {
+  var f = getFilter(section);
+
+  host.innerHTML = '';
+  host.classList.add('of-editor-ready');
+
+  // ── Quick-start preset row ─────────────────────────────────────
+  var presetWrap = document.createElement('div');
+  presetWrap.className = 'of-row';
+  var presetLabel = document.createElement('label');
+  presetLabel.className = 'of-label';
+  presetLabel.textContent = 'Quick start';
+  presetWrap.appendChild(presetLabel);
+
+  var presetSelect = document.createElement('select');
+  presetSelect.className = 'of-input';
+  var blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Custom — choose your own filters below';
+  presetSelect.appendChild(blank);
+  OFFER_PRESETS.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.label;
+    opt.title = p.desc;
+    presetSelect.appendChild(opt);
+  });
+  presetSelect.addEventListener('change', function() {
+    var preset = OFFER_PRESETS.find(function(p) { return p.id === presetSelect.value; });
+    if (!preset) return;
+    // Replace the entire filter object with the preset's config — this
+    // avoids leaving stale fields from a previous preset/custom mix.
+    section.props.fetch = JSON.parse(JSON.stringify(preset.config));
+    // Re-render the whole editor to reflect the new state
+    buildOfferFilterDom(host, section);
+    triggerFilterPreview(section.id);
+  });
+  presetWrap.appendChild(presetSelect);
+  var presetHelp = document.createElement('div');
+  presetHelp.className = 'of-help';
+  presetHelp.textContent = 'Pick a starter, then tweak the controls below.';
+  presetWrap.appendChild(presetHelp);
+  host.appendChild(presetWrap);
+
+  // ── Destinations chips ─────────────────────────────────────────
+  host.appendChild(buildChipRow({
+    section: section,
+    listKey: 'destinations',
+    label: 'Where to',
+    help: 'Type a country, city or resort name. Leave empty for anywhere.',
+    placeholder: 'Tenerife, Greece, Algarve…',
+    suggestionFetcher: fetchDestinationSuggestions,
+    valueFromSuggestion: function(s) { return s.value; },
+    labelFromValue: function(v) { return v; },
+  }));
+
+  // ── Origins chips (airport picker) ─────────────────────────────
+  host.appendChild(buildChipRow({
+    section: section,
+    listKey: 'origins',
+    label: 'Departing from',
+    help: 'Pick UK airports. Leave empty for any UK airport.',
+    placeholder: 'Gatwick, Manchester…',
+    suggestionFetcher: function(q) {
+      var needle = q.toLowerCase();
+      return Promise.resolve(
+        UK_AIRPORTS_BUILDER
+          .filter(function(a) {
+            return a.label.toLowerCase().includes(needle) ||
+                   a.code.toLowerCase().includes(needle);
+          })
+          .slice(0, 8)
+          .map(function(a) {
+            return { label: a.label + ' (' + a.code + ')', value: a.code, kind: 'airport' };
+          })
+      );
+    },
+    valueFromSuggestion: function(s) { return s.value; },
+    labelFromValue: function(v) {
+      var match = UK_AIRPORTS_BUILDER.find(function(a) { return a.code === v; });
+      return match ? match.label + ' (' + v + ')' : v;
+    },
+  }));
+
+  // ── Trip type ──────────────────────────────────────────────────
+  host.appendChild(buildSelectRow({
+    section: section, listKey: 'type', label: 'Trip type',
+    options: [
+      { value: '', label: 'Any (mix of everything)' },
+      { value: 'Accommodation', label: 'Hotels only' },
+      { value: 'DynamicPackages', label: 'Dynamic packages (flight + hotel)' },
+      { value: 'PackageHolidays', label: 'Package holidays (operator)' },
+      { value: 'BothPackages', label: 'Both package types' },
+      { value: 'Flights', label: 'Flights only' },
+    ],
+  }));
+
+  // ── Sort ───────────────────────────────────────────────────────
+  host.appendChild(buildSelectRow({
+    section: section, listKey: 'sort', label: 'Sort by',
+    options: [
+      { value: 'price:asc', label: 'Cheapest first' },
+      { value: 'price:desc', label: 'Most expensive first' },
+      { value: 'random', label: 'Random' },
+    ],
+    defaultValue: 'price:asc',
+  }));
+
+  // ── Advanced filters disclosure ────────────────────────────────
+  var disclosureWrap = document.createElement('div');
+  disclosureWrap.className = 'of-disclosure';
+  var hasAdvanced =
+    (typeof f.ratingMin === 'number' && f.ratingMin > 0) ||
+    (Array.isArray(f.boardBases) && f.boardBases.length) ||
+    (Array.isArray(f.cabinClasses) && f.cabinClasses.length) ||
+    (typeof f.budgetMin === 'number' && f.budgetMin > 0) ||
+    (typeof f.budgetMax === 'number' && f.budgetMax > 0) ||
+    (typeof f.durationMin === 'number' && f.durationMin > 0) ||
+    (typeof f.durationMax === 'number' && f.durationMax > 0) ||
+    (typeof f.DatesMin === 'number' && f.DatesMin !== 7) ||
+    (typeof f.DatesMax === 'number' && f.DatesMax !== 90);
+
+  var disclosureBtn = document.createElement('button');
+  disclosureBtn.type = 'button';
+  disclosureBtn.className = 'of-disclosure-btn';
+  disclosureBtn.innerHTML = '<span class="of-disclosure-chev">' + (hasAdvanced ? '▼' : '▶') + '</span> More filters' + (hasAdvanced ? ' <span class="of-disclosure-badge">on</span>' : '');
+  disclosureWrap.appendChild(disclosureBtn);
+
+  var disclosureBody = document.createElement('div');
+  disclosureBody.className = 'of-disclosure-body';
+  disclosureBody.style.display = hasAdvanced ? '' : 'none';
+
+  // Min star rating (hotels only)
+  disclosureBody.appendChild(buildSelectRow({
+    section: section, listKey: 'ratingMin', label: 'Minimum star rating',
+    options: [
+      { value: '', label: 'Any rating' },
+      { value: '3', label: '3 stars and up' },
+      { value: '4', label: '4 stars and up' },
+      { value: '5', label: '5 stars only' },
+    ],
+    coerce: 'number',
+    help: 'Hotels only. Ignored for flight-only.',
+  }));
+
+  // Board basis (multi-select via chips for consistency, but small list)
+  disclosureBody.appendChild(buildMultiSelectRow({
+    section: section, listKey: 'boardBases', label: 'Board basis',
+    options: [
+      { value: 'RoomOnly', label: 'Room only' },
+      { value: 'BedAndBreakfast', label: 'B&B' },
+      { value: 'HalfBoard', label: 'Half board' },
+      { value: 'FullBoard', label: 'Full board' },
+      { value: 'AllInclusive', label: 'All inclusive' },
+      { value: 'AllInclusivePlus', label: 'All inclusive plus' },
+    ],
+    help: 'Pick one or more. Empty = any board basis.',
+  }));
+
+  // Cabin class
+  disclosureBody.appendChild(buildMultiSelectRow({
+    section: section, listKey: 'cabinClasses', label: 'Cabin class',
+    options: [
+      { value: 'Economy', label: 'Economy' },
+      { value: 'PremiumEconomy', label: 'Premium economy' },
+      { value: 'Business', label: 'Business' },
+      { value: 'First', label: 'First' },
+    ],
+    help: 'Flights and packages only. Empty = any cabin.',
+  }));
+
+  // Budget — two number inputs side by side
+  disclosureBody.appendChild(buildNumberPairRow({
+    section: section,
+    leftKey: 'budgetMin', leftLabel: 'Min price (£pp)',
+    rightKey: 'budgetMax', rightLabel: 'Max price (£pp)',
+    help: 'Per person. Leave empty for no limit.',
+  }));
+
+  // Duration
+  disclosureBody.appendChild(buildNumberPairRow({
+    section: section,
+    leftKey: 'durationMin', leftLabel: 'Min nights',
+    rightKey: 'durationMax', rightLabel: 'Max nights',
+    help: 'Hotels and packages only.',
+  }));
+
+  // Date window
+  disclosureBody.appendChild(buildNumberPairRow({
+    section: section,
+    leftKey: 'DatesMin', leftLabel: 'Departing from (days ahead)',
+    rightKey: 'DatesMax', rightLabel: 'Departing up to (days ahead)',
+    help: 'Rolling window from today. Default 7–90.',
+    defaults: { DatesMin: 7, DatesMax: 90 },
+  }));
+
+  disclosureWrap.appendChild(disclosureBody);
+  disclosureBtn.addEventListener('click', function() {
+    var open = disclosureBody.style.display !== 'none';
+    disclosureBody.style.display = open ? 'none' : '';
+    var chev = disclosureBtn.querySelector('.of-disclosure-chev');
+    if (chev) chev.textContent = open ? '▶' : '▼';
+  });
+  host.appendChild(disclosureWrap);
+
+  // ── Live summary footer ────────────────────────────────────────
+  var summaryRow = document.createElement('div');
+  summaryRow.className = 'of-summary';
+  summaryRow.id = offerFilterFid(section, 'summary');
+  summaryRow.textContent = describeFilter(f);
+  host.appendChild(summaryRow);
+}
+
+function describeFilter(f) {
+  var bits = [];
+  if (Array.isArray(f.destinations) && f.destinations.length) {
+    bits.push('to ' + f.destinations.slice(0, 3).join(', ') + (f.destinations.length > 3 ? '…' : ''));
+  } else {
+    bits.push('to anywhere');
+  }
+  if (Array.isArray(f.origins) && f.origins.length) {
+    bits.push('from ' + f.origins.slice(0, 3).join(', ') + (f.origins.length > 3 ? '…' : ''));
+  }
+  if (f.type) {
+    var typeLabels = {
+      Accommodation: 'hotels', Flights: 'flights',
+      DynamicPackages: 'dynamic packages', PackageHolidays: 'operator packages',
+      BothPackages: 'packages', Any: 'anything',
+    };
+    if (typeLabels[f.type]) bits.push('· ' + typeLabels[f.type]);
+  }
+  if (f.ratingMin) bits.push('· ' + f.ratingMin + '★+');
+  if (f.budgetMax) bits.push('· up to £' + f.budgetMax + 'pp');
+  if (f.sort === 'price:desc') bits.push('· high to low');
+  if (f.sort === 'random') bits.push('· randomised');
+  return 'Pulling: ' + bits.join(' ');
+}
+
+// ── Generic chip row (used by destinations + origins) ───────────────
+function buildChipRow(opts) {
+  var section = opts.section;
+  var listKey = opts.listKey;
+  var f = getFilter(section);
+  if (!Array.isArray(f[listKey])) f[listKey] = [];
+
+  var wrap = document.createElement('div');
+  wrap.className = 'of-row';
+
+  var label = document.createElement('label');
+  label.className = 'of-label';
+  label.textContent = opts.label;
+  wrap.appendChild(label);
+
+  var chipsBox = document.createElement('div');
+  chipsBox.className = 'of-chips';
+  var input = document.createElement('input');
+  input.className = 'of-chip-input';
+  input.type = 'text';
+  input.placeholder = opts.placeholder || '';
+  input.autocomplete = 'off';
+
+  function refresh() {
+    chipsBox.querySelectorAll('.of-chip').forEach(function(c) { c.remove(); });
+    f[listKey].forEach(function(v, i) {
+      var chip = document.createElement('span');
+      chip.className = 'of-chip';
+      var span = document.createElement('span');
+      span.textContent = opts.labelFromValue(v);
+      chip.appendChild(span);
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'Remove ' + v);
+      x.textContent = '×';
+      x.addEventListener('click', function() {
+        f[listKey].splice(i, 1);
+        refresh();
+        triggerFilterPreview(section.id);
+      });
+      chip.appendChild(x);
+      chipsBox.insertBefore(chip, input);
+    });
+  }
+
+  // Suggestion dropdown
+  var sugBox = document.createElement('div');
+  sugBox.className = 'of-suggestions';
+  sugBox.hidden = true;
+
+  function commit(value) {
+    if (!value) return;
+    if (!f[listKey].includes(value)) f[listKey].push(value);
+    input.value = '';
+    sugBox.hidden = true;
+    sugBox.innerHTML = '';
+    refresh();
+    triggerFilterPreview(section.id);
+  }
+
+  function showSuggestions(items) {
+    sugBox.innerHTML = '';
+    if (!items || !items.length) {
+      sugBox.hidden = true;
+      return;
+    }
+    items.forEach(function(item) {
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'of-suggestion';
+      var kindEl = document.createElement('span');
+      kindEl.className = 'of-suggestion-kind of-kind-' + (item.kind || 'x');
+      kindEl.textContent =
+        item.kind === 'country' ? 'Country' :
+        item.kind === 'city' ? 'City' :
+        item.kind === 'resort' ? 'Resort' :
+        item.kind === 'airport' ? 'Airport' : '';
+      var labelEl = document.createElement('span');
+      labelEl.className = 'of-suggestion-label';
+      labelEl.textContent = item.label;
+      row.appendChild(kindEl);
+      row.appendChild(labelEl);
+      row.addEventListener('mousedown', function(e) {
+        // mousedown not click — prevents the input's blur from firing first
+        e.preventDefault();
+        commit(opts.valueFromSuggestion(item));
+      });
+      sugBox.appendChild(row);
+    });
+    sugBox.hidden = false;
+  }
+
+  var debounceTimer = null;
+  input.addEventListener('input', function() {
+    var q = input.value.trim();
+    if (!q) {
+      sugBox.hidden = true;
+      return;
+    }
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function() {
+      Promise.resolve(opts.suggestionFetcher(q)).then(showSuggestions).catch(function() {
+        sugBox.hidden = true;
+      });
+    }, 150);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // If there's a top suggestion, take it; else use the raw input
+      var firstSug = sugBox.querySelector('.of-suggestion');
+      if (firstSug) firstSug.dispatchEvent(new MouseEvent('mousedown'));
+      else if (input.value.trim()) commit(input.value.trim().toUpperCase());
+    } else if (e.key === 'Backspace' && !input.value && f[listKey].length) {
+      f[listKey].pop();
+      refresh();
+      triggerFilterPreview(section.id);
+    } else if (e.key === 'Escape') {
+      sugBox.hidden = true;
+    }
+  });
+  input.addEventListener('blur', function() {
+    // Defer hide so click on suggestion lands first
+    setTimeout(function() { sugBox.hidden = true; }, 200);
+  });
+
+  chipsBox.appendChild(input);
+  wrap.appendChild(chipsBox);
+  wrap.appendChild(sugBox);
+
+  if (opts.help) {
+    var help = document.createElement('div');
+    help.className = 'of-help';
+    help.textContent = opts.help;
+    wrap.appendChild(help);
+  }
+
+  refresh();
+  return wrap;
+}
+
+// ── Single-select dropdown row ─────────────────────────────────────
+function buildSelectRow(opts) {
+  var section = opts.section;
+  var f = getFilter(section);
+  var current = f[opts.listKey];
+  if (current === undefined || current === null) current = opts.defaultValue || '';
+
+  var wrap = document.createElement('div');
+  wrap.className = 'of-row';
+  var label = document.createElement('label');
+  label.className = 'of-label';
+  label.textContent = opts.label;
+  wrap.appendChild(label);
+
+  var sel = document.createElement('select');
+  sel.className = 'of-input';
+  opts.options.forEach(function(o) {
+    var op = document.createElement('option');
+    op.value = o.value;
+    op.textContent = o.label;
+    if (String(current) === String(o.value)) op.selected = true;
+    sel.appendChild(op);
+  });
+  sel.addEventListener('change', function() {
+    var v = sel.value;
+    if (v === '') {
+      delete f[opts.listKey];
+    } else if (opts.coerce === 'number') {
+      var n = parseFloat(v);
+      if (isFinite(n) && n > 0) f[opts.listKey] = n;
+      else delete f[opts.listKey];
+    } else {
+      f[opts.listKey] = v;
+    }
+    triggerFilterPreview(section.id);
+  });
+  wrap.appendChild(sel);
+  if (opts.help) {
+    var help = document.createElement('div');
+    help.className = 'of-help';
+    help.textContent = opts.help;
+    wrap.appendChild(help);
+  }
+  return wrap;
+}
+
+// ── Multi-select toggle row ────────────────────────────────────────
+function buildMultiSelectRow(opts) {
+  var section = opts.section;
+  var f = getFilter(section);
+  if (!Array.isArray(f[opts.listKey])) f[opts.listKey] = [];
+
+  var wrap = document.createElement('div');
+  wrap.className = 'of-row';
+  var label = document.createElement('label');
+  label.className = 'of-label';
+  label.textContent = opts.label;
+  wrap.appendChild(label);
+
+  var togGrid = document.createElement('div');
+  togGrid.className = 'of-toggles';
+  opts.options.forEach(function(o) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'of-toggle' + (f[opts.listKey].includes(o.value) ? ' is-on' : '');
+    btn.textContent = o.label;
+    btn.addEventListener('click', function() {
+      var idx = f[opts.listKey].indexOf(o.value);
+      if (idx >= 0) f[opts.listKey].splice(idx, 1);
+      else f[opts.listKey].push(o.value);
+      // Clear key entirely if empty so we don't send []
+      if (f[opts.listKey].length === 0) delete f[opts.listKey];
+      btn.classList.toggle('is-on');
+      triggerFilterPreview(section.id);
+    });
+    togGrid.appendChild(btn);
+  });
+  wrap.appendChild(togGrid);
+  if (opts.help) {
+    var help = document.createElement('div');
+    help.className = 'of-help';
+    help.textContent = opts.help;
+    wrap.appendChild(help);
+  }
+  return wrap;
+}
+
+// ── Number-pair row (min/max) ──────────────────────────────────────
+function buildNumberPairRow(opts) {
+  var section = opts.section;
+  var f = getFilter(section);
+  var defaults = opts.defaults || {};
+
+  var wrap = document.createElement('div');
+  wrap.className = 'of-row';
+
+  var rowLabel = document.createElement('label');
+  rowLabel.className = 'of-label';
+  rowLabel.textContent = opts.leftLabel.replace(/\s*\(.+\)\s*$/, '') + ' / ' + opts.rightLabel.replace(/\s*\(.+\)\s*$/, '');
+  wrap.appendChild(rowLabel);
+
+  function makeInput(key, placeholder) {
+    var inp = document.createElement('input');
+    inp.type = 'number';
+    inp.min = '0';
+    inp.placeholder = placeholder;
+    inp.className = 'of-input';
+    var current = f[key];
+    if (current === undefined && defaults[key] !== undefined) current = defaults[key];
+    if (typeof current === 'number') inp.value = String(current);
+    inp.addEventListener('change', function() {
+      var raw = inp.value.trim();
+      if (raw === '') {
+        delete f[key];
+      } else {
+        var n = parseInt(raw, 10);
+        if (isFinite(n) && n >= 0) f[key] = n;
+        else delete f[key];
+      }
+      triggerFilterPreview(section.id);
+    });
+    return inp;
+  }
+
+  var pair = document.createElement('div');
+  pair.className = 'of-pair';
+  pair.appendChild(makeInput(opts.leftKey, opts.leftLabel));
+  pair.appendChild(makeInput(opts.rightKey, opts.rightLabel));
+  wrap.appendChild(pair);
+
+  if (opts.help) {
+    var help = document.createElement('div');
+    help.className = 'of-help';
+    help.textContent = opts.help;
+    wrap.appendChild(help);
+  }
+  return wrap;
+}
+
+// ── Destination typeahead — hits /api/destination-search ───────────
+function fetchDestinationSuggestions(q) {
+  if (destSearchFailed) {
+    // Endpoint dead — fall back to raw uppercase commit only
+    return Promise.resolve([]);
+  }
+  if (destSearchCache[q]) return Promise.resolve(destSearchCache[q]);
+  if (destSearchInflight[q]) return destSearchInflight[q];
+  var p = fetch('/api/destination-search?q=' + encodeURIComponent(q))
+    .then(function(r) { return r.ok ? r.json() : { results: [] }; })
+    .then(function(data) {
+      var results = (data && Array.isArray(data.results)) ? data.results : [];
+      destSearchCache[q] = results;
+      delete destSearchInflight[q];
+      return results;
+    })
+    .catch(function() {
+      destSearchFailed = true; // give up gracefully — chip input still works as plain text
+      delete destSearchInflight[q];
+      return [];
+    });
+  destSearchInflight[q] = p;
+  return p;
+}
+
+// Called by every offer-filter control after a change. Updates the
+// summary line, the section list summary, and triggers the preview.
+function triggerFilterPreview(sectionId) {
+  var section = emailState.builderSections.find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+  var f = getFilter(section);
+  var sumEl = document.getElementById(offerFilterFid(section, 'summary'));
+  if (sumEl) sumEl.textContent = describeFilter(f);
+  updateSectionSummaryInDOM(sectionId);
+  window.__builderPreviewDebounced();
+}
+
+// Hydrate every offer-filter host on the page. Called after the
+// properties form is rendered.
+function hydrateOfferFilters() {
+  document.querySelectorAll('.of-editor:not(.of-editor-ready)').forEach(function(host) {
+    var sectionId = host.getAttribute('data-section-id');
+    var section = emailState.builderSections.find(function(s) { return s.id === sectionId; });
+    if (section) buildOfferFilterDom(host, section);
+  });
+}
 
 function updateSectionSummaryInDOM(sectionId) {
   var section = emailState.builderSections.find(function(s) { return s.id === sectionId; });
@@ -4457,7 +5268,7 @@ function defaultPropsForType(type) {
     // ── Offer sections ─────────────────────────────────────────────
     case 'offers-hero': return { fetch: {}, eyebrow: 'Featured', ctaText: 'View this trip' };
     case 'offers-three-up': return { fetch: {}, eyebrow: 'Handpicked this week', heading: "Three you'll love", ctaText: 'View' };
-    case 'offers-urgency': return { fetch: { sort: 'departure:asc', DatesMax: 14 }, urgencyText: 'Last minute · departs soon', scarcityText: '', ctaText: 'Book now' };
+    case 'offers-urgency': return { fetch: { DatesMin: 1, DatesMax: 14, sort: 'price:asc' }, urgencyText: 'Last minute · departs soon', scarcityText: '', ctaText: 'Book now' };
     case 'offers-list': return { fetch: {}, eyebrow: 'Your digest', heading: 'Trips worth a look', maxItems: '4' };
     case 'offers-two-up': return { fetch: {}, eyebrow: '', heading: '' };
     case 'offers-editorial': return { fetch: {}, eyebrow: "Editor's Choice", body: '', ctaText: 'Read more · book' };

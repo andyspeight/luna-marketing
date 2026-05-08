@@ -1,11 +1,16 @@
 // api/email-render.js
-// Day C — Email Suite v2
+// Day C — Email Suite v2 + Offers integration (May 2026)
 //
 // Renders an array of section JSON to email HTML.
 // Used by:
 //   - The compose builder UI (live preview as you edit)
 //   - email-send-now (renders before sending)
 //   - The (currently paused) email-cron (will use this when re-enabled)
+//
+// Offer sections (offers-hero, offers-three-up, offers-urgency, offers-list,
+// offers-two-up, offers-editorial) trigger an async pre-render step that
+// fetches live offers from the tg-widgets proxy. The hand-rolled renderer
+// itself remains synchronous.
 //
 // POST /api/email-render
 // Body: {
@@ -20,6 +25,7 @@
 // Returns: { success, html, plainText, sectionsCount, warnings, errors }
 
 const { renderEmail } = require("../lib/email-renderer");
+const { prepareSections } = require("../lib/email-render-prepare");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -122,8 +128,16 @@ module.exports = async (req, res) => {
 
     const unsubUrl = buildUnsubUrl(unsubToken);
 
+    // ── PREPARE STEP — async fetch for offer-* sections ─────────────
+    // Hydrates props.offers on every offers-* section. Other sections pass
+    // through untouched. If the proxy is down or returns nothing, sections
+    // render their empty-state row instead of failing the whole email.
+    const { sections: hydratedSections, warnings: prepWarnings } =
+      await prepareSections(sections);
+
+    // ── RENDER STEP — synchronous, exactly as before ────────────────
     const result = renderEmail({
-      sections,
+      sections: hydratedSections,
       previewText: previewText || "",
       title: title || "Travelgenix",
       unsubUrl,
@@ -134,7 +148,7 @@ module.exports = async (req, res) => {
       return res.status(500).json({
         error: "Render failed",
         details: result.errors,
-        warnings: result.warnings,
+        warnings: [...prepWarnings, ...result.warnings],
       });
     }
 
@@ -142,8 +156,8 @@ module.exports = async (req, res) => {
       success: true,
       html: result.html,
       plainText: result.plainText,
-      sectionsCount: sections.length,
-      warnings: result.warnings,
+      sectionsCount: hydratedSections.length,
+      warnings: [...prepWarnings, ...result.warnings],
     });
   } catch (e) {
     console.error("[email-render] error:", e);

@@ -3852,6 +3852,13 @@ function drawComposeForm() {
     { type: 'two-column', icon: '<rect x="2" y="4" width="9" height="16" rx="1"/><rect x="13" y="4" width="9" height="16" rx="1"/>' },
     { type: 'cta', icon: '<rect x="5" y="9" width="14" height="6" rx="3"/>' },
     { type: 'divider', icon: '<line x1="3" y1="12" x2="21" y2="12"/>' },
+    // ── Offer sections (May 2026) ───────────────────────────────────────
+    { type: 'offers-hero', icon: '<rect x="2" y="3" width="20" height="10" rx="1"/><circle cx="7" cy="7" r="1.5"/><line x1="4" y1="17" x2="14" y2="17"/><rect x="16" y="16" width="6" height="3" rx="1"/>' },
+    { type: 'offers-three-up', icon: '<rect x="2" y="5" width="6" height="14" rx="1"/><rect x="9" y="5" width="6" height="14" rx="1"/><rect x="16" y="5" width="6" height="14" rx="1"/>' },
+    { type: 'offers-urgency', icon: '<path d="M12 2L4 12h6l-1 8 9-12h-6z" stroke-linejoin="round"/>' },
+    { type: 'offers-list', icon: '<rect x="2" y="4" width="20" height="5" rx="1"/><rect x="2" y="11" width="20" height="5" rx="1"/><rect x="2" y="18" width="20" height="3" rx="1"/>' },
+    { type: 'offers-two-up', icon: '<rect x="2" y="4" width="9" height="16" rx="1"/><rect x="13" y="4" width="9" height="16" rx="1"/><circle cx="6" cy="9" r="1"/><circle cx="17" cy="9" r="1"/>' },
+    { type: 'offers-editorial', icon: '<rect x="2" y="3" width="20" height="12" rx="1"/><line x1="4" y1="18" x2="20" y2="18"/><line x1="4" y1="21" x2="14" y2="21"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
   addableTypes.forEach(function(t) {
@@ -4018,6 +4025,78 @@ var SECTION_META = {
       { key: 'showUnsub', label: 'Show unsubscribe link', type: 'boolean' },
     ],
   },
+
+  // ── Offer sections (May 2026) ──────────────────────────────────────
+  // All six pull live offers from the tg-widgets offers proxy. The
+  // `fetch` field is a JSON object of Travelify filters (destinations,
+  // sort order, price caps, etc.) — leave empty for cheapest-first.
+  'offers-hero': {
+    label: 'Offer · Single hero',
+    description: 'One full-width offer with image, price and CTA — the default block',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'e.g. {"destinations":["TFS"],"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'headline', label: 'Headline override (optional)', type: 'text', maxLength: 120 },
+      { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 30 },
+    ],
+  },
+  'offers-three-up': {
+    label: 'Offer · Three-up grid',
+    description: 'Three offers side by side, stacks on mobile — workhorse for newsletters',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'e.g. {"destinations":["GR"],"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
+      { key: 'ctaText', label: 'Per-card link text', type: 'text', maxLength: 16 },
+    ],
+  },
+  'offers-urgency': {
+    label: 'Offer · Last-minute urgency',
+    description: 'Single offer with urgency strip and price-drop callout — highest converter',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'Recommend {"sort":"departure:asc","DatesMax":14} for genuine last-minute' },
+      { key: 'urgencyText', label: 'Urgency strip text', type: 'text', maxLength: 60 },
+      { key: 'scarcityText', label: 'Scarcity strip (right)', type: 'text', maxLength: 30 },
+      { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 20 },
+    ],
+  },
+  'offers-list': {
+    label: 'Offer · Compact list',
+    description: 'Stacked rows, image left, details right — bombproof across email clients',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'e.g. {"sort":"price:asc"} — leave empty for cheapest first' },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
+      { key: 'maxItems', label: 'Max offers shown', type: 'select',
+        options: ['2', '3', '4', '5', '6'] },
+    ],
+  },
+  'offers-two-up': {
+    label: 'Offer · Two-up split',
+    description: 'Two offers side by side — roomy and easier to digest than three-up',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'e.g. {"destinations":["ES","PT"]}' },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'heading', label: 'Heading', type: 'text', maxLength: 60 },
+    ],
+  },
+  'offers-editorial': {
+    label: 'Offer · Editorial feature',
+    description: 'Big image, narrative paragraph — for nurture, not pushy selling',
+    fields: [
+      { key: 'fetch', label: 'Offer filters (JSON)', type: 'json',
+        help: 'e.g. {"minRating":5,"sort":"price:desc"} for premium picks' },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'headline', label: 'Headline override (optional)', type: 'text', maxLength: 120 },
+      { key: 'body', label: 'Editorial paragraph', type: 'longText', maxLength: 600 },
+      { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 30 },
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -4034,6 +4113,20 @@ function sectionSummary(section) {
     case 'cta': return p.headline || '(no headline)';
     case 'divider': return p.style || 'thin';
     case 'footer': return p.tagline || 'Footer + unsubscribe';
+    // ── Offer sections — summary surfaces the active filter ─────────
+    case 'offers-hero':
+    case 'offers-three-up':
+    case 'offers-urgency':
+    case 'offers-list':
+    case 'offers-two-up':
+    case 'offers-editorial': {
+      var f = p.fetch || {};
+      var bits = [];
+      if (Array.isArray(f.destinations) && f.destinations.length) bits.push(f.destinations.join(','));
+      if (f.sort) bits.push(f.sort);
+      if (f.minRating) bits.push(f.minRating + '★');
+      return bits.length ? 'Live · ' + bits.join(' · ') : 'Live offers · auto';
+    }
     default: return '';
   }
 }
@@ -4079,6 +4172,15 @@ function renderPropertiesForm(section) {
     h += '</label>';
     if (field.type === 'longText') {
       h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">' + esc(val) + '</textarea>';
+    } else if (field.type === 'json') {
+      // JSON object editor — stores the parsed object on props but the
+      // textarea shows pretty-printed JSON. On blur we parse + validate.
+      var jsonStr = '';
+      try {
+        if (val && typeof val === 'object') jsonStr = JSON.stringify(val, null, 2);
+        else if (typeof val === 'string') jsonStr = val;
+      } catch (e) { jsonStr = ''; }
+      h += '<textarea id="' + fid + '" rows="4" placeholder="{ }" class="email-builder-prop-input" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;" onblur="window.__builderUpdateJsonField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this)">' + esc(jsonStr) + '</textarea>';
     } else if (field.type === 'select') {
       h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
       field.options.forEach(function(o) {
@@ -4090,6 +4192,9 @@ function renderPropertiesForm(section) {
     } else {
       var t = field.type === 'url' ? 'url' : 'text';
       h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
+    }
+    if (field.help) {
+      h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin-top:4px;">' + esc(field.help) + '</div>';
     }
     h += '</div>';
   });
@@ -4196,6 +4301,39 @@ window.__builderUpdateField = function(sectionId, key, value) {
   // Don't redraw the whole form (would lose focus). Just update the summary in left list and trigger preview.
   updateSectionSummaryInDOM(sectionId);
   window.__builderPreviewDebounced();
+};
+
+// JSON field handler. Parses the textarea on blur, stores parsed object
+// on props. Empty input is stored as empty object. Invalid JSON keeps
+// the previous value and visually flags the textarea.
+window.__builderUpdateJsonField = function(sectionId, key, el) {
+  var s = emailState.builderSections.find(function(x) { return x.id === sectionId; });
+  if (!s) return;
+  if (!s.props) s.props = {};
+  var txt = (el && el.value || '').trim();
+  if (!txt) {
+    setNestedValue(s.props, key, {});
+    el.style.borderColor = '';
+    el.title = '';
+    updateSectionSummaryInDOM(sectionId);
+    window.__builderPreviewDebounced();
+    return;
+  }
+  try {
+    var parsed = JSON.parse(txt);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Must be a JSON object, not an array or scalar');
+    }
+    setNestedValue(s.props, key, parsed);
+    el.style.borderColor = '';
+    el.title = '';
+    updateSectionSummaryInDOM(sectionId);
+    window.__builderPreviewDebounced();
+  } catch (e) {
+    // Invalid JSON — flag the textarea but don't lose what they typed
+    el.style.borderColor = 'var(--tg-error,#dc2626)';
+    el.title = 'Invalid JSON: ' + e.message;
+  }
 };
 
 function updateSectionSummaryInDOM(sectionId) {
@@ -4316,6 +4454,13 @@ function defaultPropsForType(type) {
     case 'cta': return { headline: 'Ready to get started?', ctaText: 'Get in touch', ctaUrl: 'https://travelgenix.io', variant: 'tint' };
     case 'divider': return { style: 'thin' };
     case 'footer': return { showUnsub: true };
+    // ── Offer sections ─────────────────────────────────────────────
+    case 'offers-hero': return { fetch: {}, eyebrow: 'Featured', ctaText: 'View this trip' };
+    case 'offers-three-up': return { fetch: {}, eyebrow: 'Handpicked this week', heading: "Three you'll love", ctaText: 'View' };
+    case 'offers-urgency': return { fetch: { sort: 'departure:asc', DatesMax: 14 }, urgencyText: 'Last minute · departs soon', scarcityText: '', ctaText: 'Book now' };
+    case 'offers-list': return { fetch: {}, eyebrow: 'Your digest', heading: 'Trips worth a look', maxItems: '4' };
+    case 'offers-two-up': return { fetch: {}, eyebrow: '', heading: '' };
+    case 'offers-editorial': return { fetch: {}, eyebrow: "Editor's Choice", body: '', ctaText: 'Read more · book' };
     default: return {};
   }
 }

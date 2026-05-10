@@ -1136,6 +1136,121 @@ select.email-builder-prop-input { cursor: pointer; height: 34px; }
 }
 .email-builder-prop-checkbox input { cursor: pointer; }
 
+/* ── Group (object) field: nested set of fields with a thin left rule ─── */
+.email-builder-prop-group {
+  margin-bottom: 14px;
+  padding: 10px 12px 4px 12px;
+  background: var(--tg-bg-secondary, #F8FAFC);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+}
+.email-builder-prop-group-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--tg-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 0;
+}
+.email-builder-prop-group-body { }
+.email-builder-prop-group-body .email-builder-prop-field { margin-bottom: 10px; }
+.email-builder-prop-group-body .email-builder-prop-field:last-child { margin-bottom: 0; }
+
+/* ── Array field: list of repeating items with add button ────────────── */
+.email-builder-prop-array {
+  margin-bottom: 14px;
+  padding: 10px 12px 12px 12px;
+  background: var(--tg-bg-secondary, #F8FAFC);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+}
+.email-builder-prop-array-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--tg-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 0;
+}
+.email-builder-prop-array-meta {
+  font-weight: 500;
+  color: var(--tg-text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+.email-builder-prop-array-empty {
+  font-size: 12px;
+  color: var(--tg-text-tertiary);
+  font-style: italic;
+  padding: 8px 0 12px 0;
+}
+.email-builder-prop-array-item {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.email-builder-prop-array-item-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--tg-bg-tertiary, #F1F5F9);
+  border-bottom: 1px solid var(--tg-border);
+}
+.email-builder-prop-array-item-num {
+  font-size: 11px; font-weight: 700;
+  color: var(--tg-text-secondary);
+}
+.email-builder-prop-array-item-actions {
+  display: flex; gap: 4px;
+}
+.email-builder-prop-array-btn {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid var(--tg-border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--tg-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  padding: 0;
+}
+.email-builder-prop-array-btn:hover:not(:disabled) {
+  background: var(--tg-bg-primary);
+  border-color: var(--tg-accent);
+  color: var(--tg-accent);
+}
+.email-builder-prop-array-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.email-builder-prop-array-btn-remove:hover:not(:disabled) {
+  border-color: var(--tg-error, #dc2626);
+  color: var(--tg-error, #dc2626);
+}
+.email-builder-prop-array-item-body {
+  padding: 10px 12px;
+}
+.email-builder-prop-array-item-body .email-builder-prop-field { margin-bottom: 10px; }
+.email-builder-prop-array-item-body .email-builder-prop-field:last-child { margin-bottom: 0; }
+.email-builder-prop-array-add {
+  width: 100%;
+  padding: 7px 12px;
+  background: var(--tg-bg-primary);
+  border: 1px dashed var(--tg-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--tg-font-body); font-size: 12px; font-weight: 600;
+  color: var(--tg-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.email-builder-prop-array-add:hover {
+  border-color: var(--tg-accent);
+  border-style: solid;
+  color: var(--tg-accent);
+  background: var(--tg-bg-primary);
+}
+
 /* ── Offer filter editor ─────────────────────────────────────── */
 .of-editor { display: flex; flex-direction: column; gap: 12px; }
 .of-loading { padding: 12px; color: var(--tg-text-tertiary); font-size: 13px; font-style: italic; }
@@ -3965,6 +4080,23 @@ function drawComposeForm() {
     { type: 'offers-list', icon: '<rect x="2" y="4" width="20" height="5" rx="1"/><rect x="2" y="11" width="20" height="5" rx="1"/><rect x="2" y="18" width="20" height="3" rx="1"/>' },
     { type: 'offers-two-up', icon: '<rect x="2" y="4" width="9" height="16" rx="1"/><rect x="13" y="4" width="9" height="16" rx="1"/><circle cx="6" cy="9" r="1"/><circle cx="17" cy="9" r="1"/>' },
     { type: 'offers-editorial', icon: '<rect x="2" y="3" width="20" height="12" rx="1"/><line x1="4" y1="18" x2="20" y2="18"/><line x1="4" y1="21" x2="14" y2="21"/>' },
+
+    // ── Transactional sections (Archetype D, May 2026) ──────────────────
+    { type: 'top-bar', icon: '<rect x="2" y="4" width="20" height="3" rx="0.5"/><line x1="4" y1="11" x2="9" y2="11"/><line x1="15" y1="11" x2="20" y2="11"/>' },
+    { type: 'confirmation-block', icon: '<circle cx="12" cy="9" r="4"/><polyline points="10,9 11.5,10.5 14,8"/><line x1="6" y1="17" x2="18" y2="17"/><line x1="9" y1="20" x2="15" y2="20"/>' },
+    { type: 'trip-card', icon: '<rect x="2" y="4" width="20" height="6" rx="1"/><circle cx="6" cy="7" r="0.8"/><line x1="3" y1="13" x2="21" y2="13"/><line x1="3" y1="16" x2="14" y2="16"/><line x1="3" y1="19" x2="18" y2="19"/>' },
+    { type: 'cost-summary', icon: '<line x1="3" y1="6" x2="14" y2="6"/><line x1="17" y1="6" x2="21" y2="6"/><line x1="3" y1="11" x2="14" y2="11"/><line x1="17" y1="11" x2="21" y2="11"/><line x1="3" y1="16" x2="21" y2="16"/><line x1="3" y1="20" x2="11" y2="20"/><line x1="14" y1="20" x2="21" y2="20"/>' },
+    { type: 'next-steps', icon: '<circle cx="5" cy="6" r="1.6"/><line x1="9" y1="6" x2="20" y2="6"/><circle cx="5" cy="12" r="1.6"/><line x1="9" y1="12" x2="20" y2="12"/><circle cx="5" cy="18" r="1.6"/><line x1="9" y1="18" x2="20" y2="18"/>' },
+    { type: 'help-block', icon: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 3.5"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor"/>' },
+    { type: 'footer-meta', icon: '<rect x="2" y="14" width="20" height="6" rx="1"/><line x1="6" y1="17" x2="18" y2="17"/>' },
+
+    // ── Marketing sections (Archetype B, May 2026) ──────────────────────
+    { type: 'hero-image', icon: '<rect x="2" y="3" width="20" height="9" rx="1"/><circle cx="6" cy="6" r="0.8"/><polyline points="22,11 16,7 8,12 2,9"/><rect x="2" y="14" width="20" height="6" rx="1" fill="currentColor" opacity="0.15"/>' },
+    { type: 'destination-grid', icon: '<rect x="2" y="5" width="6" height="14" rx="1"/><circle cx="5" cy="9" r="0.8"/><rect x="9" y="5" width="6" height="14" rx="1"/><circle cx="12" cy="9" r="0.8"/><rect x="16" y="5" width="6" height="14" rx="1"/><circle cx="19" cy="9" r="0.8"/>' },
+    { type: 'feature-story', icon: '<rect x="2" y="3" width="20" height="9" rx="1"/><circle cx="6" cy="6" r="0.8"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="3" y1="21" x2="13" y2="21"/>' },
+    { type: 'pull-quote', icon: '<path d="M7 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7zM17 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7z"/>' },
+    { type: 'cta-banner', icon: '<rect x="2" y="6" width="20" height="12" rx="1.5" fill="currentColor" opacity="0.15"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="5" y1="13" x2="14" y2="13"/><rect x="14" y="14" width="6" height="3" rx="1.5"/>' },
+    { type: 'footer-light', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.08"/><line x1="9" y1="16" x2="15" y2="16"/><circle cx="8" cy="19" r="0.8"/><circle cx="12" cy="19" r="0.8"/><circle cx="16" cy="19" r="0.8"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
   addableTypes.forEach(function(t) {
@@ -4197,6 +4329,218 @@ var SECTION_META = {
       { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 30 },
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════
+  // ARCHETYPE D — TRANSACTIONAL (May 2026)
+  // Component schemas mirror the `schema` exports in lib/email-sections/.
+  // Translated from itemSchema/schema (object maps) to itemFields/fields
+  // (arrays) so the recursive property-form renderer can iterate them.
+  // ════════════════════════════════════════════════════════════════
+  'top-bar': {
+    label: 'Top bar',
+    description: 'Compact header with logo on the left and metadata (e.g. booking ref) on the right',
+    fields: [
+      { key: 'businessName', label: 'Business name (used if no logo image)', type: 'text', maxLength: 50 },
+      { key: 'logoUrl', label: 'Logo image URL', type: 'url' },
+      { key: 'logoAlt', label: 'Logo alt text', type: 'text', maxLength: 50 },
+      { key: 'logoLinkUrl', label: 'Logo link URL', type: 'url' },
+      { key: 'showLogoImage', label: 'Show logo image (uncheck for text-only)', type: 'boolean' },
+      { key: 'metaLabel', label: 'Meta label (e.g. "Booking ref")', type: 'text', maxLength: 30 },
+      { key: 'metaValue', label: 'Meta value (e.g. "TG24189")', type: 'text', maxLength: 30 },
+    ],
+  },
+  'confirmation-block': {
+    label: 'Confirmation block',
+    description: 'Success header with icon, eyebrow, headline and supporting copy',
+    fields: [
+      { key: 'icon', label: 'Icon', type: 'select', options: ['check', 'clock', 'alert'] },
+      { key: 'iconColour', label: 'Icon colour theme', type: 'select', options: ['success', 'info', 'warning'] },
+      { key: 'eyebrow', label: 'Eyebrow text', type: 'text', required: true, maxLength: 40 },
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 80 },
+      { key: 'text', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+    ],
+  },
+  'trip-card': {
+    label: 'Trip card',
+    description: 'Booking display: image header, detail rows, outbound/return journey block',
+    fields: [
+      { key: 'image_url', label: 'Destination image URL', type: 'url' },
+      { key: 'image_tag', label: 'Region tag (e.g. "Greek Islands")', type: 'text', maxLength: 30 },
+      { key: 'image_name', label: 'Destination name', type: 'text', required: true, maxLength: 60 },
+      { key: 'details', label: 'Detail rows', type: 'array', itemLabel: 'detail', itemFields: [
+        { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 30 },
+        { key: 'value', label: 'Value', type: 'text', required: true, maxLength: 100 },
+        { key: 'secondary', label: 'Secondary line (optional)', type: 'text', maxLength: 100 },
+      ]},
+      { key: 'journey', label: 'Journey (outbound / return)', type: 'group', fields: [
+        { key: 'outbound', label: 'Outbound', type: 'group', fields: [
+          { key: 'airport_code', label: 'Airport code', type: 'text', maxLength: 4 },
+          { key: 'airport_name', label: 'Airport name', type: 'text', maxLength: 60 },
+          { key: 'date', label: 'Date', type: 'text', maxLength: 30 },
+          { key: 'time', label: 'Time', type: 'text', maxLength: 10 },
+        ]},
+        { key: 'return', label: 'Return', type: 'group', fields: [
+          { key: 'airport_code', label: 'Airport code', type: 'text', maxLength: 4 },
+          { key: 'airport_name', label: 'Airport name', type: 'text', maxLength: 60 },
+          { key: 'date', label: 'Date', type: 'text', maxLength: 30 },
+          { key: 'time', label: 'Time', type: 'text', maxLength: 10 },
+        ]},
+      ]},
+    ],
+  },
+  'cost-summary': {
+    label: 'Cost summary',
+    description: 'Line items, total, and payment status',
+    fields: [
+      { key: 'line_items', label: 'Line items', type: 'array', itemLabel: 'line', itemFields: [
+        { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 60 },
+        { key: 'amount', label: 'Amount', type: 'text', required: true, maxLength: 20 },
+      ]},
+      { key: 'total', label: 'Total', type: 'group', required: true, fields: [
+        { key: 'label', label: 'Label', type: 'text', maxLength: 30 },
+        { key: 'amount', label: 'Amount', type: 'text', required: true, maxLength: 20 },
+      ]},
+      { key: 'payment', label: 'Payment status (optional)', type: 'group', fields: [
+        { key: 'text', label: 'Payment text (e.g. "Paid in full · Visa ending 4421")', type: 'text', maxLength: 80 },
+        { key: 'status', label: 'Status word (e.g. "Settled")', type: 'text', maxLength: 20 },
+      ]},
+    ],
+  },
+  'next-steps': {
+    label: 'Next steps',
+    description: 'Numbered checklist of things to do — descriptions support inline links',
+    fields: [
+      { key: 'title', label: 'Block title', type: 'text', maxLength: 80 },
+      { key: 'steps', label: 'Steps', type: 'array', required: true, itemLabel: 'step', itemFields: [
+        { key: 'title', label: 'Step title', type: 'text', required: true, maxLength: 80 },
+        { key: 'text', label: 'Description', type: 'longText', maxLength: 280, help: 'Use [link text](url) for inline links and **bold** / *italic* for emphasis.' },
+      ]},
+    ],
+  },
+  'help-block': {
+    label: 'Help block',
+    description: 'Support contact strip with phone and email',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', maxLength: 60 },
+      { key: 'text', label: 'Supporting text (e.g. opening hours)', type: 'text', maxLength: 120 },
+      { key: 'contacts', label: 'Contacts', type: 'array', required: true, itemLabel: 'contact', itemFields: [
+        { key: 'type', label: 'Type', type: 'select', required: true, options: ['phone', 'email'] },
+        { key: 'value', label: 'Value (number or email)', type: 'text', required: true, maxLength: 80 },
+        { key: 'href', label: 'Link override (optional)', type: 'text', maxLength: 120 },
+      ]},
+    ],
+  },
+  'footer-meta': {
+    label: 'Footer meta',
+    description: 'Plain legal footer for transactional emails — no logo, no socials',
+    fields: [
+      { key: 'lines', label: 'Footer lines (legal name, ATOL/ABTA, address)', type: 'array', required: true, itemLabel: 'line', itemFields: [
+        { key: '', label: '', type: 'text', maxLength: 200 },
+      ]},
+      { key: 'reason', label: 'Send reason', type: 'text', maxLength: 200 },
+      { key: 'browser_url', label: 'View in browser URL', type: 'url' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // ARCHETYPE B — MARKETING NEWSLETTER (May 2026)
+  // ════════════════════════════════════════════════════════════════
+  'hero-image': {
+    label: 'Hero (image + dark panel)',
+    description: 'Full-width image with a dark navy panel below — for marketing newsletters',
+    fields: [
+      { key: 'image_url', label: 'Hero image URL', type: 'url' },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 100 },
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+      { key: 'deck', label: 'Subhead / deck', type: 'longText', maxLength: 280 },
+      { key: 'cta', label: 'CTA button (optional)', type: 'group', fields: [
+        { key: 'text', label: 'Button text', type: 'text', maxLength: 40 },
+        { key: 'url', label: 'Button URL', type: 'url' },
+      ]},
+    ],
+  },
+  'destination-grid': {
+    label: 'Destination grid (manual)',
+    description: 'Three destination cards with manual content. For live offers use offers-three-up instead.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'lede', label: 'Section lede', type: 'longText', maxLength: 200 },
+      { key: 'cards', label: 'Cards (max 3)', type: 'array', required: true, max: 3, itemLabel: 'card', itemFields: [
+        { key: 'image_url', label: 'Image URL', type: 'url' },
+        { key: 'tag', label: 'Tag (e.g. "Beach")', type: 'text', maxLength: 30 },
+        { key: 'name', label: 'Destination name', type: 'text', required: true, maxLength: 60 },
+        { key: 'meta', label: 'Meta line (e.g. "7 nights · all-inclusive")', type: 'text', maxLength: 100 },
+        { key: 'price_from', label: 'Price prefix (e.g. "From")', type: 'text', maxLength: 10 },
+        { key: 'price_amount', label: 'Price amount (e.g. "£689")', type: 'text', maxLength: 20 },
+        { key: 'price_unit', label: 'Price unit (e.g. "pp")', type: 'text', maxLength: 10 },
+        { key: 'url', label: 'Card link URL', type: 'url' },
+      ]},
+    ],
+  },
+  'feature-story': {
+    label: 'Feature story',
+    description: 'Featured article with image, body title, excerpt, and read-more link',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'lede', label: 'Section lede', type: 'longText', maxLength: 200 },
+      { key: 'image_url', label: 'Article image URL', type: 'url' },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 100 },
+      { key: 'body_title', label: 'Article title (inside the card)', type: 'text', required: true, maxLength: 100 },
+      { key: 'excerpt', label: 'Article excerpt', type: 'longText', maxLength: 300 },
+      { key: 'link', label: 'Read more link', type: 'group', required: true, fields: [
+        { key: 'text', label: 'Link text', type: 'text', maxLength: 40 },
+        { key: 'url', label: 'Link URL', type: 'url', required: true },
+      ]},
+    ],
+  },
+  'pull-quote': {
+    label: 'Pull quote',
+    description: 'Editorial italic quote with attribution. Use sparingly — once per email max.',
+    fields: [
+      { key: 'variant', label: 'Style', type: 'select', options: ['simple', 'labelled'] },
+      { key: 'label', label: 'Eyebrow label (e.g. "Heard this week")', type: 'text', maxLength: 40, help: 'Only shown when style is "labelled".' },
+      { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 280 },
+      { key: 'attribution', label: 'Attribution (optional)', type: 'group', fields: [
+        { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
+        { key: 'role', label: 'Role / company', type: 'text', maxLength: 100 },
+      ]},
+    ],
+  },
+  'cta-banner': {
+    label: 'CTA banner (gradient navy)',
+    description: 'Mid-email conversion banner with title, text, and primary button on a navy gradient',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 200 },
+      { key: 'cta', label: 'CTA button', type: 'group', required: true, fields: [
+        { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
+        { key: 'url', label: 'Button URL', type: 'url', required: true },
+      ]},
+    ],
+  },
+  'footer-light': {
+    label: 'Footer (light)',
+    description: 'Light grey marketing footer with logo, tagline, social icons, and manage links',
+    fields: [
+      { key: 'logo_text', label: 'Logo wordmark text (used if no image)', type: 'text', maxLength: 30 },
+      { key: 'logo_url', label: 'Logo image URL', type: 'url' },
+      { key: 'logo_link_url', label: 'Logo link URL', type: 'url' },
+      { key: 'tagline', label: 'Tagline', type: 'longText', maxLength: 200 },
+      { key: 'socials', label: 'Social links', type: 'array', itemLabel: 'social', itemFields: [
+        { key: 'platform', label: 'Platform', type: 'select', required: true, options: ['linkedin', 'facebook', 'instagram', 'x', 'youtube', 'tiktok'] },
+        { key: 'url', label: 'Profile URL', type: 'url', required: true },
+      ]},
+      { key: 'manage_links', label: 'Manage links (preferences, unsubscribe, view in browser)', type: 'array', itemLabel: 'link', itemFields: [
+        { key: 'label', label: 'Link label', type: 'text', required: true, maxLength: 30 },
+        { key: 'url', label: 'Link URL', type: 'url', required: true },
+      ]},
+      { key: 'reason', label: 'Send reason line', type: 'text', maxLength: 200 },
+      { key: 'legal', label: 'Legal meta line', type: 'text', maxLength: 200 },
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -4227,6 +4571,40 @@ function sectionSummary(section) {
       if (f.minRating) bits.push(f.minRating + '★');
       return bits.length ? 'Live · ' + bits.join(' · ') : 'Live offers · auto';
     }
+    // ── Transactional ───────────────────────────────────────────────
+    case 'top-bar': return p.metaValue || p.businessName || 'Top bar';
+    case 'confirmation-block': return p.headline || p.eyebrow || 'Confirmation';
+    case 'trip-card': return p.image_name || 'Trip card';
+    case 'cost-summary': {
+      var lineCount = Array.isArray(p.line_items) ? p.line_items.length : 0;
+      var total = (p.total && p.total.amount) || '';
+      return lineCount + ' line' + (lineCount === 1 ? '' : 's') + (total ? ' · ' + total : '');
+    }
+    case 'next-steps': {
+      var stepCount = Array.isArray(p.steps) ? p.steps.length : 0;
+      return stepCount + ' step' + (stepCount === 1 ? '' : 's');
+    }
+    case 'help-block': {
+      var contactCount = Array.isArray(p.contacts) ? p.contacts.length : 0;
+      return p.title || (contactCount + ' contact' + (contactCount === 1 ? '' : 's'));
+    }
+    case 'footer-meta': {
+      var lineCount2 = Array.isArray(p.lines) ? p.lines.filter(function(l) { return l && String(l).trim(); }).length : 0;
+      return lineCount2 + ' legal line' + (lineCount2 === 1 ? '' : 's');
+    }
+    // ── Marketing ───────────────────────────────────────────────────
+    case 'hero-image': return p.headline || '(no headline)';
+    case 'destination-grid': {
+      var cardCount = Array.isArray(p.cards) ? p.cards.length : 0;
+      return p.title || (cardCount + ' card' + (cardCount === 1 ? '' : 's'));
+    }
+    case 'feature-story': return p.body_title || p.title || 'Feature story';
+    case 'pull-quote': {
+      var q = (p.quote || '').trim();
+      return q ? '"' + q.slice(0, 40) + (q.length > 40 ? '…' : '') + '"' : '(empty quote)';
+    }
+    case 'cta-banner': return p.title || (p.cta && p.cta.text) || 'CTA banner';
+    case 'footer-light': return p.logo_text || p.tagline || 'Light footer';
     default: return '';
   }
 }
@@ -4242,15 +4620,196 @@ function getNestedValue(obj, path) {
 }
 
 function setNestedValue(obj, path, value) {
+  // Path segments that look like positive integers (e.g. "0", "12") cause
+  // the parent container to be created as a real Array; otherwise as an
+  // object. This is essential for builder array fields (cards.0.name etc)
+  // so the rendered props serialise as `cards: [...]` not `cards: {0:...}`.
   var parts = path.split('.');
   var cursor = obj;
   for (var i = 0; i < parts.length - 1; i++) {
-    if (cursor[parts[i]] == null || typeof cursor[parts[i]] !== 'object') {
-      cursor[parts[i]] = {};
+    var key = parts[i];
+    var nextKey = parts[i + 1];
+    var nextIsArrayIndex = /^\d+$/.test(nextKey);
+    var existing = cursor[key];
+    var existingIsRightShape = nextIsArrayIndex
+      ? Array.isArray(existing)
+      : (existing != null && typeof existing === 'object' && !Array.isArray(existing));
+    if (!existingIsRightShape) {
+      cursor[key] = nextIsArrayIndex ? [] : {};
     }
+    cursor = cursor[key];
+  }
+  var lastKey = parts[parts.length - 1];
+  if (Array.isArray(cursor) && /^\d+$/.test(lastKey)) {
+    cursor[parseInt(lastKey, 10)] = value;
+  } else {
+    cursor[lastKey] = value;
+  }
+}
+
+// Remove a nested value at path. If the parent is an array, splice the
+// index out so subsequent indices renumber correctly. If the parent is an
+// object, delete the key.
+function removeNestedValue(obj, path) {
+  var parts = path.split('.');
+  var cursor = obj;
+  for (var i = 0; i < parts.length - 1; i++) {
+    if (cursor == null || typeof cursor !== 'object') return;
     cursor = cursor[parts[i]];
   }
-  cursor[parts[parts.length - 1]] = value;
+  if (cursor == null || typeof cursor !== 'object') return;
+  var lastKey = parts[parts.length - 1];
+  if (Array.isArray(cursor) && /^\d+$/.test(lastKey)) {
+    cursor.splice(parseInt(lastKey, 10), 1);
+  } else {
+    delete cursor[lastKey];
+  }
+}
+
+// Move an item within an array at a given path, by indices. Used by the
+// up/down reorder buttons inside array fields. No-op if out of range.
+function moveInNestedArray(obj, path, fromIdx, toIdx) {
+  var arr = getNestedValue(obj, path);
+  if (!Array.isArray(arr)) return;
+  if (fromIdx < 0 || fromIdx >= arr.length) return;
+  if (toIdx < 0) toIdx = 0;
+  if (toIdx >= arr.length) toIdx = arr.length - 1;
+  if (fromIdx === toIdx) return;
+  var item = arr.splice(fromIdx, 1)[0];
+  arr.splice(toIdx, 0, item);
+}
+
+// Render a single field. Supports the flat types (text, url, longText,
+// select, boolean, offer-filter) plus 'group'/'object' (one level of
+// nested fields) and 'array' (a list of items, each with a nested schema).
+//
+// Nesting depth in the wild is at most two (array of objects with
+// primitive children; group containing primitives or a single sub-array).
+// We don't recursively render groups inside groups inside groups.
+//
+// `basePath` is the dotted props path so far (empty string at top level).
+// `field` is a normalised field record: { key, label, type, ... }. For
+// items inside an array the synthetic `key` is the numeric index.
+//
+// Outer wrapper class for groups/arrays gives them visible chrome so
+// the user can see the boundaries of nested data.
+function renderField(section, basePath, field, depth) {
+  depth = depth || 0;
+  var path = basePath ? basePath + '.' + field.key : field.key;
+  var val = getNestedValue(section.props || {}, path);
+  if (val === undefined || val === null) val = '';
+  var fid = 'prop_' + section.id + '_' + path.replace(/\./g, '_');
+  var pathAttr = esc(path);
+  var sidAttr = esc(section.id);
+
+  // ── group / object: one level of nested fields ──
+  if (field.type === 'group' || field.type === 'object') {
+    var groupFields = field.fields || [];
+    var h = '';
+    h += '<div class="email-builder-prop-group" data-group-path="' + pathAttr + '">';
+    h += '<div class="email-builder-prop-group-label">' + esc(field.label || '');
+    if (field.required) h += ' <span style="color:var(--tg-error)">*</span>';
+    h += '</div>';
+    if (field.help) {
+      h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin:0 0 8px 0;">' + esc(field.help) + '</div>';
+    }
+    h += '<div class="email-builder-prop-group-body">';
+    groupFields.forEach(function(child) {
+      h += renderField(section, path, child, depth + 1);
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  // ── array: a list of repeating items ──
+  if (field.type === 'array') {
+    var items = Array.isArray(val) ? val : [];
+    var itemFields = field.itemFields || [];
+    // If itemFields is a single primitive descriptor (e.g. lines: [string]),
+    // render each item as that primitive directly. We support this via
+    // a one-field synthetic schema with key '' (empty).
+    var maxItems = typeof field.max === 'number' ? field.max : null;
+    var canAdd = maxItems == null || items.length < maxItems;
+    var html = '';
+    html += '<div class="email-builder-prop-array" data-array-path="' + pathAttr + '">';
+    html += '<div class="email-builder-prop-array-label">' + esc(field.label || '');
+    if (field.required) html += ' <span style="color:var(--tg-error)">*</span>';
+    if (maxItems != null) html += ' <span class="email-builder-prop-array-meta">(max ' + maxItems + ')</span>';
+    html += '</div>';
+    if (field.help) {
+      html += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin:0 0 8px 0;">' + esc(field.help) + '</div>';
+    }
+    if (!items.length) {
+      html += '<div class="email-builder-prop-array-empty">No items yet — click Add below.</div>';
+    } else {
+      items.forEach(function(item, idx) {
+        html += '<div class="email-builder-prop-array-item">';
+        html += '<div class="email-builder-prop-array-item-header">';
+        html += '<span class="email-builder-prop-array-item-num">' + (idx + 1) + '</span>';
+        html += '<div class="email-builder-prop-array-item-actions">';
+        html += '<button type="button" class="email-builder-prop-array-btn" title="Move up"' + (idx === 0 ? ' disabled' : '') + ' onclick="window.__builderArrayMove(\'' + sidAttr + '\',\'' + pathAttr + '\',' + idx + ',' + (idx - 1) + ')">↑</button>';
+        html += '<button type="button" class="email-builder-prop-array-btn" title="Move down"' + (idx === items.length - 1 ? ' disabled' : '') + ' onclick="window.__builderArrayMove(\'' + sidAttr + '\',\'' + pathAttr + '\',' + idx + ',' + (idx + 1) + ')">↓</button>';
+        html += '<button type="button" class="email-builder-prop-array-btn email-builder-prop-array-btn-remove" title="Remove" onclick="window.__builderArrayRemove(\'' + sidAttr + '\',\'' + pathAttr + '\',' + idx + ')">×</button>';
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="email-builder-prop-array-item-body">';
+        if (itemFields.length === 1 && itemFields[0].key === '') {
+          // Primitive item — render the single anonymous field at this index
+          var primField = Object.assign({}, itemFields[0], { key: String(idx), label: '' });
+          html += renderField(section, path, primField, depth + 1);
+        } else {
+          // Object item — render each declared sub-field at this index
+          itemFields.forEach(function(child) {
+            var childAtIdx = Object.assign({}, child, { key: String(idx) + '.' + child.key });
+            html += renderField(section, path, childAtIdx, depth + 1);
+          });
+        }
+        html += '</div>';
+        html += '</div>';
+      });
+    }
+    if (canAdd) {
+      html += '<button type="button" class="email-builder-prop-array-add" onclick="window.__builderArrayAdd(\'' + sidAttr + '\',\'' + pathAttr + '\')">+ Add ' + esc(field.itemLabel || 'item') + '</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ── flat field types (the original switch) ──
+  var h = '';
+  h += '<div class="email-builder-prop-field">';
+  // For array-item primitive children with no label, skip the label row.
+  // For booleans, the inline checkbox label *is* the label (avoids dup).
+  if (field.label && field.type !== 'boolean') {
+    h += '<label for="' + fid + '" class="email-builder-prop-label">';
+    h += esc(field.label);
+    if (field.required) h += ' <span style="color:var(--tg-error)">*</span>';
+    h += '</label>';
+  }
+  if (field.type === 'longText') {
+    h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">' + esc(val) + '</textarea>';
+  } else if (field.type === 'offer-filter') {
+    h += renderOfferFilter(section, field, val);
+  } else if (field.type === 'select') {
+    h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+    if (!field.required) {
+      h += '<option value=""' + (val === '' ? ' selected' : '') + '>—</option>';
+    }
+    field.options.forEach(function(o) {
+      h += '<option value="' + esc(o) + '"' + (val === o ? ' selected' : '') + '>' + esc(o) + '</option>';
+    });
+    h += '</select>';
+  } else if (field.type === 'boolean') {
+    h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.checked)"> ' + esc(field.checkboxLabel || field.label) + '</label>';
+  } else {
+    var t = field.type === 'url' ? 'url' : 'text';
+    h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+  }
+  if (field.help) {
+    h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin-top:4px;">' + esc(field.help) + '</div>';
+  }
+  h += '</div>';
+  return h;
 }
 
 function renderPropertiesForm(section) {
@@ -4262,40 +4821,28 @@ function renderPropertiesForm(section) {
   h += '</div>';
   h += '<div class="email-builder-prop-fields">';
   meta.fields.forEach(function(field) {
-    var val = getNestedValue(section.props || {}, field.key);
-    if (val === undefined || val === null) val = '';
-    var fid = 'prop_' + section.id + '_' + field.key.replace(/\./g, '_');
-    h += '<div class="email-builder-prop-field">';
-    h += '<label for="' + fid + '" class="email-builder-prop-label">';
-    h += esc(field.label);
-    if (field.required) h += ' <span style="color:var(--tg-error)">*</span>';
-    h += '</label>';
-    if (field.type === 'longText') {
-      h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">' + esc(val) + '</textarea>';
-    } else if (field.type === 'offer-filter') {
-      // The proper offer-filter editor — chips, dropdowns, sliders.
-      // Renders into a host div the script then hydrates so we can add
-      // listeners safely without HTML-injecting handlers.
-      h += renderOfferFilter(section, field, val);
-    } else if (field.type === 'select') {
-      h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
-      field.options.forEach(function(o) {
-        h += '<option value="' + esc(o) + '"' + (val === o ? ' selected' : '') + '>' + esc(o) + '</option>';
-      });
-      h += '</select>';
-    } else if (field.type === 'boolean') {
-      h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.checked)"> ' + esc(field.label) + '</label>';
-    } else {
-      var t = field.type === 'url' ? 'url' : 'text';
-      h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + esc(section.id) + '\',\'' + esc(field.key) + '\',this.value)">';
-    }
-    if (field.help) {
-      h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin-top:4px;">' + esc(field.help) + '</div>';
-    }
-    h += '</div>';
+    h += renderField(section, '', field, 0);
   });
   h += '</div>';
   return h;
+}
+
+// Redraw just the properties panel without rebuilding the whole email
+// builder DOM. Used after array add/remove/move, where we *do* want the
+// panel to refresh (we'd lose track of which item index a button refers
+// to otherwise) but we don't want to lose scroll or rerun preview.
+function redrawPropertyPanel() {
+  var host = document.getElementById('builderProperties');
+  if (!host) return;
+  var sid = emailState.selectedSectionId;
+  var s = (emailState.builderSections || []).find(function(x) { return x.id === sid; });
+  if (!s) {
+    host.innerHTML = '';
+    return;
+  }
+  host.innerHTML = renderPropertiesForm(s);
+  // Re-hydrate the offer-filter editor if the section uses it
+  if (typeof hydrateOfferFilters === 'function') hydrateOfferFilters();
 }
 
 function attachBuilderHandlers() {
@@ -4351,17 +4898,36 @@ window.__builderSelectSection = function(id) {
   drawEmails();
 };
 
+// Sections that visually belong at the very top of the email, even
+// when added later in the workflow.
+var HEADER_TYPES = { 'header': true, 'top-bar': true };
+// Sections that visually belong at the very bottom. When adding a
+// non-footer/non-header section, slot it just above the first footer.
+var FOOTER_TYPES = { 'footer': true, 'footer-light': true, 'footer-meta': true, 'footer-dark': true };
+
+function isHeaderType(t) { return !!HEADER_TYPES[t]; }
+function isFooterType(t) { return !!FOOTER_TYPES[t]; }
+
 window.__builderAddSection = function(type) {
   var defaults = defaultPropsForType(type);
   var newSection = { id: genSectionId(), type: type, props: defaults };
   emailState.builderSections = emailState.builderSections || [];
 
-  // Insert before footer if a footer exists, else append
-  var footerIdx = emailState.builderSections.findIndex(function(s) { return s.type === 'footer'; });
-  if (footerIdx >= 0 && type !== 'footer' && type !== 'header') {
-    emailState.builderSections.splice(footerIdx, 0, newSection);
-  } else if (type === 'header') {
-    emailState.builderSections.unshift(newSection);
+  // Insert before the first footer if one exists, else append.
+  // Headers always go to position 0 (or just after an existing header).
+  var firstFooterIdx = emailState.builderSections.findIndex(function(s) { return isFooterType(s.type); });
+  if (isHeaderType(type)) {
+    // Place after any leading header sections so we don't break a
+    // header + top-bar pair that's already at the top.
+    var insertAt = 0;
+    while (insertAt < emailState.builderSections.length && isHeaderType(emailState.builderSections[insertAt].type)) {
+      insertAt++;
+    }
+    emailState.builderSections.splice(insertAt, 0, newSection);
+  } else if (isFooterType(type)) {
+    emailState.builderSections.push(newSection);
+  } else if (firstFooterIdx >= 0) {
+    emailState.builderSections.splice(firstFooterIdx, 0, newSection);
   } else {
     emailState.builderSections.push(newSection);
   }
@@ -4434,6 +5000,122 @@ window.__builderUpdateJsonField = function(sectionId, key, el) {
     el.style.borderColor = 'var(--tg-error,#dc2626)';
     el.title = 'Invalid JSON: ' + e.message;
   }
+};
+
+// ═════════════════════════════════════════════════════════════
+// ARRAY FIELD HANDLERS
+// ═════════════════════════════════════════════════════════════
+//
+// These power the +/- and ↑↓ buttons inside array-typed fields. They
+// mutate the props array, then call redrawPropertyPanel() (which is the
+// only safe way — we can't surgically update one row because the
+// indices in subsequent items' button handlers would all be wrong).
+
+// Walk the SECTION_META schema by props path. Returns the field
+// descriptor for that path. Used to find the itemFields of an array we
+// need to add a new row into.
+//
+// Path segments that look like array indices are skipped — the schema
+// itself doesn't contain numeric children; the array's `itemFields`
+// are reused for every index.
+function findFieldDef(sectionType, path) {
+  var meta = sectionMeta(sectionType);
+  var fields = meta.fields || [];
+  var parts = path.split('.');
+  var current = null;
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (/^\d+$/.test(part)) {
+      // Array index — skip; the itemFields stay the same for every index
+      continue;
+    }
+    var found = null;
+    for (var j = 0; j < fields.length; j++) {
+      if (fields[j].key === part) { found = fields[j]; break; }
+    }
+    if (!found) return null;
+    current = found;
+    if (current.type === 'group' || current.type === 'object') {
+      fields = current.fields || [];
+    } else if (current.type === 'array') {
+      fields = current.itemFields || [];
+    } else {
+      fields = [];
+    }
+  }
+  return current;
+}
+
+// Build a sensible empty item for an array field. Uses each itemField's
+// `default` if set, otherwise an empty string. For nested groups/arrays
+// inside an item, we recursively build empty containers so that adding a
+// row produces a complete shape that won't crash the renderer.
+function defaultArrayItem(arrField) {
+  var itemFields = arrField.itemFields || [];
+  // Primitive item shorthand: a single anonymous field
+  if (itemFields.length === 1 && itemFields[0].key === '') {
+    return itemFields[0].default != null ? itemFields[0].default : '';
+  }
+  var obj = {};
+  itemFields.forEach(function(f) {
+    if (f.type === 'array') {
+      obj[f.key] = [];
+    } else if (f.type === 'group' || f.type === 'object') {
+      var nested = {};
+      (f.fields || []).forEach(function(child) {
+        nested[child.key] = child.default != null ? child.default
+          : child.type === 'boolean' ? false
+          : child.type === 'array' ? []
+          : '';
+      });
+      obj[f.key] = nested;
+    } else {
+      obj[f.key] = f.default != null ? f.default
+        : f.type === 'boolean' ? false
+        : '';
+    }
+  });
+  return obj;
+}
+
+window.__builderArrayAdd = function(sectionId, path) {
+  var s = emailState.builderSections.find(function(x) { return x.id === sectionId; });
+  if (!s) return;
+  if (!s.props) s.props = {};
+  var arr = getNestedValue(s.props, path);
+  if (!Array.isArray(arr)) {
+    arr = [];
+    setNestedValue(s.props, path, arr);
+  }
+  var def = findFieldDef(s.type, path);
+  if (!def || def.type !== 'array') return;
+  if (typeof def.max === 'number' && arr.length >= def.max) return;
+  arr.push(defaultArrayItem(def));
+  redrawPropertyPanel();
+  updateSectionSummaryInDOM(sectionId);
+  window.__builderPreviewDebounced();
+};
+
+window.__builderArrayRemove = function(sectionId, path, idx) {
+  var s = emailState.builderSections.find(function(x) { return x.id === sectionId; });
+  if (!s || !s.props) return;
+  var arr = getNestedValue(s.props, path);
+  if (!Array.isArray(arr)) return;
+  if (idx < 0 || idx >= arr.length) return;
+  if (!confirm('Remove this item?')) return;
+  arr.splice(idx, 1);
+  redrawPropertyPanel();
+  updateSectionSummaryInDOM(sectionId);
+  window.__builderPreviewDebounced();
+};
+
+window.__builderArrayMove = function(sectionId, path, fromIdx, toIdx) {
+  var s = emailState.builderSections.find(function(x) { return x.id === sectionId; });
+  if (!s || !s.props) return;
+  moveInNestedArray(s.props, path, fromIdx, toIdx);
+  redrawPropertyPanel();
+  updateSectionSummaryInDOM(sectionId);
+  window.__builderPreviewDebounced();
 };
 
 // ═════════════════════════════════════════════════════════════
@@ -5272,6 +5954,98 @@ function defaultPropsForType(type) {
     case 'offers-list': return { fetch: {}, eyebrow: 'Your digest', heading: 'Trips worth a look', maxItems: '4' };
     case 'offers-two-up': return { fetch: {}, eyebrow: '', heading: '' };
     case 'offers-editorial': return { fetch: {}, eyebrow: "Editor's Choice", body: '', ctaText: 'Read more · book' };
+    // ── Transactional (Archetype D) ─────────────────────────────────
+    case 'top-bar': return { businessName: 'Travelgenix', showLogoImage: true, metaLabel: 'Booking ref', metaValue: '' };
+    case 'confirmation-block': return { icon: 'check', iconColour: 'success', eyebrow: "You're booked", headline: 'Your trip is confirmed', text: '' };
+    case 'trip-card': return {
+      image_name: 'Your destination',
+      image_tag: '',
+      image_url: '',
+      details: [
+        { label: 'Check in', value: '', secondary: '' },
+        { label: 'Check out', value: '', secondary: '' },
+        { label: 'Travellers', value: '', secondary: '' },
+      ],
+      journey: {
+        outbound: { airport_code: '', airport_name: '', date: '', time: '' },
+        return:   { airport_code: '', airport_name: '', date: '', time: '' },
+      },
+    };
+    case 'cost-summary': return {
+      line_items: [{ label: '', amount: '' }],
+      total: { label: 'Total', amount: '' },
+      payment: { text: '', status: 'Settled' },
+    };
+    case 'next-steps': return {
+      title: 'A few things before you go',
+      steps: [
+        { title: '', text: '' },
+      ],
+    };
+    case 'help-block': return {
+      title: 'Questions before you go?',
+      text: 'Our team is here Monday to Saturday, 9am to 7pm.',
+      contacts: [
+        { type: 'phone', value: '', href: '' },
+        { type: 'email', value: '', href: '' },
+      ],
+    };
+    case 'footer-meta': return {
+      lines: [''],
+      reason: 'This email was sent because you made a booking.',
+      browser_url: '',
+    };
+    // ── Marketing (Archetype B) ─────────────────────────────────────
+    case 'hero-image': return {
+      eyebrow: '',
+      headline: 'Your headline here',
+      deck: '',
+      image_url: '',
+      image_alt: '',
+      cta: { text: '', url: '' },
+    };
+    case 'destination-grid': return {
+      eyebrow: 'Trending now',
+      title: 'Three places worth a look',
+      lede: '',
+      cards: [
+        { name: '', meta: '', price_from: 'From', price_amount: '', price_unit: 'pp', image_url: '', tag: '', url: '' },
+      ],
+    };
+    case 'feature-story': return {
+      eyebrow: 'Feature',
+      title: 'This week\'s feature',
+      lede: '',
+      image_url: '',
+      image_alt: '',
+      body_title: '',
+      excerpt: '',
+      link: { text: 'Read the full piece', url: '' },
+    };
+    case 'pull-quote': return {
+      variant: 'simple',
+      label: '',
+      quote: '',
+      attribution: { name: '', role: '' },
+    };
+    case 'cta-banner': return {
+      title: 'Ready to take the next step?',
+      text: '',
+      cta: { text: 'Find out more', url: '' },
+    };
+    case 'footer-light': return {
+      logo_text: 'Travelgenix',
+      logo_link_url: 'https://travelgenix.io',
+      tagline: '',
+      socials: [],
+      manage_links: [
+        { label: 'Update preferences', url: '' },
+        { label: 'Unsubscribe', url: '' },
+        { label: 'View in browser', url: '' },
+      ],
+      reason: '',
+      legal: '',
+    };
     default: return {};
   }
 }

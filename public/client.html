@@ -4106,6 +4106,15 @@ function drawComposeForm() {
     { type: 'pulse-stats', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.15"/><line x1="5" y1="9" x2="9" y2="9" stroke-width="2.4"/><line x1="10.5" y1="9" x2="13.5" y2="9" stroke-width="2.4"/><line x1="15" y1="9" x2="19" y2="9" stroke-width="2.4"/><line x1="5" y1="13" x2="8" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="16" y1="13" x2="18" y2="13"/>' },
     { type: 'numbered-list', icon: '<rect x="2" y="4" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="6" x2="20" y2="6"/><rect x="2" y="10" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="12" x2="20" y2="12"/><rect x="2" y="16" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="18" x2="20" y2="18"/>' },
     { type: 'calendar-grid', icon: '<rect x="2" y="5" width="6" height="6" rx="0.8"/><rect x="9.5" y="5" width="12.5" height="6" rx="0.8"/><line x1="11" y1="7.5" x2="20" y2="7.5"/><line x1="11" y1="9.5" x2="17" y2="9.5"/><rect x="2" y="13" width="6" height="6" rx="0.8"/><rect x="9.5" y="13" width="12.5" height="6" rx="0.8"/><line x1="11" y1="15.5" x2="20" y2="15.5"/><line x1="11" y1="17.5" x2="17" y2="17.5"/>' },
+
+    // ── Product Launch sections (Archetype C, May 2026) ────────────────
+    { type: 'hero-dark', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.18"/><circle cx="6" cy="7" r="1"/><line x1="3" y1="11" x2="14" y2="11" stroke-width="2.4"/><line x1="3" y1="14" x2="11" y2="14" stroke-width="2.4"/><rect x="3" y="17" width="6" height="3" rx="1.5"/>' },
+    { type: 'product-mockup', icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="8" x2="21" y2="8"/><circle cx="6" cy="6" r="0.6"/><rect x="5" y="11" width="9" height="3" rx="1.2" fill="currentColor" opacity="0.25"/><rect x="11" y="15" width="8" height="3" rx="1.2" fill="currentColor" opacity="0.5"/>' },
+    { type: 'features-section', icon: '<rect x="2" y="3" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="4" x2="20" y2="4"/><line x1="8" y1="6" x2="16" y2="6"/><rect x="2" y="10" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="11" x2="20" y2="11"/><line x1="8" y1="13" x2="16" y2="13"/><rect x="2" y="17" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="8" y1="20" x2="16" y2="20"/>' },
+    { type: 'stats-strip', icon: '<rect x="2" y="7" width="20" height="10" rx="1" fill="currentColor" opacity="0.06"/><line x1="5" y1="11" x2="9" y2="11" stroke-width="2.4"/><line x1="5" y1="14" x2="8" y2="14"/><line x1="10" y1="11" x2="14" y2="11" stroke-width="2.4"/><line x1="10" y1="14" x2="13" y2="14"/><line x1="15" y1="11" x2="19" y2="11" stroke-width="2.4"/><line x1="15" y1="14" x2="18" y2="14"/>' },
+    { type: 'testimonial', icon: '<path d="M7 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7zM17 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7z"/><circle cx="9" cy="20" r="1.4"/><line x1="12" y1="20" x2="18" y2="20"/>' },
+    { type: 'cta-dark', icon: '<rect x="2" y="4" width="20" height="16" rx="1" fill="currentColor" opacity="0.18"/><line x1="6" y1="9" x2="18" y2="9" stroke-width="2.4"/><line x1="7" y1="12" x2="17" y2="12"/><rect x="9" y="14" width="6" height="3" rx="1.5"/>' },
+    { type: 'footer-dark', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.6"/><line x1="9" y1="16" x2="15" y2="16" stroke="white" opacity="0.9"/><line x1="6" y1="19" x2="18" y2="19" stroke="white" opacity="0.4"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
   addableTypes.forEach(function(t) {
@@ -4652,6 +4661,126 @@ var SECTION_META = {
       ]},
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════
+  // ARCHETYPE C — PRODUCT LAUNCH (May 2026)
+  // ════════════════════════════════════════════════════════════════
+  'hero-dark': {
+    label: 'Hero (dark mesh)',
+    description: 'Deep navy launch hero with optional logo and badge, big bold headline, deck, and up to two CTAs. Wrap an accent word in *asterisks* to italic-teal it.',
+    fields: [
+      { key: 'logo_mark', label: 'Logo mark (1-2 letters, e.g. "T")', type: 'text', maxLength: 2 },
+      { key: 'logo_text', label: 'Logo wordmark', type: 'text', maxLength: 30 },
+      { key: 'logo_link_url', label: 'Logo link URL', type: 'url' },
+      { key: 'badge_text', label: 'Badge text (e.g. "New launch")', type: 'text', maxLength: 20 },
+      { key: 'eyebrow', label: 'Eyebrow line', type: 'text', maxLength: 60 },
+      { key: 'headline', label: 'Headline (use *word* to italic-teal one phrase)', type: 'longText', required: true, maxLength: 160 },
+      { key: 'deck', label: 'Deck (subhead paragraph)', type: 'longText', maxLength: 280 },
+      { key: 'primary_cta', label: 'Primary CTA (solid teal)', type: 'group', fields: [
+        { key: 'text', label: 'Button text', type: 'text', maxLength: 30 },
+        { key: 'url', label: 'Button URL', type: 'url' },
+      ]},
+      { key: 'secondary_cta', label: 'Secondary CTA (ghost / outline)', type: 'group', fields: [
+        { key: 'text', label: 'Button text', type: 'text', maxLength: 30 },
+        { key: 'url', label: 'Button URL', type: 'url' },
+      ]},
+    ],
+  },
+  'product-mockup': {
+    label: 'Product mockup',
+    description: 'Mockup of a product UI inside a tinted gradient frame. Variant: chat (widget) or dashboard (metric list).',
+    fields: [
+      { key: 'variant', label: 'Variant', type: 'select', options: ['chat', 'dashboard'] },
+      { key: 'header_initial', label: 'Chat: header avatar letter', type: 'text', maxLength: 1, help: 'Used by the chat variant.' },
+      { key: 'header_name', label: 'Chat: header name', type: 'text', maxLength: 30, help: 'Used by the chat variant.' },
+      { key: 'header_status', label: 'Chat: header status', type: 'text', maxLength: 60, help: 'Used by the chat variant.' },
+      { key: 'messages', label: 'Chat messages', type: 'array', itemLabel: 'message', itemFields: [
+        { key: 'from', label: 'From', type: 'select', required: true, options: ['bot', 'user'] },
+        { key: 'text', label: 'Message text', type: 'longText', required: true, maxLength: 280 },
+      ]},
+      { key: 'show_typing', label: 'Chat: show typing dots at end', type: 'boolean' },
+      { key: 'dashboard_title', label: 'Dashboard: title', type: 'text', maxLength: 60, help: 'Used by the dashboard variant.' },
+      { key: 'dashboard_rows', label: 'Dashboard rows', type: 'array', itemLabel: 'row', itemFields: [
+        { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 60 },
+        { key: 'value', label: 'Value', type: 'text', required: true, maxLength: 30 },
+        { key: 'delta', label: 'Delta (e.g. "+12%")', type: 'text', maxLength: 20 },
+        { key: 'delta_direction', label: 'Delta direction', type: 'select', options: ['up', 'down'] },
+      ]},
+    ],
+  },
+  'features-section': {
+    label: 'Features list',
+    description: 'Centred header (eyebrow + title + lede) plus repeating feature rows with icon tiles. For product launches.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
+      { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
+        { key: 'icon', label: 'Icon', type: 'select', options: ['chat', 'bolt', 'users', 'clock', 'globe', 'star', 'shield', 'trending', 'search', 'spark'] },
+        { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
+        { key: 'heading', label: 'Feature heading', type: 'text', required: true, maxLength: 80 },
+        { key: 'text', label: 'Feature description', type: 'longText', maxLength: 240 },
+      ]},
+    ],
+  },
+  'stats-strip': {
+    label: 'Stats strip (3 centred stats)',
+    description: 'Light grey horizontal strip with three centred stats. Big navy number plus small grey label per stat.',
+    fields: [
+      { key: 'stats', label: 'Stats (exactly 3)', type: 'array', required: true, max: 3, itemLabel: 'stat', itemFields: [
+        { key: 'value', label: 'Number / value (e.g. "3.2x", "42%")', type: 'text', required: true, maxLength: 20 },
+        { key: 'label', label: 'Label (one short line)', type: 'text', required: true, maxLength: 100 },
+      ]},
+    ],
+  },
+  'testimonial': {
+    label: 'Testimonial',
+    description: 'Single centred italic quote with avatar and author byline underneath. One per email.',
+    fields: [
+      { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 400 },
+      { key: 'author', label: 'Author', type: 'group', fields: [
+        { key: 'initials', label: 'Avatar initials (auto from name if blank)', type: 'text', maxLength: 2 },
+        { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
+        { key: 'role', label: 'Role / company', type: 'text', maxLength: 100 },
+      ]},
+    ],
+  },
+  'cta-dark': {
+    label: 'CTA (dark navy)',
+    description: 'Final-conversion dark navy block with eyebrow, headline, text, and single primary button. Sits above the dark footer.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow line', type: 'text', maxLength: 40 },
+      { key: 'title', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+      { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 220 },
+      { key: 'cta', label: 'Primary CTA', type: 'group', required: true, fields: [
+        { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
+        { key: 'url', label: 'Button URL', type: 'url', required: true },
+      ]},
+    ],
+  },
+  'footer-dark': {
+    label: 'Footer (dark)',
+    description: 'Deep navy footer for product launches. Logo, optional inline links, socials, manage links, legal meta.',
+    fields: [
+      { key: 'logo_text', label: 'Logo wordmark text (used if no image)', type: 'text', maxLength: 30 },
+      { key: 'logo_url', label: 'Logo image URL', type: 'url' },
+      { key: 'logo_link_url', label: 'Logo link URL', type: 'url' },
+      { key: 'inline_links', label: 'Inline action links (e.g. Reply / Forward / Manage)', type: 'array', itemLabel: 'link', itemFields: [
+        { key: 'label', label: 'Link label', type: 'text', required: true, maxLength: 20 },
+        { key: 'url', label: 'Link URL', type: 'url', required: true },
+      ]},
+      { key: 'socials', label: 'Social links', type: 'array', itemLabel: 'social', itemFields: [
+        { key: 'platform', label: 'Platform', type: 'select', required: true, options: ['linkedin', 'facebook', 'instagram', 'x', 'youtube', 'tiktok'] },
+        { key: 'url', label: 'Profile URL', type: 'url', required: true },
+      ]},
+      { key: 'manage_links', label: 'Manage links (preferences, unsubscribe, view in browser)', type: 'array', itemLabel: 'link', itemFields: [
+        { key: 'label', label: 'Link label', type: 'text', required: true, maxLength: 30 },
+        { key: 'url', label: 'Link URL', type: 'url', required: true },
+      ]},
+      { key: 'reason', label: 'Send reason line', type: 'text', maxLength: 200 },
+      { key: 'legal', label: 'Legal meta line', type: 'text', maxLength: 200 },
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -4733,6 +4862,33 @@ function sectionSummary(section) {
       var cgCount = Array.isArray(p.items) ? p.items.length : 0;
       return (p.title ? p.title + ' · ' : '') + cgCount + ' event' + (cgCount === 1 ? '' : 's');
     }
+    // ── Product Launch ──────────────────────────────────────────────
+    case 'hero-dark': return ((p.headline || '').replace(/\*/g, '').replace(/\n/g, ' ') || '(no headline)').slice(0, 50);
+    case 'product-mockup': {
+      if (p.variant === 'dashboard') {
+        var rowCount = Array.isArray(p.dashboard_rows) ? p.dashboard_rows.length : 0;
+        return 'Dashboard · ' + rowCount + ' row' + (rowCount === 1 ? '' : 's');
+      }
+      var msgCount = Array.isArray(p.messages) ? p.messages.length : 0;
+      return 'Chat · ' + msgCount + ' message' + (msgCount === 1 ? '' : 's');
+    }
+    case 'features-section': {
+      var fcount = Array.isArray(p.features) ? p.features.length : 0;
+      return (p.title ? p.title.slice(0, 30) + ' · ' : '') + fcount + ' feature' + (fcount === 1 ? '' : 's');
+    }
+    case 'stats-strip': {
+      var sscount = Array.isArray(p.stats) ? p.stats.filter(function(s) { return s && (s.value || s.label); }).length : 0;
+      return sscount + ' stat' + (sscount === 1 ? '' : 's');
+    }
+    case 'testimonial': {
+      var q = (p.quote || '').trim();
+      var who = (p.author && p.author.name) || '';
+      if (q && who) return who + ' · "' + q.slice(0, 30) + (q.length > 30 ? '…' : '') + '"';
+      if (q) return '"' + q.slice(0, 50) + (q.length > 50 ? '…' : '') + '"';
+      return '(empty quote)';
+    }
+    case 'cta-dark': return p.title || (p.cta && p.cta.text) || 'Final CTA';
+    case 'footer-dark': return p.logo_text || 'Dark footer';
     default: return '';
   }
 }
@@ -6225,6 +6381,72 @@ function defaultPropsForType(type) {
       items: [
         { month: '', day: '', title: '', text: '', url: '' },
       ],
+    };
+    // ── Product Launch (Archetype C) ────────────────────────────────
+    case 'hero-dark': return {
+      logo_mark: 'T',
+      logo_text: 'Travelgenix',
+      logo_link_url: 'https://travelgenix.io',
+      badge_text: 'New launch',
+      eyebrow: '',
+      headline: 'Headline goes here.\n*Accent phrase here.*',
+      deck: '',
+      primary_cta:   { text: 'Get early access', url: '' },
+      secondary_cta: { text: '',                 url: '' },
+    };
+    case 'product-mockup': return {
+      variant: 'chat',
+      header_initial: 'L',
+      header_name: 'Luna',
+      header_status: 'Online · responds instantly',
+      messages: [
+        { from: 'bot',  text: '' },
+        { from: 'user', text: '' },
+        { from: 'bot',  text: '' },
+      ],
+      show_typing: false,
+      dashboard_title: '',
+      dashboard_rows: [],
+    };
+    case 'features-section': return {
+      eyebrow: 'What it does',
+      title: 'Built specifically for the way travel converts',
+      lede: '',
+      features: [
+        { icon: 'chat',  heading: '', text: '' },
+        { icon: 'bolt',  heading: '', text: '' },
+        { icon: 'users', heading: '', text: '' },
+        { icon: 'clock', heading: '', text: '' },
+      ],
+    };
+    case 'stats-strip': return {
+      stats: [
+        { value: '', label: '' },
+        { value: '', label: '' },
+        { value: '', label: '' },
+      ],
+    };
+    case 'testimonial': return {
+      quote: '',
+      author: { initials: '', name: '', role: '' },
+    };
+    case 'cta-dark': return {
+      eyebrow: 'Limited early access',
+      title: 'Be among the first to go live.',
+      text: '',
+      cta: { text: 'Claim your spot', url: '' },
+    };
+    case 'footer-dark': return {
+      logo_text: 'Travelgenix',
+      logo_link_url: 'https://travelgenix.io',
+      inline_links: [],
+      socials: [],
+      manage_links: [
+        { label: 'Update preferences', url: '' },
+        { label: 'Unsubscribe', url: '' },
+      ],
+      reason: '',
+      legal: '',
     };
     default: return {};
   }

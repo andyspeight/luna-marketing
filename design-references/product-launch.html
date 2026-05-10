@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introducing Luna Chat — Preview</title>
+<style>
+  /* Preview shell */
+  :root { --shell-bg: #f1f5f9; --shell-text: #0f172a; --shell-border: #e2e8f0; --shell-card: #ffffff; }
+  [data-theme="dark"] { --shell-bg: #0a0f1f; --shell-text: #f8fafc; --shell-border: #1e293b; --shell-card: #0f172a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--shell-bg); color: var(--shell-text); transition: background 0.3s ease; }
+  .shell-header { position: sticky; top: 0; z-index: 10; background: var(--shell-card); border-bottom: 1px solid var(--shell-border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(12px); }
+  .shell-title { font-size: 13px; font-weight: 600; opacity: 0.7; }
+  .theme-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: transparent; border: 1px solid var(--shell-border); border-radius: 999px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--shell-text); cursor: pointer; transition: all 0.2s ease; }
+  .theme-toggle:hover { background: var(--shell-bg); transform: translateY(-1px); }
+  .preview-frame { padding: 40px 20px 80px; display: flex; justify-content: center; }
+
+  /* ============ EMAIL ============ */
+  .email-wrapper { width: 100%; max-width: 600px; margin: 0 auto; }
+  .email-table {
+    width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px rgba(15, 23, 42, 0.08), 0 32px 80px rgba(0, 180, 216, 0.06);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a;
+  }
+  [data-theme="dark"] .email-table { background: #0f172a; color: #f8fafc; box-shadow: 0 32px 80px rgba(0,180,216,0.12); }
+
+  /* Hero — full bleed dark with animated glow effect */
+  .hero {
+    position: relative;
+    background: #0a0f1f;
+    color: #ffffff;
+    padding: 48px 40px 56px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  /* Layered gradient mesh — feels like a product launch */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(0, 180, 216, 0.4) 0%, transparent 60%);
+    z-index: -1;
+    filter: blur(40px);
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -150px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(72, 202, 228, 0.35) 0%, transparent 60%);
+    z-index: -1;
+    filter: blur(40px);
+  }
+  .hero-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 80px; position: relative;
+  }
+  .hero-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 700; letter-spacing: -0.01em;
+    color: #ffffff; text-decoration: none;
+  }
+  .hero-logo-mark {
+    width: 26px; height: 26px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+  }
+  .new-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    background: rgba(0, 180, 216, 0.15);
+    border: 1px solid rgba(0, 180, 216, 0.4);
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #48cae4;
+  }
+  .new-badge-dot {
+    width: 6px; height: 6px;
+    background: #00b4d8;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #00b4d8;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .hero-eyebrow {
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: #48cae4; margin: 0 0 20px;
+    position: relative;
+  }
+  .hero-headline {
+    font-size: 52px; font-weight: 800;
+    line-height: 1.02; letter-spacing: -0.04em;
+    margin: 0 0 20px;
+    color: #ffffff;
+    position: relative;
+  }
+  .hero-headline em {
+    font-style: italic;
+    background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #48cae4;
+  }
+  .hero-deck {
+    font-size: 18px; line-height: 1.55;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 36px; max-width: 480px;
+    position: relative;
+    letter-spacing: -0.005em;
+  }
+  .hero-cta-group {
+    display: flex; gap: 12px; align-items: center;
+    position: relative; flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 16px 28px;
+    background: #00b4d8;
+    color: #0a0f1f;
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 15px; font-weight: 700;
+    letter-spacing: -0.01em;
+    box-shadow: 0 4px 20px rgba(0, 180, 216, 0.4);
+    transition: all 0.2s ease;
+  }
+  .btn-primary:hover {
+    background: #48cae4;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0, 180, 216, 0.5);
+  }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 16px 22px;
+    background: transparent;
+    color: #ffffff;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    font-size: 15px; font-weight: 600;
+    letter-spacing: -0.01em;
+    transition: all 0.2s ease;
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.4);
+  }
+
+  /* Product visual / mockup */
+  .visual-wrap {
+    background: #ffffff;
+    padding: 48px 40px 8px;
+    text-align: center;
+  }
+  [data-theme="dark"] .visual-wrap { background: #0f172a; }
+  .visual-frame {
+    background: linear-gradient(135deg, #f8fafc 0%, #e0f7fa 100%);
+    border-radius: 16px;
+    padding: 40px 32px 0;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  [data-theme="dark"] .visual-frame {
+    background: linear-gradient(135deg, #1e293b 0%, #0a3a4a 100%);
+    border-color: #334155;
+  }
+
+  /* Faux chat widget */
+  .chat-mock {
+    background: #ffffff;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.04);
+    text-align: left;
+    margin: 0 auto;
+    max-width: 360px;
+    overflow: hidden;
+  }
+  [data-theme="dark"] .chat-mock { background: #1e293b; box-shadow: 0 -4px 24px rgba(0,0,0,0.4); }
+  .chat-header {
+    background: #1b2b5b;
+    color: #fff;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .chat-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00b4d8, #48cae4);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #0a0f1f;
+    position: relative;
+  }
+  .chat-avatar::after {
+    content: ''; position: absolute; bottom: 0; right: 0;
+    width: 10px; height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+    border: 2px solid #1b2b5b;
+  }
+  .chat-name { font-size: 13px; font-weight: 600; margin: 0; }
+  .chat-status { font-size: 11px; color: rgba(255,255,255,0.7); margin: 0; }
+  .chat-body { padding: 18px; }
+  .chat-msg {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px; line-height: 1.45;
+    margin-bottom: 8px;
+    max-width: 85%;
+  }
+  .chat-msg-bot {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-bottom-left-radius: 4px;
+  }
+  [data-theme="dark"] .chat-msg-bot { background: #334155; color: #f8fafc; }
+  .chat-msg-user {
+    background: #00b4d8;
+    color: #0a0f1f;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+    font-weight: 500;
+  }
+  .chat-typing {
+    display: inline-flex; gap: 3px;
+    padding: 12px 14px;
+    background: #f1f5f9;
+    border-radius: 14px;
+    border-bottom-left-radius: 4px;
+  }
+  [data-theme="dark"] .chat-typing { background: #334155; }
+  .typing-dot {
+    width: 6px; height: 6px;
+    background: #94a3b8;
+    border-radius: 50%;
+    animation: typing 1.4s ease-in-out infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  /* What's new section */
+  .features {
+    padding: 60px 40px 48px;
+    background: #ffffff;
+  }
+  [data-theme="dark"] .features { background: #0f172a; }
+  .features-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #00b4d8; margin: 0 0 12px; text-align: center;
+  }
+  [data-theme="dark"] .features-eyebrow { color: #48cae4; }
+  .features-title {
+    font-size: 30px; font-weight: 700; line-height: 1.2; letter-spacing: -0.025em;
+    color: #0f172a; margin: 0 0 12px; text-align: center;
+  }
+  [data-theme="dark"] .features-title { color: #f8fafc; }
+  .features-lede {
+    font-size: 16px; line-height: 1.6; color: #475569;
+    text-align: center; margin: 0 auto 40px;
+    max-width: 460px;
+  }
+  [data-theme="dark"] .features-lede { color: #cbd5e1; }
+
+  .feature-row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 20px;
+    padding: 24px 0;
+    border-bottom: 1px solid #f1f5f9;
+    align-items: flex-start;
+  }
+  [data-theme="dark"] .feature-row { border-bottom-color: #1e293b; }
+  .feature-row:last-child { border-bottom: none; }
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #00b4d8, #48cae4);
+    border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 180, 216, 0.25);
+  }
+  .feature-content h3 {
+    font-size: 18px; font-weight: 700;
+    letter-spacing: -0.015em; color: #0f172a;
+    margin: 4px 0 6px;
+  }
+  [data-theme="dark"] .feature-content h3 { color: #f8fafc; }
+  .feature-content p {
+    font-size: 14px; line-height: 1.6;
+    color: #475569; margin: 0;
+  }
+  [data-theme="dark"] .feature-content p { color: #cbd5e1; }
+
+  /* Big number block */
+  .stats-strip {
+    background: #f8fafc;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  [data-theme="dark"] .stats-strip { background: #1e293b; border-color: #334155; }
+  .stat { text-align: center; }
+  .stat-num {
+    font-size: 36px; font-weight: 800;
+    letter-spacing: -0.035em; line-height: 1;
+    color: #1b2b5b; margin: 0 0 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-theme="dark"] .stat-num { color: #48cae4; }
+  .stat-label {
+    font-size: 12px; font-weight: 500;
+    color: #475569; margin: 0;
+    line-height: 1.4;
+  }
+  [data-theme="dark"] .stat-label { color: #94a3b8; }
+
+  /* Testimonial */
+  .testimonial {
+    padding: 56px 40px;
+    text-align: center;
+    background: #ffffff;
+  }
+  [data-theme="dark"] .testimonial { background: #0f172a; }
+  .testimonial-quote {
+    font-size: 22px; line-height: 1.4; letter-spacing: -0.02em;
+    color: #0f172a; margin: 0 0 24px;
+    font-weight: 500; max-width: 480px;
+    margin-left: auto; margin-right: auto;
+    font-style: italic;
+  }
+  [data-theme="dark"] .testimonial-quote { color: #f8fafc; }
+  .testimonial-author { display: inline-flex; align-items: center; gap: 12px; }
+  .testimonial-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1b2b5b, #2a3f7a);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+  }
+  .testimonial-meta { text-align: left; }
+  .testimonial-name {
+    font-size: 14px; font-weight: 600;
+    color: #0f172a; margin: 0;
+  }
+  [data-theme="dark"] .testimonial-name { color: #f8fafc; }
+  .testimonial-role {
+    font-size: 12px; color: #475569; margin: 2px 0 0;
+  }
+  [data-theme="dark"] .testimonial-role { color: #94a3b8; }
+
+  /* Final CTA */
+  .final-cta {
+    background: linear-gradient(135deg, #1b2b5b 0%, #0a0f1f 100%);
+    padding: 60px 40px;
+    text-align: center;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+  }
+  .final-cta::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,180,216,0.18) 0%, transparent 60%);
+    transform: translate(-50%, -50%);
+    filter: blur(60px);
+  }
+  .final-cta-eyebrow {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: #48cae4; margin: 0 0 16px;
+    position: relative;
+  }
+  .final-cta-title {
+    font-size: 32px; font-weight: 800;
+    letter-spacing: -0.03em; line-height: 1.15;
+    margin: 0 0 16px; color: #ffffff;
+    position: relative;
+  }
+  .final-cta-text {
+    font-size: 16px; line-height: 1.55;
+    color: rgba(255,255,255,0.75);
+    margin: 0 auto 32px; max-width: 420px;
+    position: relative;
+  }
+
+  /* Footer */
+  .footer {
+    background: #0a0f1f;
+    color: #94a3b8;
+    padding: 32px 40px;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer-logo {
+    font-size: 13px; font-weight: 800;
+    letter-spacing: -0.02em; color: #ffffff;
+    margin-bottom: 16px;
+  }
+  .footer-links { display: flex; justify-content: center; gap: 18px; margin-bottom: 16px; font-size: 12px; }
+  .footer-links a { color: #94a3b8; text-decoration: none; }
+  .footer-meta { font-size: 11px; color: #475569; line-height: 1.6; margin: 0; }
+  .footer-meta a { color: #94a3b8; text-decoration: underline; }
+
+  @media (max-width: 640px) {
+    .hero { padding: 32px 24px 40px; }
+    .hero-nav { margin-bottom: 56px; }
+    .hero-headline { font-size: 36px; }
+    .hero-deck { font-size: 16px; }
+    .visual-wrap, .features, .testimonial, .final-cta { padding-left: 24px; padding-right: 24px; }
+    .stats-strip { grid-template-columns: 1fr; padding: 32px 24px; gap: 28px; }
+    .feature-row { grid-template-columns: 48px 1fr; gap: 14px; }
+    .feature-icon { width: 40px; height: 40px; }
+    .features-title, .final-cta-title { font-size: 24px; }
+    .testimonial-quote { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell-header">
+  <span class="shell-title">Luna Chat Launch — Product Announcement Preview</span>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+    <span id="theme-label">Dark mode</span>
+  </button>
+</div>
+
+<div class="preview-frame">
+  <div class="email-wrapper">
+    <table class="email-table" cellpadding="0" cellspacing="0" border="0">
+      <tr><td>
+
+        <!-- Hero -->
+        <div class="hero">
+          <div class="hero-nav">
+            <a href="#" class="hero-logo">
+              <span class="hero-logo-mark">T</span>
+              <span>Travelgenix</span>
+            </a>
+            <span class="new-badge">
+              <span class="new-badge-dot"></span>
+              New launch
+            </span>
+          </div>
+
+          <p class="hero-eyebrow">Introducing Luna Chat</p>
+          <h1 class="hero-headline">Live conversations.<br><em>Smarter sales.</em></h1>
+          <p class="hero-deck">The AI-powered live chat built for travel businesses. It answers the easy questions, hands the complex ones to your team, and turns more browsers into bookings — 24 hours a day.</p>
+
+          <div class="hero-cta-group">
+            <a href="#" class="btn-primary">
+              Get early access
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+            <a href="#" class="btn-secondary">
+              Watch the 90-sec demo
+            </a>
+          </div>
+        </div>
+
+        <!-- Product visual -->
+        <div class="visual-wrap">
+          <div class="visual-frame">
+            <div class="chat-mock">
+              <div class="chat-header">
+                <div class="chat-avatar">L</div>
+                <div>
+                  <p class="chat-name">Luna</p>
+                  <p class="chat-status">Online · responds instantly</p>
+                </div>
+              </div>
+              <div class="chat-body">
+                <div class="chat-msg chat-msg-bot">Hi! Looking for some sunshine this summer? I can help you find a deal in seconds.</div>
+                <div class="chat-msg chat-msg-user">7 nights in Rhodes, late June, all inclusive</div>
+                <div class="chat-msg chat-msg-bot">Perfect. I've found 14 options from £589pp. Want me to filter by 4★ and above?</div>
+                <div class="chat-typing">
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+          <p class="features-eyebrow">What it does</p>
+          <h2 class="features-title">Built specifically for the way travel converts</h2>
+          <p class="features-lede">Luna Chat isn't a generic bot dressed in travel clothes. It's purpose-built to handle real customer questions with real travel intelligence.</p>
+
+          <div class="feature-row">
+            <div class="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="feature-content">
+              <h3>Answers travel questions, not just FAQs</h3>
+              <p>Trained on your destinations, suppliers, and policies. It knows the difference between Ayia Napa and Albufeira, and when to hand off to a human.</p>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <div class="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="feature-content">
+              <h3>Live searches inside the conversation</h3>
+              <p>Customer asks for a deal, Luna pulls live availability and pricing from your suppliers. No back-and-forth, no broken handoffs.</p>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <div class="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="feature-content">
+              <h3>Knows when to fetch a human</h3>
+              <p>Routes complex questions to your team with full context. Your agents jump in mid-conversation and never start from scratch.</p>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <div class="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="feature-content">
+              <h3>Works while you sleep</h3>
+              <p>61% of holiday research now happens outside 9 to 5. Luna captures and qualifies those leads so your morning starts with hot enquiries, not a cold inbox.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-strip">
+          <div class="stat">
+            <p class="stat-num">3.2x</p>
+            <p class="stat-label">More qualified leads vs. static contact forms</p>
+          </div>
+          <div class="stat">
+            <p class="stat-num">42%</p>
+            <p class="stat-label">Of conversations resolved without human handoff</p>
+          </div>
+          <div class="stat">
+            <p class="stat-num">90s</p>
+            <p class="stat-label">From install to first conversation, average</p>
+          </div>
+        </div>
+
+        <!-- Testimonial -->
+        <div class="testimonial">
+          <p class="testimonial-quote">"It picked up six leads on its first weekend live. Two of them booked. Honestly, it paid for itself before we'd even had a Monday morning team meeting."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">JR</div>
+            <div class="testimonial-meta">
+              <p class="testimonial-name">James Reynolds</p>
+              <p class="testimonial-role">Director, Reynolds Travel Group</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Final CTA -->
+        <div class="final-cta">
+          <p class="final-cta-eyebrow">Limited early access</p>
+          <h2 class="final-cta-title">Be among the first 50 businesses to go live.</h2>
+          <p class="final-cta-text">Early access clients get 90 days free, white-glove setup, and direct input into the roadmap. Spaces are filling fast.</p>
+          <a href="#" class="btn-primary">
+            Claim your spot
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+          <div class="footer-logo">Travelgenix</div>
+          <div class="footer-links">
+            <a href="#">Reply</a>
+            <a href="#">Forward</a>
+            <a href="#">Manage</a>
+          </div>
+          <p class="footer-meta">
+            You're getting this because you're part of the Travelgenix community.<br>
+            <a href="#">Update preferences</a> · <a href="#">Unsubscribe</a><br><br>
+            Travelgenix Ltd · Bournemouth, UK · Co. #12781046
+          </p>
+        </div>
+
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+  function toggleTheme() {
+    const body = document.body;
+    const icon = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      body.removeAttribute('data-theme');
+      label.textContent = 'Dark mode';
+      icon.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>';
+    } else {
+      body.setAttribute('data-theme', 'dark');
+      label.textContent = 'Light mode';
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>';
+    }
+  }
+</script>
+
+</body>
+</html>

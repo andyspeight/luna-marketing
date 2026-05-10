@@ -4097,6 +4097,15 @@ function drawComposeForm() {
     { type: 'pull-quote', icon: '<path d="M7 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7zM17 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7z"/>' },
     { type: 'cta-banner', icon: '<rect x="2" y="6" width="20" height="12" rx="1.5" fill="currentColor" opacity="0.15"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="5" y1="13" x2="14" y2="13"/><rect x="14" y="14" width="6" height="3" rx="1.5"/>' },
     { type: 'footer-light', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.08"/><line x1="9" y1="16" x2="15" y2="16"/><circle cx="8" cy="19" r="0.8"/><circle cx="12" cy="19" r="0.8"/><circle cx="16" cy="19" r="0.8"/>' },
+
+    // ── B2B Weekly sections (Archetype A, May 2026) ────────────────────
+    { type: 'masthead', icon: '<line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="20" x2="22" y2="20" stroke-width="2.4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.4"/>' },
+    { type: 'toc', icon: '<rect x="2" y="4" width="2" height="2" rx="0.4"/><line x1="6" y1="5" x2="20" y2="5"/><rect x="2" y="9" width="2" height="2" rx="0.4"/><line x1="6" y1="10" x2="20" y2="10"/><rect x="2" y="14" width="2" height="2" rx="0.4"/><line x1="6" y1="15" x2="20" y2="15"/><rect x="2" y="19" width="2" height="2" rx="0.4"/><line x1="6" y1="20" x2="20" y2="20"/>' },
+    { type: 'lead-story', icon: '<line x1="3" y1="3" x2="9" y2="3" stroke-width="2.4"/><line x1="3" y1="6.5" x2="21" y2="6.5" stroke-width="2.4"/><rect x="3" y="10" width="18" height="6" rx="0.6"/><line x1="3" y1="19" x2="21" y2="19"/><line x1="3" y1="21.5" x2="14" y2="21.5"/>' },
+    { type: 'duo-grid', icon: '<rect x="2" y="3" width="9" height="18" rx="0.6"/><line x1="3" y1="6" x2="6" y2="6"/><line x1="3" y1="9" x2="10" y2="9"/><line x1="3" y1="12" x2="10" y2="12"/><rect x="13" y="3" width="9" height="18" rx="0.6"/><line x1="14" y1="6" x2="17" y2="6"/><line x1="14" y1="9" x2="21" y2="9"/><line x1="14" y1="12" x2="21" y2="12"/>' },
+    { type: 'pulse-stats', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.15"/><line x1="5" y1="9" x2="9" y2="9" stroke-width="2.4"/><line x1="10.5" y1="9" x2="13.5" y2="9" stroke-width="2.4"/><line x1="15" y1="9" x2="19" y2="9" stroke-width="2.4"/><line x1="5" y1="13" x2="8" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="16" y1="13" x2="18" y2="13"/>' },
+    { type: 'numbered-list', icon: '<rect x="2" y="4" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="6" x2="20" y2="6"/><rect x="2" y="10" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="12" x2="20" y2="12"/><rect x="2" y="16" width="3.6" height="3.6" rx="0.6"/><line x1="8" y1="18" x2="20" y2="18"/>' },
+    { type: 'calendar-grid', icon: '<rect x="2" y="5" width="6" height="6" rx="0.8"/><rect x="9.5" y="5" width="12.5" height="6" rx="0.8"/><line x1="11" y1="7.5" x2="20" y2="7.5"/><line x1="11" y1="9.5" x2="17" y2="9.5"/><rect x="2" y="13" width="6" height="6" rx="0.8"/><rect x="9.5" y="13" width="12.5" height="6" rx="0.8"/><line x1="11" y1="15.5" x2="20" y2="15.5"/><line x1="11" y1="17.5" x2="17" y2="17.5"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
   addableTypes.forEach(function(t) {
@@ -4541,6 +4550,108 @@ var SECTION_META = {
       { key: 'legal', label: 'Legal meta line', type: 'text', maxLength: 200 },
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════
+  // ARCHETYPE A — B2B WEEKLY (May 2026)
+  // ════════════════════════════════════════════════════════════════
+  'masthead': {
+    label: 'Masthead',
+    description: 'Newspaper-style header with vol/issue line, big bold title, and italic tagline',
+    fields: [
+      { key: 'issue_label', label: 'Issue label (e.g. "Vol. 02 · Issue 19")', type: 'text', maxLength: 60 },
+      { key: 'date_label', label: 'Date (e.g. "Friday, 8 May 2026")', type: 'text', maxLength: 40 },
+      { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 60 },
+      { key: 'tagline', label: 'Tagline (italic, single line)', type: 'text', maxLength: 120 },
+    ],
+  },
+  'toc': {
+    label: 'Table of contents',
+    description: "Light grey strip listing this issue's articles in two columns",
+    fields: [
+      { key: 'label', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'items', label: 'Items (numbers auto-generated)', type: 'array', required: true, itemLabel: 'item', itemFields: [
+        { key: 'text', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+      ]},
+    ],
+  },
+  'lead-story': {
+    label: 'Lead story',
+    description: 'Editorial centrepiece — kicker, headline, deck, image, byline, body, read-more link',
+    fields: [
+      { key: 'kicker', label: 'Kicker label', type: 'text', maxLength: 30 },
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'deck', label: 'Deck (large lede paragraph)', type: 'longText', maxLength: 280 },
+      { key: 'image_url', label: 'Lead image URL', type: 'url' },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
+      { key: 'byline', label: 'Byline', type: 'group', fields: [
+        { key: 'name', label: 'Author name', type: 'text', maxLength: 60 },
+        { key: 'meta', label: 'Meta (e.g. "4 min read · Strategy")', type: 'text', maxLength: 80 },
+      ]},
+      { key: 'body', label: 'Article body', type: 'longText', maxLength: 4000, help: 'Blank line = paragraph break. **bold**, *italic*, [text](url) work inline.' },
+      { key: 'link_text', label: 'Read-more link text', type: 'text', maxLength: 60 },
+      { key: 'link_url', label: 'Read-more link URL', type: 'url' },
+    ],
+  },
+  'duo-grid': {
+    label: 'Duo grid (two stories)',
+    description: 'Two secondary stories side by side. Each has eyebrow tag, headline, copy, link.',
+    fields: [
+      { key: 'left', label: 'Left story', type: 'group', required: true, fields: [
+        { key: 'tag', label: 'Tag (e.g. "Trend watch")', type: 'text', maxLength: 30 },
+        { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+        { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+        { key: 'link_text', label: 'Link text', type: 'text', maxLength: 30 },
+        { key: 'link_url', label: 'Link URL', type: 'url' },
+      ]},
+      { key: 'right', label: 'Right story', type: 'group', required: true, fields: [
+        { key: 'tag', label: 'Tag (e.g. "Operator update")', type: 'text', maxLength: 30 },
+        { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+        { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+        { key: 'link_text', label: 'Link text', type: 'text', maxLength: 30 },
+        { key: 'link_url', label: 'Link URL', type: 'url' },
+      ]},
+    ],
+  },
+  'pulse-stats': {
+    label: 'Industry pulse (3 stats)',
+    description: 'Navy block with three big stats and a source line. Wrap part of a number in {} to teal-highlight it (e.g. "+{12}%").',
+    fields: [
+      { key: 'label', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'stats', label: 'Stats (exactly 3)', type: 'array', required: true, max: 3, itemLabel: 'stat', itemFields: [
+        { key: 'value', label: 'Number (use {12} to teal-highlight)', type: 'text', required: true, maxLength: 30 },
+        { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 100 },
+      ]},
+      { key: 'source', label: 'Source / footnote', type: 'text', maxLength: 200 },
+    ],
+  },
+  'numbered-list': {
+    label: 'Numbered list',
+    description: 'Editorial numbered list with title and optional time-meta on the header. Items use 28px navy tiles.',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'meta', label: 'Header meta (e.g. "10 min total")', type: 'text', maxLength: 30 },
+      { key: 'items', label: 'Items', type: 'array', required: true, itemLabel: 'item', itemFields: [
+        { key: 'title', label: 'Item title', type: 'text', required: true, maxLength: 100 },
+        { key: 'text', label: 'Description', type: 'longText', maxLength: 280, help: 'Use [link text](url) for inline links.' },
+      ]},
+    ],
+  },
+  'calendar-grid': {
+    label: 'Calendar grid (On the radar)',
+    description: 'Upcoming events list. Each item shows a month/day tile and a title plus one-line description.',
+    fields: [
+      { key: 'title', label: 'Section title', type: 'text', maxLength: 60 },
+      { key: 'sub', label: 'Sub-line', type: 'text', maxLength: 120 },
+      { key: 'items', label: 'Items', type: 'array', required: true, itemLabel: 'event', itemFields: [
+        { key: 'month', label: 'Month (e.g. "May")', type: 'text', required: true, maxLength: 4 },
+        { key: 'day', label: 'Day (e.g. "14")', type: 'text', required: true, maxLength: 2 },
+        { key: 'title', label: 'Event title', type: 'text', required: true, maxLength: 80 },
+        { key: 'text', label: 'One-line description', type: 'text', maxLength: 140 },
+        { key: 'url', label: 'Link URL', type: 'url' },
+      ]},
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -4605,6 +4716,23 @@ function sectionSummary(section) {
     }
     case 'cta-banner': return p.title || (p.cta && p.cta.text) || 'CTA banner';
     case 'footer-light': return p.logo_text || p.tagline || 'Light footer';
+    // ── B2B Weekly ──────────────────────────────────────────────────
+    case 'masthead': return p.title || 'Masthead';
+    case 'toc': {
+      var tocCount = Array.isArray(p.items) ? p.items.length : 0;
+      return tocCount + ' item' + (tocCount === 1 ? '' : 's');
+    }
+    case 'lead-story': return (p.headline || '(no headline)').slice(0, 50);
+    case 'duo-grid': return ((p.left && p.left.headline) || 'Left') + ' | ' + ((p.right && p.right.headline) || 'Right');
+    case 'pulse-stats': return (p.title || (Array.isArray(p.stats) ? p.stats.length + ' stats' : 'Pulse')).slice(0, 50);
+    case 'numbered-list': {
+      var nlCount = Array.isArray(p.items) ? p.items.length : 0;
+      return (p.title ? p.title + ' · ' : '') + nlCount + ' item' + (nlCount === 1 ? '' : 's');
+    }
+    case 'calendar-grid': {
+      var cgCount = Array.isArray(p.items) ? p.items.length : 0;
+      return (p.title ? p.title + ' · ' : '') + cgCount + ' event' + (cgCount === 1 ? '' : 's');
+    }
     default: return '';
   }
 }
@@ -6045,6 +6173,58 @@ function defaultPropsForType(type) {
       ],
       reason: '',
       legal: '',
+    };
+    // ── B2B Weekly (Archetype A) ────────────────────────────────────
+    case 'masthead': return {
+      issue_label: '',
+      date_label: '',
+      title: 'The Travelgenix Weekly',
+      tagline: 'Five minutes on what matters in travel tech, every Friday.',
+    };
+    case 'toc': return {
+      label: 'In this issue',
+      items: [
+        { text: '' },
+      ],
+    };
+    case 'lead-story': return {
+      kicker: 'Lead story',
+      headline: 'Your headline here',
+      deck: '',
+      image_url: '',
+      image_alt: '',
+      byline: { name: '', meta: '' },
+      body: '',
+      link_text: 'Read the full piece →',
+      link_url: '',
+    };
+    case 'duo-grid': return {
+      left:  { tag: '', headline: '', body: '', link_text: 'Read more →', link_url: '' },
+      right: { tag: '', headline: '', body: '', link_text: 'Read more →', link_url: '' },
+    };
+    case 'pulse-stats': return {
+      label: 'Industry pulse',
+      title: 'The numbers that mattered this week',
+      stats: [
+        { value: '', label: '' },
+        { value: '', label: '' },
+        { value: '', label: '' },
+      ],
+      source: '',
+    };
+    case 'numbered-list': return {
+      title: 'Five things to do this week',
+      meta: '',
+      items: [
+        { title: '', text: '' },
+      ],
+    };
+    case 'calendar-grid': return {
+      title: 'On the radar',
+      sub: 'Worth putting in the diary.',
+      items: [
+        { month: '', day: '', title: '', text: '', url: '' },
+      ],
     };
     default: return {};
   }

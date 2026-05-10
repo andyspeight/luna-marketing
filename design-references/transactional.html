@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Booking Confirmation — Preview</title>
+<style>
+  /* Preview shell */
+  :root { --shell-bg: #f1f5f9; --shell-text: #0f172a; --shell-border: #e2e8f0; --shell-card: #ffffff; }
+  [data-theme="dark"] { --shell-bg: #0a0f1f; --shell-text: #f8fafc; --shell-border: #1e293b; --shell-card: #0f172a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--shell-bg); color: var(--shell-text); transition: background 0.3s ease; }
+  .shell-header { position: sticky; top: 0; z-index: 10; background: var(--shell-card); border-bottom: 1px solid var(--shell-border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(12px); }
+  .shell-title { font-size: 13px; font-weight: 600; opacity: 0.7; }
+  .theme-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: transparent; border: 1px solid var(--shell-border); border-radius: 999px; font-family: inherit; font-size: 12px; font-weight: 500; color: var(--shell-text); cursor: pointer; transition: all 0.2s ease; }
+  .theme-toggle:hover { background: var(--shell-bg); transform: translateY(-1px); }
+  .preview-frame { padding: 40px 20px 80px; display: flex; justify-content: center; }
+
+  /* ============ EMAIL ============ */
+  .email-wrapper { width: 100%; max-width: 600px; margin: 0 auto; }
+  .email-table {
+    width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0f172a;
+  }
+  [data-theme="dark"] .email-table { background: #0f172a; color: #f8fafc; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+  /* Top bar */
+  .top-bar {
+    background: #ffffff;
+    padding: 20px 32px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  [data-theme="dark"] .top-bar { background: #0f172a; border-bottom-color: #1e293b; }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; color: #0f172a;
+    font-size: 14px; font-weight: 700; letter-spacing: -0.01em;
+  }
+  [data-theme="dark"] .logo { color: #f8fafc; }
+  .logo-mark {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: #1b2b5b;
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+  }
+  [data-theme="dark"] .logo-mark { background: #00b4d8; color: #0a0f1f; }
+  .booking-ref {
+    font-size: 11px; font-weight: 500;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+  .booking-ref strong {
+    color: #0f172a;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  [data-theme="dark"] .booking-ref strong { color: #f8fafc; }
+
+  /* Confirmation block */
+  .confirm {
+    padding: 48px 32px 32px;
+    text-align: left;
+  }
+  .confirm-icon {
+    width: 56px; height: 56px;
+    background: #ecfdf5;
+    color: #10b981;
+    border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+  }
+  [data-theme="dark"] .confirm-icon { background: rgba(16, 185, 129, 0.15); }
+  .confirm-eyebrow {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #10b981; margin: 0 0 8px;
+  }
+  .confirm-headline {
+    font-size: 28px; font-weight: 700;
+    line-height: 1.2; letter-spacing: -0.025em;
+    color: #0f172a; margin: 0 0 12px;
+  }
+  [data-theme="dark"] .confirm-headline { color: #f8fafc; }
+  .confirm-text {
+    font-size: 15px; line-height: 1.6;
+    color: #475569; margin: 0;
+  }
+  [data-theme="dark"] .confirm-text { color: #cbd5e1; }
+  .confirm-text strong {
+    color: #0f172a; font-weight: 600;
+  }
+  [data-theme="dark"] .confirm-text strong { color: #f8fafc; }
+
+  /* Trip card — the hero of the email */
+  .trip-card {
+    margin: 0 32px 32px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+  [data-theme="dark"] .trip-card {
+    background: #1e293b; border-color: #334155;
+  }
+  .trip-image {
+    width: 100%; height: 180px;
+    background-size: cover; background-position: center;
+    background-image: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.5) 100%), url('https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1200&q=80');
+    position: relative;
+  }
+  .trip-image-overlay {
+    position: absolute;
+    bottom: 16px; left: 20px;
+    color: #ffffff;
+  }
+  .trip-image-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 999px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .trip-image-name {
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.15;
+    margin: 0;
+  }
+  .trip-body {
+    padding: 24px;
+  }
+
+  /* Detail rows */
+  .detail-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid #f1f5f9;
+    align-items: baseline;
+  }
+  [data-theme="dark"] .detail-row { border-bottom-color: #334155; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label {
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .detail-value {
+    font-size: 14px; font-weight: 500;
+    color: #0f172a;
+    line-height: 1.5;
+  }
+  [data-theme="dark"] .detail-value { color: #f8fafc; }
+  .detail-value strong {
+    font-weight: 700;
+  }
+  .detail-value-secondary {
+    font-size: 12px;
+    color: #475569;
+    margin-top: 2px;
+  }
+  [data-theme="dark"] .detail-value-secondary { color: #94a3b8; }
+
+  /* Two columns for outbound/return */
+  .journey {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    gap: 0;
+    padding: 24px 0;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+    margin: 16px 0 0;
+    align-items: center;
+  }
+  [data-theme="dark"] .journey { border-color: #334155; }
+  .journey-side {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .journey-side-right { text-align: right; }
+  .journey-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .journey-airport {
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    line-height: 1;
+  }
+  [data-theme="dark"] .journey-airport { color: #f8fafc; }
+  .journey-city {
+    font-size: 13px;
+    color: #475569;
+  }
+  [data-theme="dark"] .journey-city { color: #cbd5e1; }
+  .journey-arrow {
+    color: #00b4d8;
+    display: flex; justify-content: center;
+  }
+
+  /* Cost summary */
+  .cost {
+    margin: 0 32px 32px;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  [data-theme="dark"] .cost { background: #1e293b; }
+  .cost-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0;
+    font-size: 14px;
+    color: #475569;
+  }
+  [data-theme="dark"] .cost-row { color: #cbd5e1; }
+  .cost-row-total {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 14px; margin-top: 8px;
+    font-size: 16px;
+    color: #0f172a; font-weight: 700;
+  }
+  [data-theme="dark"] .cost-row-total {
+    border-top-color: #334155;
+    color: #f8fafc;
+  }
+  .cost-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .cost-row-total .cost-amount {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .cost-paid {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    display: flex; justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #475569;
+  }
+  [data-theme="dark"] .cost-paid {
+    border-top-color: #334155;
+    color: #94a3b8;
+  }
+  .cost-paid-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #10b981; font-weight: 600;
+  }
+  .cost-paid-dot {
+    width: 6px; height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+  }
+
+  /* Next steps */
+  .next-steps {
+    padding: 32px;
+    border-top: 1px solid #e2e8f0;
+  }
+  [data-theme="dark"] .next-steps { border-top-color: #1e293b; }
+  .next-steps-title {
+    font-size: 16px; font-weight: 700;
+    letter-spacing: -0.015em;
+    color: #0f172a; margin: 0 0 16px;
+  }
+  [data-theme="dark"] .next-steps-title { color: #f8fafc; }
+  .next-step {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 14px;
+    padding: 12px 0;
+    align-items: flex-start;
+  }
+  .next-step-num {
+    width: 24px; height: 24px;
+    background: #f1f5f9;
+    color: #1b2b5b;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    margin-top: 1px;
+  }
+  [data-theme="dark"] .next-step-num {
+    background: #334155;
+    color: #48cae4;
+  }
+  .next-step-content h4 {
+    font-size: 14px; font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 3px;
+    letter-spacing: -0.01em;
+  }
+  [data-theme="dark"] .next-step-content h4 { color: #f8fafc; }
+  .next-step-content p {
+    font-size: 13px; line-height: 1.55;
+    color: #475569;
+    margin: 0;
+  }
+  [data-theme="dark"] .next-step-content p { color: #cbd5e1; }
+  .next-step-content a {
+    color: #0096b7;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  [data-theme="dark"] .next-step-content a { color: #48cae4; }
+
+  /* Help footer */
+  .help {
+    background: #f8fafc;
+    padding: 28px 32px;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+  }
+  [data-theme="dark"] .help {
+    background: #0a0f1f;
+    border-top-color: #1e293b;
+  }
+  .help-title {
+    font-size: 14px; font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 6px;
+  }
+  [data-theme="dark"] .help-title { color: #f8fafc; }
+  .help-text {
+    font-size: 13px; line-height: 1.55;
+    color: #475569;
+    margin: 0 0 16px;
+  }
+  [data-theme="dark"] .help-text { color: #cbd5e1; }
+  .help-contacts {
+    display: flex; justify-content: center; gap: 24px;
+    flex-wrap: wrap;
+  }
+  .help-contact {
+    display: inline-flex; align-items: center; gap: 6px;
+    text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    color: #1b2b5b;
+  }
+  [data-theme="dark"] .help-contact { color: #48cae4; }
+  .help-contact:hover { color: #00b4d8; }
+
+  /* Footer meta */
+  .footer-meta {
+    padding: 20px 32px;
+    text-align: center;
+    background: #ffffff;
+    border-top: 1px solid #f1f5f9;
+  }
+  [data-theme="dark"] .footer-meta {
+    background: #0f172a;
+    border-top-color: #1e293b;
+  }
+  .footer-meta-text {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .footer-meta-text a {
+    color: #475569;
+    text-decoration: underline;
+  }
+  [data-theme="dark"] .footer-meta-text a { color: #cbd5e1; }
+
+  @media (max-width: 640px) {
+    .top-bar { padding: 16px 20px; }
+    .confirm { padding: 32px 20px 24px; }
+    .trip-card { margin: 0 20px 24px; }
+    .cost { margin: 0 20px 24px; }
+    .next-steps { padding: 24px 20px; }
+    .help { padding: 24px 20px; }
+    .confirm-headline { font-size: 24px; }
+    .detail-row { grid-template-columns: 110px 1fr; gap: 12px; }
+    .journey-airport { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell-header">
+  <span class="shell-title">Booking Confirmation — Transactional Preview</span>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+    <span id="theme-label">Dark mode</span>
+  </button>
+</div>
+
+<div class="preview-frame">
+  <div class="email-wrapper">
+    <table class="email-table" cellpadding="0" cellspacing="0" border="0">
+      <tr><td>
+
+        <!-- Top bar with booking ref -->
+        <div class="top-bar">
+          <a href="#" class="logo">
+            <span class="logo-mark">T</span>
+            <span>Mitchell Travel</span>
+          </a>
+          <div class="booking-ref">
+            Booking ref · <strong>TG24189</strong>
+          </div>
+        </div>
+
+        <!-- Confirmation block -->
+        <div class="confirm">
+          <div class="confirm-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <p class="confirm-eyebrow">Booking confirmed</p>
+          <h1 class="confirm-headline">You're all set, Sarah.</h1>
+          <p class="confirm-text">Your trip to <strong>Lindos, Rhodes</strong> is confirmed. We've sent your tickets and full itinerary to this email. Everything you need is below.</p>
+        </div>
+
+        <!-- Trip card -->
+        <div class="trip-card">
+          <div class="trip-image">
+            <div class="trip-image-overlay">
+              <span class="trip-image-tag">Greek Islands</span>
+              <h2 class="trip-image-name">Lindos, Rhodes</h2>
+            </div>
+          </div>
+          <div class="trip-body">
+
+            <div class="detail-row">
+              <div class="detail-label">Hotel</div>
+              <div class="detail-value">
+                <strong>Lindos Mare Resort</strong>
+                <div class="detail-value-secondary">4★ · Half board · Sea view double room</div>
+              </div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Check in</div>
+              <div class="detail-value">
+                <strong>Tuesday, 16 June 2026</strong>
+                <div class="detail-value-secondary">From 3:00 PM local time</div>
+              </div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Check out</div>
+              <div class="detail-value">
+                <strong>Tuesday, 23 June 2026</strong>
+                <div class="detail-value-secondary">By 11:00 AM local time</div>
+              </div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Travellers</div>
+              <div class="detail-value">
+                Sarah Mitchell, James Mitchell
+                <div class="detail-value-secondary">2 adults</div>
+              </div>
+            </div>
+
+            <!-- Journey block -->
+            <div class="journey">
+              <div class="journey-side">
+                <span class="journey-label">Outbound</span>
+                <span class="journey-airport">LGW</span>
+                <span class="journey-city">London Gatwick · 16 Jun, 06:25</span>
+              </div>
+              <div class="journey-arrow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </div>
+              <div class="journey-side journey-side-right">
+                <span class="journey-label">Return</span>
+                <span class="journey-airport">RHO</span>
+                <span class="journey-city">Rhodes · 23 Jun, 14:50</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Cost summary -->
+        <div class="cost">
+          <div class="cost-row">
+            <span>Holiday package (2 adults)</span>
+            <span class="cost-amount">£1,378.00</span>
+          </div>
+          <div class="cost-row">
+            <span>Transfers (return)</span>
+            <span class="cost-amount">£64.00</span>
+          </div>
+          <div class="cost-row">
+            <span>Travel insurance</span>
+            <span class="cost-amount">£48.00</span>
+          </div>
+          <div class="cost-row cost-row-total">
+            <span>Total</span>
+            <span class="cost-amount">£1,490.00</span>
+          </div>
+          <div class="cost-paid">
+            <span>Paid in full · Visa ending 4421</span>
+            <span class="cost-paid-status">
+              <span class="cost-paid-dot"></span>
+              Settled
+            </span>
+          </div>
+        </div>
+
+        <!-- Next steps -->
+        <div class="next-steps">
+          <h3 class="next-steps-title">A few things before you fly</h3>
+
+          <div class="next-step">
+            <span class="next-step-num">1</span>
+            <div class="next-step-content">
+              <h4>Check your passport</h4>
+              <p>Greek entry requires at least 3 months validity beyond your return date. Your <a href="#">full travel checklist is here</a>.</p>
+            </div>
+          </div>
+
+          <div class="next-step">
+            <span class="next-step-num">2</span>
+            <div class="next-step-content">
+              <h4>Online check-in opens 16 May</h4>
+              <p>We'll email you a reminder. You can also <a href="#">manage your booking online</a> any time.</p>
+            </div>
+          </div>
+
+          <div class="next-step">
+            <span class="next-step-num">3</span>
+            <div class="next-step-content">
+              <h4>Save your booking reference</h4>
+              <p>Quote <strong>TG24189</strong> for any changes or queries. Tickets will arrive 14 days before departure.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Help -->
+        <div class="help">
+          <h3 class="help-title">Questions before you go?</h3>
+          <p class="help-text">Our team is here Monday to Saturday, 9am to 7pm.</p>
+          <div class="help-contacts">
+            <a href="tel:01202123456" class="help-contact">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              01202 123 456
+            </a>
+            <a href="mailto:bookings@mitchelltravel.co.uk" class="help-contact">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              bookings@mitchelltravel.co.uk
+            </a>
+          </div>
+        </div>
+
+        <!-- Footer meta -->
+        <div class="footer-meta">
+          <p class="footer-meta-text">
+            Mitchell Travel Ltd · ATOL 11234 · ABTA Y6789<br>
+            12 Old Christchurch Road, Bournemouth, BH1 1LG<br><br>
+            This email was sent because you made a booking. <a href="#">View in browser</a>
+          </p>
+        </div>
+
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+  function toggleTheme() {
+    const body = document.body;
+    const icon = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      body.removeAttribute('data-theme');
+      label.textContent = 'Dark mode';
+      icon.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>';
+    } else {
+      body.setAttribute('data-theme', 'dark');
+      label.textContent = 'Light mode';
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>';
+    }
+  }
+</script>
+
+</body>
+</html>

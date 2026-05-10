@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travelgenix Newsletter Preview</title>
+<style>
+  /* Preview shell only — not part of the email */
+  :root {
+    --shell-bg: #f1f5f9;
+    --shell-text: #0f172a;
+    --shell-border: #e2e8f0;
+    --shell-card: #ffffff;
+  }
+  [data-theme="dark"] {
+    --shell-bg: #0a0f1f;
+    --shell-text: #f8fafc;
+    --shell-border: #1e293b;
+    --shell-card: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--shell-bg);
+    color: var(--shell-text);
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  .shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--shell-card);
+    border-bottom: 1px solid var(--shell-border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+  .shell-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--shell-text);
+    opacity: 0.7;
+  }
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid var(--shell-border);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--shell-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .theme-toggle:hover {
+    background: var(--shell-bg);
+    transform: translateY(-1px);
+  }
+  .preview-frame {
+    padding: 40px 20px 80px;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ============================================
+     EMAIL STARTS HERE — everything below is the
+     actual email design, table-based for Outlook.
+     ============================================ */
+
+  .email-wrapper {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Email-specific tokens */
+  .email-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+                0 8px 24px rgba(15, 23, 42, 0.08),
+                0 24px 64px rgba(15, 23, 42, 0.06);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #0f172a;
+  }
+
+  [data-theme="dark"] .email-table {
+    background: #111d3e;
+    color: #f8fafc;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+                0 8px 24px rgba(0, 0, 0, 0.3),
+                0 24px 64px rgba(0, 180, 216, 0.08);
+  }
+
+  /* Top bar */
+  .top-bar {
+    background: #1b2b5b;
+    padding: 18px 32px;
+    color: #ffffff;
+  }
+  .top-bar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #1b2b5b;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .issue-meta {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #48cae4;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    padding: 0;
+    background: #1b2b5b;
+    overflow: hidden;
+  }
+  .hero-image {
+    width: 100%;
+    height: 320px;
+    background-image:
+      linear-gradient(180deg, rgba(27, 43, 91, 0) 0%, rgba(27, 43, 91, 0.85) 100%),
+      url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+  .hero-content {
+    padding: 48px 32px 40px;
+    background: #1b2b5b;
+    color: #ffffff;
+    position: relative;
+    margin-top: -80px;
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    padding: 6px 12px;
+    background: rgba(0, 180, 216, 0.15);
+    border: 1px solid rgba(0, 180, 216, 0.3);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #48cae4;
+    margin-bottom: 20px;
+  }
+  .hero-title {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin: 0 0 16px;
+    color: #ffffff;
+  }
+  .hero-subtitle {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 28px;
+    max-width: 480px;
+  }
+  .btn-primary {
+    display: inline-block;
+    padding: 14px 28px;
+    background: #00b4d8;
+    color: #0f172a;
+    text-decoration: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    transition: all 0.2s ease;
+  }
+  .btn-primary:hover {
+    background: #48cae4;
+    transform: translateY(-1px);
+  }
+
+  /* Section */
+  .section {
+    padding: 56px 32px;
+  }
+  .section-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #00b4d8;
+    margin: 0 0 12px;
+  }
+  [data-theme="dark"] .section-eyebrow {
+    color: #48cae4;
+  }
+  .section-title {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    margin: 0 0 8px;
+  }
+  [data-theme="dark"] .section-title {
+    color: #f8fafc;
+  }
+  .section-lede {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #475569;
+    margin: 0 0 32px;
+    max-width: 520px;
+  }
+  [data-theme="dark"] .section-lede {
+    color: #cbd5e1;
+  }
+
+  /* Destinations grid */
+  .destinations {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .destination-card {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  [data-theme="dark"] .destination-card {
+    background: #1e293b;
+    border-color: #334155;
+  }
+  .destination-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border-color: #00b4d8;
+  }
+  .destination-image {
+    width: 100%;
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+  }
+  .destination-body {
+    padding: 20px;
+  }
+  .destination-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #00b4d8;
+    margin-bottom: 8px;
+  }
+  [data-theme="dark"] .destination-tag {
+    color: #48cae4;
+  }
+  .destination-name {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: #0f172a;
+    margin: 0 0 6px;
+  }
+  [data-theme="dark"] .destination-name {
+    color: #f8fafc;
+  }
+  .destination-meta {
+    font-size: 13px;
+    color: #475569;
+    margin: 0;
+  }
+  [data-theme="dark"] .destination-meta {
+    color: #cbd5e1;
+  }
+  .destination-price {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1b2b5b;
+    margin-top: 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  [data-theme="dark"] .destination-price {
+    color: #48cae4;
+  }
+  .destination-price-from {
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .destination-price-amount {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* Feature story */
+  .feature {
+    background: #f8fafc;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+  }
+  [data-theme="dark"] .feature {
+    background: #1e293b;
+    border-color: #334155;
+  }
+  .feature-image {
+    width: 100%;
+    height: 240px;
+    background-size: cover;
+    background-position: center;
+  }
+  .feature-body {
+    padding: 32px;
+  }
+  .feature-title {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    margin: 0 0 12px;
+  }
+  [data-theme="dark"] .feature-title {
+    color: #f8fafc;
+  }
+  .feature-excerpt {
+    font-size: 15px;
+    line-height: 1.65;
+    color: #475569;
+    margin: 0 0 20px;
+  }
+  [data-theme="dark"] .feature-excerpt {
+    color: #cbd5e1;
+  }
+  .feature-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00b4d8;
+    text-decoration: none;
+    letter-spacing: -0.005em;
+  }
+  [data-theme="dark"] .feature-link {
+    color: #48cae4;
+  }
+  .feature-link:hover {
+    color: #0096b7;
+  }
+  .feature-link-arrow {
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+  .feature-link:hover .feature-link-arrow {
+    transform: translateX(3px);
+  }
+
+  /* Quote / pull-quote */
+  .quote-block {
+    border-left: 3px solid #00b4d8;
+    padding: 24px 0 24px 28px;
+    margin: 0;
+  }
+  .quote-text {
+    font-size: 19px;
+    font-weight: 500;
+    line-height: 1.45;
+    letter-spacing: -0.015em;
+    color: #0f172a;
+    margin: 0 0 16px;
+    font-style: italic;
+  }
+  [data-theme="dark"] .quote-text {
+    color: #f8fafc;
+  }
+  .quote-cite {
+    font-size: 13px;
+    color: #475569;
+    margin: 0;
+    font-style: normal;
+  }
+  [data-theme="dark"] .quote-cite {
+    color: #cbd5e1;
+  }
+  .quote-cite-name {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  [data-theme="dark"] .quote-cite-name {
+    color: #f8fafc;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: #e2e8f0;
+    border: none;
+    margin: 0;
+  }
+  [data-theme="dark"] .divider {
+    background: #334155;
+  }
+
+  /* CTA banner */
+  .cta-banner {
+    background: linear-gradient(135deg, #1b2b5b 0%, #2a3f7a 100%);
+    padding: 48px 32px;
+    text-align: center;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-banner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0, 180, 216, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    position: relative;
+  }
+  .cta-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 24px;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+  }
+  .cta-banner .btn-primary {
+    position: relative;
+  }
+
+  /* Footer */
+  .footer {
+    background: #f8fafc;
+    padding: 40px 32px 32px;
+    text-align: center;
+    color: #475569;
+  }
+  [data-theme="dark"] .footer {
+    background: #0a0f1f;
+    color: #94a3b8;
+  }
+  .footer-logo {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1b2b5b;
+    margin-bottom: 12px;
+  }
+  [data-theme="dark"] .footer-logo {
+    color: #48cae4;
+  }
+  .footer-tagline {
+    font-size: 13px;
+    color: #475569;
+    margin: 0 0 24px;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+  [data-theme="dark"] .footer-tagline {
+    color: #94a3b8;
+  }
+  .footer-socials {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .social-link {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  [data-theme="dark"] .social-link {
+    border-color: #334155;
+    color: #94a3b8;
+  }
+  .social-link:hover {
+    background: #1b2b5b;
+    border-color: #1b2b5b;
+    color: #ffffff;
+  }
+  .footer-meta {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .footer-meta a {
+    color: #475569;
+    text-decoration: underline;
+  }
+  [data-theme="dark"] .footer-meta a {
+    color: #cbd5e1;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .hero-title { font-size: 28px; }
+    .section { padding: 40px 24px; }
+    .hero-content { padding: 36px 24px 32px; }
+    .top-bar { padding: 16px 24px; }
+    .feature-body { padding: 24px; }
+    .cta-banner { padding: 36px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Preview shell -->
+<div class="shell-header">
+  <span class="shell-title">Travelgenix Newsletter — Preview</span>
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+    <span id="theme-label">Dark mode</span>
+  </button>
+</div>
+
+<div class="preview-frame">
+  <div class="email-wrapper">
+
+    <!-- ============== EMAIL ============== -->
+    <table class="email-table" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td>
+
+          <!-- Top bar -->
+          <div class="top-bar">
+            <div class="top-bar-inner">
+              <a href="#" class="logo">
+                <span class="logo-mark">T</span>
+                <span>Travelgenix</span>
+              </a>
+              <span class="issue-meta">Issue 24 · May 2026</span>
+            </div>
+          </div>
+
+          <!-- Hero -->
+          <div class="hero">
+            <div class="hero-image"></div>
+            <div class="hero-content">
+              <span class="hero-eyebrow">This Month</span>
+              <h1 class="hero-title">Quiet shores, busy bookings.</h1>
+              <p class="hero-subtitle">May is the sweet spot for shoulder-season travel — fewer crowds, softer prices, and the kind of weather that makes everyone want to escape. Here's what's moving for your clients this month.</p>
+              <a href="#" class="btn-primary">Browse this month's deals</a>
+            </div>
+          </div>
+
+          <!-- Destinations -->
+          <div class="section">
+            <p class="section-eyebrow">Trending now</p>
+            <h2 class="section-title">Three destinations worth a closer look</h2>
+            <p class="section-lede">Picked by our partners team based on availability, value, and what your clients are actually asking for this week.</p>
+
+            <div class="destinations">
+
+              <a href="#" class="destination-card">
+                <div class="destination-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.2) 100%), url('https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80');"></div>
+                <div class="destination-body">
+                  <span class="destination-tag">Greek Islands</span>
+                  <h3 class="destination-name">Lindos, Rhodes</h3>
+                  <p class="destination-meta">7 nights · 4★ boutique · all inclusive</p>
+                  <div class="destination-price">
+                    <span class="destination-price-from">From</span>
+                    <span class="destination-price-amount">£689</span>
+                    <span class="destination-price-from">pp</span>
+                  </div>
+                </div>
+              </a>
+
+              <a href="#" class="destination-card">
+                <div class="destination-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.2) 100%), url('https://images.unsplash.com/photo-1512100356356-de1b84283e18?w=800&q=80');"></div>
+                <div class="destination-body">
+                  <span class="destination-tag">Algarve</span>
+                  <h3 class="destination-name">Albufeira</h3>
+                  <p class="destination-meta">7 nights · 5★ adults only · half board</p>
+                  <div class="destination-price">
+                    <span class="destination-price-from">From</span>
+                    <span class="destination-price-amount">£849</span>
+                    <span class="destination-price-from">pp</span>
+                  </div>
+                </div>
+              </a>
+
+              <a href="#" class="destination-card">
+                <div class="destination-image" style="background-image: linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,0.2) 100%), url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80');"></div>
+                <div class="destination-body">
+                  <span class="destination-tag">Long-haul value</span>
+                  <h3 class="destination-name">Cancun, Mexico</h3>
+                  <p class="destination-meta">10 nights · 5★ resort · all inclusive</p>
+                  <div class="destination-price">
+                    <span class="destination-price-from">From</span>
+                    <span class="destination-price-amount">£1,249</span>
+                    <span class="destination-price-from">pp</span>
+                  </div>
+                </div>
+              </a>
+
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- Feature story -->
+          <div class="section">
+            <p class="section-eyebrow">Feature</p>
+            <h2 class="section-title">Why post-sale matters more than the sale itself</h2>
+            <p class="section-lede">The agents winning this year aren't outselling — they're out-supporting. Here's what we're seeing in the data.</p>
+
+            <div class="feature">
+              <div class="feature-image" style="background-image: url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1200&q=80');"></div>
+              <div class="feature-body">
+                <h3 class="feature-title">The post-booking gap is your biggest growth lever</h3>
+                <p class="feature-excerpt">Most travel businesses pour energy into the search and the sale, then go quiet. The clients who keep growing — even in a flat market — are the ones who treat the eight weeks between booking and departure as the most valuable window they own.</p>
+                <a href="#" class="feature-link">
+                  Read the full piece
+                  <span class="feature-link-arrow">→</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- Pull quote -->
+          <div class="section">
+            <blockquote class="quote-block">
+              <p class="quote-text">"We were drowning in supplier portals before Travelgenix. Now we book three times faster and our clients actually feel looked after between booking and departure."</p>
+              <p class="quote-cite">
+                <span class="quote-cite-name">Sarah Mitchell</span> · Mitchell Travel, Bournemouth
+              </p>
+            </blockquote>
+          </div>
+
+          <!-- CTA banner -->
+          <div class="cta-banner">
+            <h2 class="cta-title">See what your business could look like</h2>
+            <p class="cta-text">Book a 20-minute walk-through and we'll show you exactly how Travelgenix fits the way you already work.</p>
+            <a href="#" class="btn-primary">Book a demo</a>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <div class="footer-logo">Travelgenix</div>
+            <p class="footer-tagline">Running a travel business can be complex, but your technology shouldn't be.</p>
+
+            <div class="footer-socials">
+              <a href="#" class="social-link" aria-label="LinkedIn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>
+              </a>
+              <a href="#" class="social-link" aria-label="Facebook">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+              </a>
+              <a href="#" class="social-link" aria-label="Instagram">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zM17.5 6.5h.01"/></svg>
+              </a>
+            </div>
+
+            <p class="footer-meta">
+              You're receiving this because you're part of the Travelgenix community.<br>
+              <a href="#">Update preferences</a> · <a href="#">Unsubscribe</a> · <a href="#">View in browser</a><br><br>
+              Travelgenix Ltd · Bournemouth, United Kingdom · Co. #12781046
+            </p>
+          </div>
+
+        </td>
+      </tr>
+    </table>
+    <!-- ============== /EMAIL ============== -->
+
+  </div>
+</div>
+
+<script>
+  function toggleTheme() {
+    const body = document.body;
+    const icon = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    const isDark = body.getAttribute('data-theme') === 'dark';
+
+    if (isDark) {
+      body.removeAttribute('data-theme');
+      label.textContent = 'Dark mode';
+      icon.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>';
+    } else {
+      body.setAttribute('data-theme', 'dark');
+      label.textContent = 'Light mode';
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>';
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1092,6 +1092,13 @@ function selectTemplate(id) {
   // content. See applyBrandKitToSections() for the full rule set.
   var kit = brandKitsCache[state.clientId];
   if (kit) applyBrandKitToSections(state.sections, kit);
+  // Strip {{placeholder}} text from input values so the user doesn't see
+  // confusing template-author shorthand. For the handful of placeholders
+  // that map to brand kit fields (client_business_name etc) we substitute
+  // the actual brand kit value. Everything else becomes empty, with the
+  // input's inline hint (the schema label) guiding the user. See
+  // stripAndMapPlaceholders() for details.
+  stripAndMapPlaceholders(state.sections, kit);
   state.meta.subject = t.subjectSuggestion || '';
   state.meta.previewText = t.previewSuggestion || '';
   state.currentSection = 0;
@@ -1198,6 +1205,119 @@ function fillIfEmpty(obj, key, val) {
   var current = obj[key];
   if (current == null || (typeof current === 'string' && !current.trim())) {
     obj[key] = val;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PLACEHOLDER STRIPPING — {{lead_headline}} style template placeholders
+// ═════════════════════════════════════════════════════════════════════
+//
+// Background: the email templates have {{...}} placeholders in many
+// fields — some are content the user fills in via the wizard
+// ({{lead_headline}}), some map to brand kit values ({{client_business_name}}),
+// some are aspirational merge tags that aren't wired yet ({{booking_ref}}).
+//
+// The wizard's job is to strip ALL of these on template load so the user
+// doesn't see {{...}} text in input boxes (which confuses people — they
+// don't know whether to delete it or type next to it). For the brand-kit
+// ones, we replace with the actual brand kit value instead of stripping.
+// For everything else, we strip to empty and let the field's
+// inline placeholder hint guide the user.
+//
+// The merge-tag pipeline (per-recipient {{booking_ref}}, {{first_name}},
+// etc) isn't built yet — when it is, those particular placeholders should
+// stop being stripped and start being handled by the send pipeline.
+
+// Map from placeholder name (without {{ }}) to brand kit key.
+// Only includes the 4 placeholders that map cleanly to brand kit fields
+// the API currently exposes. The other 6 brand-kit-themed placeholders
+// (client_address, support_phone, support_hours, abta_number,
+// atol_number, support_phone_raw) aren't in the brand kit schema yet —
+// those get stripped + hinted just like content placeholders. When the
+// brand kit schema is extended, add the mappings here.
+var BRAND_KIT_PLACEHOLDER_MAP = {
+  client_business_name: 'businessDisplayName',
+  client_legal_name: 'businessName',
+  support_email: 'replyToEmail',
+  reply_email: 'replyToEmail',
+};
+
+// Matches a string value that is ENTIRELY a single {{placeholder}}, with
+// optional surrounding whitespace. Used for the "strip-or-replace whole
+// value" path. Partial usages like "Hi {{first_name}}, welcome" go through
+// PLACEHOLDER_INLINE_RE instead.
+var PLACEHOLDER_FULL_RE = /^\s*\{\{\s*([a-z0-9_]+)\s*\}\}\s*$/i;
+
+// Matches each individual {{placeholder}} occurrence within a string,
+// used for the partial-replacement path.
+var PLACEHOLDER_INLINE_RE = /\{\{\s*([a-z0-9_]+)\s*\}\}/gi;
+
+// Convert a snake_case placeholder name to a friendly [bracketed text]
+// representation. "first_name" → "[first name]", "atol_number" →
+// "[ATOL number]" (preserves common acronyms). The brackets signal to the
+// user "this is a fill-in spot" — much more inviting than {{atol_number}}.
+var ACRONYMS = ['atol', 'abta', 'cta', 'toc', 'url', 'tg', 'mso'];
+function placeholderToBracketed(name) {
+  var parts = name.toLowerCase().split('_').map(function(p) {
+    return ACRONYMS.indexOf(p) !== -1 ? p.toUpperCase() : p;
+  });
+  return '[' + parts.join(' ') + ']';
+}
+
+// Walk every section's props and strip/replace placeholder values.
+// Mutates in place. Should be called AFTER applyBrandKitToSections so
+// brand-kit-aware fields take priority (and aren't accidentally stripped).
+function stripAndMapPlaceholders(sections, kit) {
+  if (!Array.isArray(sections)) return;
+  for (var i = 0; i < sections.length; i++) {
+    var s = sections[i];
+    if (!s || !s.props) continue;
+    walkAndStrip(s.props, kit);
+  }
+}
+
+// Recursively walk an object, replacing string values that contain
+// {{placeholders}}. Two paths:
+//   • Whole-value match: replace with brand kit value (if mapped) or
+//     empty string (if not). Input's inline placeholder hint takes over.
+//   • Partial match (string has other content around the placeholder):
+//     do per-placeholder substitution. Brand-kit ones get the kit value.
+//     Unmapped ones become [bracketed friendly name] — readable enough
+//     for the user to recognise as a fill-in spot but signalling intent.
+function walkAndStrip(obj, kit) {
+  if (!obj || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    for (var i = 0; i < obj.length; i++) walkAndStrip(obj[i], kit);
+    return;
+  }
+  for (var k in obj) {
+    if (!obj.hasOwnProperty(k)) continue;
+    var v = obj[k];
+    if (typeof v === 'string') {
+      var fullMatch = v.match(PLACEHOLDER_FULL_RE);
+      if (fullMatch) {
+        // Whole-value: full replace or strip
+        var nameFull = fullMatch[1].toLowerCase();
+        var kitKeyFull = BRAND_KIT_PLACEHOLDER_MAP[nameFull];
+        if (kitKeyFull && kit && kit[kitKeyFull]) {
+          obj[k] = kit[kitKeyFull];
+        } else {
+          obj[k] = '';
+        }
+      } else if (PLACEHOLDER_INLINE_RE.test(v)) {
+        // Partial: replace each {{name}} in place. Reset lastIndex
+        // because .test() advances it on a global regex.
+        PLACEHOLDER_INLINE_RE.lastIndex = 0;
+        obj[k] = v.replace(PLACEHOLDER_INLINE_RE, function(_match, name) {
+          var n = name.toLowerCase();
+          var kitKey = BRAND_KIT_PLACEHOLDER_MAP[n];
+          if (kitKey && kit && kit[kitKey]) return kit[kitKey];
+          return placeholderToBracketed(n);
+        });
+      }
+    } else if (v && typeof v === 'object') {
+      walkAndStrip(v, kit);
+    }
   }
 }
 
@@ -1787,7 +1907,7 @@ function renderField(propsRoot, pathPrefix, field) {
     return ''
       + '<div class="field">'
       + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
-      + '<textarea class="field-textarea" oninput="onLineListChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(listVal) + '</textarea>'
+      + '<textarea class="field-textarea" placeholder="' + escAttr(field.label || '') + '" oninput="onLineListChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(listVal) + '</textarea>'
       + (field.help ? '<p class="field-help">' + escHtml(field.help) + '</p>' : '')
       + '</div>';
   }
@@ -1835,9 +1955,16 @@ function renderField(propsRoot, pathPrefix, field) {
       + '<p class="field-help" style="color: var(--tg-text-tertiary); margin-top: 8px;">Need finer control (specific destinations, airports, price range, star rating)? Switch to advanced mode after saving — the wizard offers presets only.</p>'
       + '</div>';
   }
+  // text / longText / url / lineList / offerPreset — bottom of the if-chain
+  // For text/url/longText we use the field's label as inline placeholder text
+  // (e.g. an input with label "Lead headline" gets placeholder="Lead headline"),
+  // so when the input is empty the user sees a helpful hint about what to type.
+  // This is what makes stripAndMapPlaceholders() usable — strip the {{...}} on
+  // load and the input's placeholder takes over.
+  var hintText = field.label || '';
   var inputTag = field.type === 'longText'
-    ? '<textarea class="field-textarea" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
-    : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" value="' + escAttr(val) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
+    ? '<textarea class="field-textarea" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
+    : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" value="' + escAttr(val) + '" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
   return ''
     + '<div class="field">'
     + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'

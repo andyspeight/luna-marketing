@@ -2766,7 +2766,50 @@ function renderSettings(){
   h+=settingRadio('Sentence style',['Short and punchy','Longer and descriptive'],'sentence_style',c.sentence_style);
   h+=settingRadio('CTA style',['Direct','Soft','Question-based'],'cta_style',c.cta_style);
   h+='</div><div style="display:flex;flex-direction:column;gap:var(--space-4)">';
-  h+='<div class="card"><div class="card-title">Brand Colours</div><div class="colour-row">'+colourPicker('Primary','primary_colour',c.primary_colour||'#1B2B5B')+colourPicker('Secondary','secondary_colour',c.secondary_colour||'#00B4D8')+'</div></div>';
+  h+='<div class="card"><div class="card-title">Brand Colours & Font</div><div class="colour-row">'+colourPicker('Primary','primary_colour',c.primary_colour||'#1B2B5B')+colourPicker('Secondary','secondary_colour',c.secondary_colour||'#00B4D8')+colourPicker('Dark','brand_dark_hex',c.brand_dark_hex||'#0A0F1F')+'</div>'+settingSelect('Brand font','brand_font',c.brand_font||'Inter',['Inter','Arial','Georgia','Helvetica','Times','Verdana','Trebuchet'])+'</div>';
+  h+='</div>';  // close the right-column flex wrapper so following cards span the full grid width
+
+  // Brand Assets — logos, sender identity, contact. Full-width row in
+  // its own 2-col sub-grid so logo fields sit next to identity fields
+  // rather than stacking in a single narrow column.
+  h+='<div class="card full-width" style="grid-column:1/-1"><div class="card-title">Brand Assets</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-6)">';
+  h+='<div>';
+  h+=settingText('Logo URL (light backgrounds)','logo_url',c.logo_url||'','url','PNG with transparent background works best. Right-click your logo on your website → Copy image address.');
+  h+=settingText('Logo URL (dark backgrounds)','logo_dark_url',c.logo_dark_url||'','url','Used in dark-themed emails. Leave blank to use the light logo on both.');
+  h+=settingText('Logo mark URL','logo_mark_url',c.logo_mark_url||'','url','Square icon-only version, used in tight spaces like email avatars.');
+  h+='</div><div>';
+  h+=settingText('Business display name','business_display_name',c.business_display_name||'','text','Shown in emails. Defaults to Business Name above if blank.');
+  h+=settingText('Sender name (from)','sender_name',c.sender_name||'','text','The "From" name recipients see in their inbox.');
+  h+=settingText('Reply-to email','reply_to_email',c.reply_to_email||'','email','Where replies are routed. Defaults to your account email.');
+  h+=settingText('Phone','phone',c.phone||'','tel','Used in email footers and as a tel: link. Format with country code: +44 1202 970 100');
+  h+='</div></div></div>';
+
+  // Footer & Legal — compliance fields, address. Same 2-col sub-grid.
+  h+='<div class="card full-width" style="grid-column:1/-1"><div class="card-title">Footer & Legal</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-6)">';
+  h+='<div>';
+  h+=settingText('Footer reason (default)','footer_reason',c.footer_reason||'','text','Why this person is receiving the email (e.g. "You\'re getting this because you booked a holiday with us.")');
+  h+=settingTextarea('Footer legal lines','footer_legal_lines',c.footer_legal_lines||'','One line per row. e.g.<br>Sunset Travels Ltd · Company #12345<br>123 High Street, Brighton BN1 2AB',3);
+  h+=settingTextarea('Company address','company_address',c.company_address||'','Postal address shown in footers and contact details.',3);
+  h+='</div><div>';
+  h+=settingText('Support hours','support_hours',c.support_hours||'','text','e.g. "Mon–Fri 9am–6pm UK time"');
+  h+=settingText('ABTA number','abta_number',c.abta_number||'','text','UK travel agents only. e.g. "P1234"');
+  h+=settingText('ATOL number','atol_number',c.atol_number||'','text','UK tour operators only. e.g. "11111"');
+  h+='</div></div></div>';
+
+  // Social Links — used in email footers and elsewhere. 4 fields fit
+  // nicely in a single 2-col sub-grid.
+  h+='<div class="card full-width" style="grid-column:1/-1"><div class="card-title">Social Links</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-6)">';
+  h+='<div>';
+  h+=settingText('LinkedIn URL','social_linkedin_url',c.social_linkedin_url||'','url','Full URL e.g. https://linkedin.com/company/your-brand');
+  h+=settingText('Facebook URL','social_facebook_url',c.social_facebook_url||'','url','Full URL e.g. https://facebook.com/yourbrand');
+  h+='</div><div>';
+  h+=settingText('Instagram URL','social_instagram_url',c.social_instagram_url||'','url','Full URL e.g. https://instagram.com/yourbrand');
+  h+=settingText('X (Twitter) URL','social_x_url',c.social_x_url||'','url','Full URL e.g. https://x.com/yourbrand');
+  h+='</div></div></div>';
+
   var isB2B=(c.client_type||'').toLowerCase()==='b2b-saas';
   var specLabel=isB2B?'Content Topics':'Holiday Types';
   var specDefaults=isB2B?['Travel Technology','SaaS','AI & Automation','Website Solutions','Mid-Office Software','Dynamic Packaging','Travel Industry News','Digital Marketing for Agents','Business Growth']:['Beach','City Breaks','Cruise','Touring','Luxury','Family','Weddings','Ski','Long Haul','Short Haul','Adventure','All Inclusive'];
@@ -2780,7 +2823,9 @@ function renderSettings(){
   var pillarDefaults=['Product in Action','Industry Commentary','Education','Founders Perspective','Client Proof','Market Intelligence'];
   pillarDefaults.forEach(function(p){var on=(c.content_pillars||[]).includes(p);h+='<span class="ps-btn'+(on?' active':'')+'">'+p+'</span>'});
   h+='</div><div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-2)">Managed by your account manager</div></div>'}
-  h+='</div>';
+  // (the right-column flex wrapper was closed earlier, after the Brand Colours
+  // card, so Specialisms/Destinations/Pillars now sit as direct children of
+  // .settings-grid. No closing </div> needed here.)
   h+='<div class="card full-width"><div class="card-title">Posting Schedule</div><div style="display:flex;gap:var(--space-6);align-items:center;flex-wrap:wrap">';
   h+='<div><div class="input-label">Posts per week</div><div style="display:flex;gap:var(--space-2)">';
   var freqOptions=isB2B?[5,7,10,14]:[2,3,4,5];
@@ -2847,6 +2892,47 @@ function settingPills(label,options,current){var h='<div style="margin-bottom:va
 function settingRadio(label,options,key,current){var h='<div style="margin-bottom:var(--space-4)"><div class="input-label">'+label+'</div><div style="display:flex;gap:var(--space-2)">';options.forEach(function(o){h+='<button class="ps-btn'+(current===o?' active':'')+'" style="flex:1" onclick="C.setRadio(\''+key+'\',\''+o+'\',this)">'+o+'</button>'});return h+'</div></div>'}
 function colourPicker(label,key,val){return '<div class="colour-item"><div class="input-label">'+label+'</div><div style="display:flex;align-items:center;gap:var(--space-2)"><input type="color" id="cp-'+key+'" value="'+val+'" style="width:44px;height:36px;border:none;border-radius:var(--radius-sm);cursor:pointer;background:none;padding:0" onchange="C.setColour(\''+key+'\',this.value)"><div id="sw-'+key+'" style="width:36px;height:36px;border-radius:var(--radius-sm);border:2px solid var(--tg-border);background:'+val+';flex-shrink:0"></div><input id="hex-'+key+'" value="'+val+'" style="font-family:var(--tg-font-mono);font-size:var(--text-sm);flex:1;height:36px;padding:0 var(--space-2);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-primary);width:90px" onchange="C.setColour(\''+key+'\',this.value)"><button type="button" class="eye-btn" onclick="C.eyedrop(\''+key+'\')" title="Pick from screen" aria-label="Pick colour from screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg></button></div></div>'}
 
+// Brand-kit text-style inputs. Saves to the C.setText handler on blur
+// (not on every keystroke — text inputs would otherwise spam Airtable).
+// type can be 'text'|'url'|'email'|'tel'. Returns a label + input + help.
+function settingText(label,key,val,type,help,placeholder){
+  var t=type||'text';
+  var p=placeholder?(' placeholder="'+esc(placeholder)+'"'):'';
+  return '<div style="margin-bottom:var(--space-4)">'
+    +'<div class="input-label">'+esc(label)+'</div>'
+    +'<input type="'+t+'" id="bk-'+key+'" value="'+esc(val||'')+'"'+p
+    +' style="width:100%;font-family:inherit;font-size:var(--text-sm);height:36px;padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-primary)"'
+    +' onblur="C.setText(\''+key+'\',this.value)">'
+    +(help?'<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-1);line-height:1.5">'+help+'</div>':'')
+    +'</div>';
+}
+
+// Multiline version of settingText — for company address, footer legal lines.
+function settingTextarea(label,key,val,help,rows){
+  var r=rows||3;
+  return '<div style="margin-bottom:var(--space-4)">'
+    +'<div class="input-label">'+esc(label)+'</div>'
+    +'<textarea id="bk-'+key+'" rows="'+r+'"'
+    +' style="width:100%;font-family:inherit;font-size:var(--text-sm);padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical;line-height:1.5"'
+    +' onblur="C.setText(\''+key+'\',this.value)">'+esc(val||'')+'</textarea>'
+    +(help?'<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-1);line-height:1.5">'+help+'</div>':'')
+    +'</div>';
+}
+
+// Single-select dropdown — used for Brand Font. Saves on change.
+function settingSelect(label,key,val,options){
+  var opts=options.map(function(o){
+    var sel=(val===o)?' selected':'';
+    return '<option value="'+esc(o)+'"'+sel+'>'+esc(o)+'</option>';
+  }).join('');
+  return '<div style="margin-top:var(--space-4)">'
+    +'<div class="input-label">'+esc(label)+'</div>'
+    +'<select id="bk-'+key+'"'
+    +' style="width:100%;font-family:inherit;font-size:var(--text-sm);height:36px;padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-primary);cursor:pointer"'
+    +' onchange="C.setSelect(\''+key+'\',this.value)">'+opts+'</select>'
+    +'</div>';
+}
+
 async function save(f){try{await fetch('/api/clients',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({clientId:state.profile.id},f))})}catch(e){console.error(e)}}
 function flash(id){var el=$(id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show')},2000)}}
 
@@ -2885,8 +2971,39 @@ window.C={
   calHidePopup:function(){$('calPopup').classList.remove('visible')},
   toggleTone:function(btn,t){btn.classList.toggle('active');var ts=[];btn.parentElement.querySelectorAll('.ps-btn.active').forEach(function(p){ts.push(p.textContent.trim())});var v=ts.join(', ');state.profile.tone=v;save({toneKeywords:v})},
   setRadio:function(key,val,btn){btn.parentElement.querySelectorAll('.ps-btn').forEach(function(p){p.classList.remove('active')});btn.classList.add('active');state.profile[key]=val;var m={formality:'formality',emoji_usage:'emojiUsage',sentence_style:'sentenceStyle',cta_style:'ctaStyle'};var o={};o[m[key]]=val;save(o)},
-  setColour:function(key,val){var p=$('cp-'+key),s=$('sw-'+key),h=$('hex-'+key);if(p)p.value=val;if(s)s.style.background=val;if(h)h.value=val;state.profile[key]=val;if(key==='primary_colour')save({primaryColour:val});else save({secondaryColour:val})},
+  setColour:function(key,val){var p=$('cp-'+key),s=$('sw-'+key),h=$('hex-'+key);if(p)p.value=val;if(s)s.style.background=val;if(h)h.value=val;state.profile[key]=val;
+    // Map snake_case state keys → camelCase API keys for the PATCH
+    var apiMap={primary_colour:'primaryColour',secondary_colour:'secondaryColour',brand_dark_hex:'brandDarkHex'};
+    var o={};o[apiMap[key]||key]=val;save(o);
+  },
   eyedrop:async function(key){if(!window.EyeDropper){alert('Use Chrome or Edge for the eyedropper.');return}try{var d=new EyeDropper();var r=await d.open();C.setColour(key,r.sRGBHex)}catch(e){}},
+  // Brand-kit text-style setter — handles every text/url/email/tel/textarea
+  // field in the new Brand Assets / Footer & Legal / Social Links cards.
+  // Maps snake_case state key → camelCase API key. Saves on blur.
+  setText:function(key,val){
+    state.profile[key]=val;
+    var apiMap={
+      logo_url:'logoUrl',logo_dark_url:'logoDarkUrl',logo_mark_url:'logoMarkUrl',
+      business_display_name:'businessDisplayName',sender_name:'senderName',
+      reply_to_email:'replyToEmail',phone:'phone',
+      footer_reason:'footerReason',footer_legal_lines:'footerLegalLines',
+      company_address:'companyAddress',support_hours:'supportHours',
+      abta_number:'abtaNumber',atol_number:'atolNumber',
+      social_linkedin_url:'socialLinkedinUrl',social_facebook_url:'socialFacebookUrl',
+      social_instagram_url:'socialInstagramUrl',social_x_url:'socialXUrl'
+    };
+    var apiKey=apiMap[key];
+    if(!apiKey){console.warn('setText: no API mapping for',key);return}
+    var o={};o[apiKey]=val;save(o);
+  },
+  // Brand-kit select setter — currently used only for Brand Font.
+  setSelect:function(key,val){
+    state.profile[key]=val;
+    var apiMap={brand_font:'brandFont'};
+    var apiKey=apiMap[key];
+    if(!apiKey){console.warn('setSelect: no API mapping for',key);return}
+    var o={};o[apiKey]=val;save(o);
+  },
   toggleSpec:function(btn,s){var on=btn.classList.toggle('active');btn.innerHTML=(on?'&#10003; ':'')+s;var sp=[];btn.parentElement.querySelectorAll('.ps-btn.active').forEach(function(p){sp.push(p.textContent.replace('✓ ','').trim())});state.profile.specialisms=sp;save({specialisms:sp.join(', ')})},
   removeDest:function(el,d){var ds=(state.profile.destinations||'').split(',').map(function(x){return x.trim()}).filter(function(x){return x&&x!==d});state.profile.destinations=ds.join(', ');el.parentElement.remove();save({destinations:ds.join(', ')})},
   addDest:function(){var d=prompt('Enter destination name:');if(!d||!d.trim())return;d=d.trim();var ds=(state.profile.destinations||'').split(',').map(function(x){return x.trim()}).filter(Boolean);if(ds.indexOf(d)===-1)ds.push(d);state.profile.destinations=ds.join(', ');save({destinations:ds.join(', ')});renderSettings()},

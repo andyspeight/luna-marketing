@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna Marketing — New Email</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E📧%3C/text%3E%3C/svg%3E">
+<style>
+/* ───────────────────────────────────────────────────────────────────
+   Travelgenix design tokens — light + dark.
+   ───────────────────────────────────────────────────────────────────*/
+:root {
+  --tg-primary: #1B2B5B;
+  --tg-primary-light: #2A3F7A;
+  --tg-primary-dark: #111D3E;
+  --tg-accent: #00B4D8;
+  --tg-accent-light: #48CAE4;
+  --tg-accent-dark: #0096B7;
+  --tg-success: #10B981;
+  --tg-warning: #F59E0B;
+  --tg-error: #EF4444;
+  --tg-bg-primary: #FFFFFF;
+  --tg-bg-secondary: #F8FAFC;
+  --tg-bg-tertiary: #F1F5F9;
+  --tg-border: #E2E8F0;
+  --tg-border-light: #F1F5F9;
+  --tg-text-primary: #0F172A;
+  --tg-text-secondary: #475569;
+  --tg-text-tertiary: #94A3B8;
+  --tg-text-inverse: #FFFFFF;
+  --tg-shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --tg-shadow-md: 0 4px 12px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+  --tg-shadow-lg: 0 12px 32px rgba(15,23,42,0.10), 0 4px 12px rgba(15,23,42,0.06);
+  --tg-shadow-xl: 0 24px 60px rgba(15,23,42,0.14);
+  --tg-radius-sm: 6px;
+  --tg-radius-md: 10px;
+  --tg-radius-lg: 16px;
+  --tg-radius-xl: 24px;
+  --tg-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+[data-theme="dark"] {
+  --tg-bg-primary: #0F172A;
+  --tg-bg-secondary: #1E293B;
+  --tg-bg-tertiary: #334155;
+  --tg-border: #334155;
+  --tg-border-light: #1E293B;
+  --tg-text-primary: #F8FAFC;
+  --tg-text-secondary: #CBD5E1;
+  --tg-text-tertiary: #94A3B8;
+  --tg-shadow-md: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --tg-shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--tg-font);
+  color: var(--tg-text-primary);
+  background: var(--tg-bg-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Top bar — sticky, slim. Title + step indicator + theme toggle.
+   ───────────────────────────────────────────────────────────────────*/
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--tg-bg-primary);
+  border-bottom: 1px solid var(--tg-border);
+  padding: 14px 28px;
+  display: flex; align-items: center; gap: 20px;
+}
+.topbar-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 700; letter-spacing: -0.01em;
+  color: var(--tg-text-primary);
+}
+.topbar-brand-mark {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--tg-primary), var(--tg-accent));
+  border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 14px;
+}
+.topbar-title { font-size: 15px; }
+.topbar-spacer { flex: 1; }
+.stepper {
+  display: flex; gap: 6px; align-items: center;
+  font-size: 13px; color: var(--tg-text-tertiary);
+}
+.stepper-pill {
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--tg-bg-tertiary); color: var(--tg-text-secondary);
+  font-weight: 500; font-size: 12px;
+  transition: all 0.18s ease;
+}
+.stepper-pill.active {
+  background: var(--tg-primary); color: var(--tg-text-inverse);
+}
+.stepper-pill.done {
+  background: var(--tg-accent-light); color: var(--tg-primary-dark);
+}
+.theme-toggle {
+  background: transparent; border: 1px solid var(--tg-border);
+  color: var(--tg-text-secondary);
+  padding: 6px 12px; border-radius: var(--tg-radius-sm);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.theme-toggle:hover { background: var(--tg-bg-tertiary); }
+
+/* ───────────────────────────────────────────────────────────────────
+   Page shells — each step is a "screen".
+   ───────────────────────────────────────────────────────────────────*/
+.screen { min-height: calc(100vh - 60px); padding: 48px 28px 80px; }
+.screen-inner { max-width: 1200px; margin: 0 auto; }
+.screen-header { text-align: center; margin: 0 0 40px; }
+.screen-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--tg-accent-dark);
+  margin: 0 0 10px;
+}
+[data-theme="dark"] .screen-eyebrow { color: var(--tg-accent-light); }
+.screen-title {
+  font-size: 36px; font-weight: 800; letter-spacing: -0.025em;
+  line-height: 1.15; margin: 0 0 12px; color: var(--tg-text-primary);
+}
+.screen-sub {
+  font-size: 17px; color: var(--tg-text-secondary);
+  max-width: 560px; margin: 0 auto; line-height: 1.55;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Archetype picker — 4 cards.
+   ───────────────────────────────────────────────────────────────────*/
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin: 0 auto;
+  max-width: 980px;
+}
+@media (max-width: 900px) { .arch-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .arch-grid { grid-template-columns: 1fr; } }
+
+.arch-card {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  padding: 28px 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative; overflow: hidden;
+  text-align: left;
+}
+.arch-card:hover {
+  border-color: var(--tg-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--tg-shadow-md);
+}
+.arch-card:focus-visible {
+  outline: 3px solid var(--tg-accent);
+  outline-offset: 2px;
+}
+.arch-card-icon {
+  width: 44px; height: 44px; border-radius: 11px;
+  background: linear-gradient(135deg, var(--tg-primary), var(--tg-primary-light));
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+}
+.arch-card-icon svg { width: 22px; height: 22px; }
+.arch-card-title {
+  font-size: 17px; font-weight: 700; letter-spacing: -0.015em;
+  margin: 0 0 6px; color: var(--tg-text-primary);
+}
+.arch-card-sub {
+  font-size: 13px; line-height: 1.55;
+  color: var(--tg-text-secondary); margin: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Template picker — list of cards, taller, more info.
+   ───────────────────────────────────────────────────────────────────*/
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+@media (max-width: 720px) { .template-grid { grid-template-columns: 1fr; } }
+
+.template-card {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+.template-card:hover {
+  border-color: var(--tg-accent);
+  box-shadow: var(--tg-shadow-md);
+}
+.template-card-cat {
+  display: inline-block;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tg-accent-dark);
+  background: rgba(0, 180, 216, 0.08);
+  padding: 4px 10px; border-radius: 999px;
+  margin-bottom: 14px;
+}
+[data-theme="dark"] .template-card-cat { color: var(--tg-accent-light); background: rgba(72,202,228,0.12); }
+.template-card-title {
+  font-size: 19px; font-weight: 700; letter-spacing: -0.015em;
+  margin: 0 0 8px; color: var(--tg-text-primary);
+}
+.template-card-desc {
+  font-size: 14px; line-height: 1.55;
+  color: var(--tg-text-secondary); margin: 0 0 14px;
+}
+.template-card-meta {
+  font-size: 12px; color: var(--tg-text-tertiary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--tg-bg-primary);
+  border-radius: var(--tg-radius-lg);
+  border: 1px solid var(--tg-border);
+  color: var(--tg-text-secondary);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Fill step — split view: form left, preview right.
+   ───────────────────────────────────────────────────────────────────*/
+.fill-shell {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .fill-shell { grid-template-columns: 1fr; }
+}
+.fill-form {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  padding: 24px;
+  position: sticky; top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.fill-section-meta {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--tg-accent-dark);
+  margin: 0 0 6px;
+}
+[data-theme="dark"] .fill-section-meta { color: var(--tg-accent-light); }
+.fill-section-title {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0 0 4px; color: var(--tg-text-primary);
+}
+.fill-section-desc {
+  font-size: 13px; line-height: 1.5;
+  color: var(--tg-text-secondary);
+  margin: 0 0 20px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+.field-label {
+  display: block;
+  font-size: 13px; font-weight: 600;
+  color: var(--tg-text-primary);
+  margin-bottom: 6px;
+}
+.field-help {
+  font-size: 12px;
+  color: var(--tg-text-tertiary);
+  margin: 4px 0 0;
+}
+.field-input, .field-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tg-text-primary);
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 9px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field-input:focus, .field-textarea:focus {
+  outline: none;
+  border-color: var(--tg-accent);
+  box-shadow: 0 0 0 3px rgba(0,180,216,0.15);
+}
+.field-textarea { min-height: 80px; resize: vertical; }
+.field-help-required::after {
+  content: ' *'; color: var(--tg-error);
+}
+
+/* Group: nested fields inside a frame */
+.field-group {
+  border: 1px solid var(--tg-border-light);
+  background: var(--tg-bg-secondary);
+  border-radius: var(--tg-radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.field-group-label {
+  display: block;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tg-text-tertiary);
+  margin: 0 0 12px;
+}
+
+/* Array: repeating items */
+.field-array { margin-bottom: 16px; }
+.field-array-label {
+  display: block;
+  font-size: 13px; font-weight: 600;
+  color: var(--tg-text-primary);
+  margin-bottom: 8px;
+}
+.field-array-item {
+  border: 1px solid var(--tg-border-light);
+  background: var(--tg-bg-secondary);
+  border-radius: var(--tg-radius-md);
+  padding: 12px;
+  margin-bottom: 10px;
+  position: relative;
+}
+.field-array-item-meta {
+  font-size: 11px; font-weight: 600; color: var(--tg-text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.field-array-add, .field-array-remove {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600;
+  background: transparent;
+  color: var(--tg-text-secondary);
+  border: 1px dashed var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 7px 12px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.field-array-add:hover {
+  border-color: var(--tg-accent); color: var(--tg-accent-dark);
+  border-style: solid;
+}
+.field-array-remove {
+  position: absolute; top: 8px; right: 8px;
+  border: none;
+  padding: 4px 8px;
+  font-size: 16px; line-height: 1;
+  color: var(--tg-text-tertiary);
+  cursor: pointer;
+}
+.field-array-remove:hover { color: var(--tg-error); background: rgba(239,68,68,0.06); border-radius: var(--tg-radius-sm); }
+
+/* ───────────────────────────────────────────────────────────────────
+   Preview pane — iframe with loading state.
+   ───────────────────────────────────────────────────────────────────*/
+.preview-shell {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  padding: 16px;
+  position: sticky; top: 80px;
+  max-height: calc(100vh - 100px);
+  display: flex; flex-direction: column;
+}
+.preview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 0 12px;
+  padding: 0 4px;
+}
+.preview-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--tg-text-tertiary);
+}
+.preview-status {
+  font-size: 11px; color: var(--tg-text-tertiary);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.preview-status.live::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px; border-radius: 3px;
+  background: var(--tg-success);
+}
+.preview-status.loading::before {
+  background: var(--tg-warning);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.preview-frame-wrap {
+  flex: 1;
+  background: var(--tg-bg-tertiary);
+  border-radius: var(--tg-radius-md);
+  overflow: hidden;
+  position: relative;
+  min-height: 600px;
+}
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: 0;
+  background: #fff;
+  display: block;
+}
+.preview-overlay {
+  position: absolute; inset: 0;
+  background: var(--tg-bg-tertiary);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tg-text-tertiary);
+  font-size: 13px;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.preview-overlay.hidden { opacity: 0; }
+
+/* ───────────────────────────────────────────────────────────────────
+   Wizard navigation — sticky footer.
+   ───────────────────────────────────────────────────────────────────*/
+.wiz-footer {
+  position: sticky; bottom: 0;
+  background: var(--tg-bg-primary);
+  border-top: 1px solid var(--tg-border);
+  padding: 14px 28px;
+  display: flex; align-items: center; gap: 12px;
+  z-index: 40;
+  margin-top: 32px;
+}
+.wiz-footer-meta {
+  flex: 1;
+  font-size: 13px;
+  color: var(--tg-text-tertiary);
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 18px; border-radius: var(--tg-radius-sm);
+  cursor: pointer; transition: all 0.15s ease;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--tg-primary); color: var(--tg-text-inverse);
+  border-color: var(--tg-primary);
+}
+.btn-primary:hover { background: var(--tg-primary-light); transform: translateY(-1px); }
+.btn-primary:disabled {
+  background: var(--tg-bg-tertiary); color: var(--tg-text-tertiary);
+  cursor: not-allowed; transform: none;
+  border-color: var(--tg-border);
+}
+.btn-secondary {
+  background: var(--tg-bg-primary); color: var(--tg-text-primary);
+  border-color: var(--tg-border);
+}
+.btn-secondary:hover { background: var(--tg-bg-tertiary); border-color: var(--tg-text-tertiary); }
+.btn-ghost {
+  background: transparent; color: var(--tg-text-secondary);
+  border-color: transparent;
+}
+.btn-ghost:hover { color: var(--tg-text-primary); background: var(--tg-bg-tertiary); }
+
+/* Save & Finish placeholder dialog */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15,23,42,0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: var(--tg-bg-primary);
+  border-radius: var(--tg-radius-lg);
+  padding: 28px;
+  max-width: 600px; width: 100%;
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: var(--tg-shadow-xl);
+}
+.modal-title {
+  font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.modal-sub {
+  color: var(--tg-text-secondary); font-size: 14px;
+  margin: 0 0 16px;
+}
+.modal-pre {
+  background: var(--tg-bg-tertiary);
+  border-radius: var(--tg-radius-sm);
+  padding: 14px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 11px; line-height: 1.5;
+  max-height: 320px;
+  overflow: auto;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--tg-bg-tertiary) 0%, var(--tg-border-light) 50%, var(--tg-bg-tertiary) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--tg-radius-sm);
+}
+@keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ───────────────────────────────────────────────────────────────────
+   Audience screen — cards, when picker, summary card
+   ───────────────────────────────────────────────────────────────────*/
+.card {
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-lg);
+  padding: 24px;
+  margin-bottom: 18px;
+}
+.card-title {
+  font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  color: var(--tg-text-primary);
+}
+.aud-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 540px) { .aud-grid { grid-template-columns: 1fr; } }
+.aud-card {
+  display: flex; flex-direction: column;
+  padding: 16px;
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--tg-bg-primary);
+}
+.aud-card:hover {
+  border-color: var(--tg-accent);
+  background: var(--tg-bg-secondary);
+}
+.aud-card.selected {
+  border-color: var(--tg-accent);
+  background: rgba(0, 180, 216, 0.04);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.12);
+}
+[data-theme="dark"] .aud-card.selected {
+  background: rgba(72, 202, 228, 0.06);
+}
+.aud-card-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--tg-text-primary);
+  margin: 0 0 4px;
+}
+.aud-card-sub {
+  font-size: 12px; line-height: 1.5;
+  color: var(--tg-text-secondary);
+}
+
+.when-options {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.when-option {
+  display: flex; flex-direction: column;
+  padding: 14px 16px;
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--tg-bg-primary);
+}
+.when-option:hover { border-color: var(--tg-accent); background: var(--tg-bg-secondary); }
+.when-option.selected {
+  border-color: var(--tg-accent);
+  background: rgba(0, 180, 216, 0.04);
+}
+[data-theme="dark"] .when-option.selected { background: rgba(72, 202, 228, 0.06); }
+.when-option-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--tg-text-primary);
+  margin: 0 0 2px;
+}
+.when-option-sub {
+  font-size: 12px;
+  color: var(--tg-text-secondary);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Done screen — success/error states
+   ───────────────────────────────────────────────────────────────────*/
+.done-icon {
+  width: 72px; height: 72px;
+  border-radius: 36px;
+  background: var(--tg-success);
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+}
+.done-icon-error { background: var(--tg-error); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25); }
+.done-summary {
+  margin: 28px 0;
+  text-align: left;
+  background: var(--tg-bg-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-md);
+  padding: 18px 20px;
+}
+.done-summary-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.done-summary-row + .done-summary-row { border-top: 1px solid var(--tg-border-light); }
+.done-summary-label { color: var(--tg-text-tertiary); font-weight: 500; }
+.done-summary-value { color: var(--tg-text-primary); font-weight: 500; text-align: right; max-width: 60%; }
+.done-actions {
+  display: flex; gap: 10px; justify-content: center;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+/* Inline progress feedback — used during the "saving…" state */
+.btn-primary[aria-busy="true"] {
+  position: relative; padding-right: 38px;
+}
+.btn-primary[aria-busy="true"]::after {
+  content: '';
+  position: absolute; right: 14px; top: 50%;
+  width: 14px; height: 14px; margin-top: -7px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Visually-hidden — for accessibility */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     TOP BAR
+     ════════════════════════════════════════════════════════════════-->
+<header class="topbar">
+  <div class="topbar-brand">
+    <span class="topbar-brand-mark">L</span>
+    <span class="topbar-title">Luna Marketing — New email</span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <nav class="stepper" id="stepper" aria-label="Wizard progress">
+    <span class="stepper-pill" data-step="archetype">1. Type</span>
+    <span class="stepper-pill" data-step="template">2. Template</span>
+    <span class="stepper-pill" data-step="fill">3. Fill in</span>
+    <span class="stepper-pill" data-step="audience">4. Send</span>
+    <span class="stepper-pill" data-step="done">5. Done</span>
+  </nav>
+  <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+    <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+    </svg>
+    <span id="theme-label">Dark</span>
+  </button>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN 1 — ARCHETYPE PICKER
+     ════════════════════════════════════════════════════════════════-->
+<main id="screen-archetype" class="screen">
+  <div class="screen-inner">
+    <div class="screen-header">
+      <p class="screen-eyebrow">Step 1 of 5</p>
+      <h1 class="screen-title">What kind of email is this?</h1>
+      <p class="screen-sub">Pick a starting point. You can always switch to advanced mode later if you want full control.</p>
+    </div>
+    <div class="arch-grid">
+      <button class="arch-card" data-archetype="booking" onclick="selectArchetype('booking')">
+        <span class="arch-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        </span>
+        <h3 class="arch-card-title">Booking confirmation</h3>
+        <p class="arch-card-sub">A trip is booked. Send the customer everything they need: dates, ref, what's next.</p>
+      </button>
+
+      <button class="arch-card" data-archetype="newsletter" onclick="selectArchetype('newsletter')">
+        <span class="arch-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        </span>
+        <h3 class="arch-card-title">Newsletter</h3>
+        <p class="arch-card-sub">A regular send to your client list. Featured destinations, deals, news.</p>
+      </button>
+
+      <button class="arch-card" data-archetype="launch" onclick="selectArchetype('launch')">
+        <span class="arch-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path></svg>
+        </span>
+        <h3 class="arch-card-title">Product launch</h3>
+        <p class="arch-card-sub">Something new is ready. Big hero, big claims, one clear CTA.</p>
+      </button>
+
+      <button class="arch-card" data-archetype="b2b" onclick="selectArchetype('b2b')">
+        <span class="arch-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>
+        </span>
+        <h3 class="arch-card-title">B2B thought leadership</h3>
+        <p class="arch-card-sub">Industry insight for an industry audience. Editorial format, opinion-led.</p>
+      </button>
+    </div>
+  </div>
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN 2 — TEMPLATE PICKER
+     ════════════════════════════════════════════════════════════════-->
+<main id="screen-template" class="screen" hidden>
+  <div class="screen-inner">
+    <div class="screen-header">
+      <p class="screen-eyebrow">Step 2 of 5</p>
+      <h1 class="screen-title">Pick a starting template</h1>
+      <p class="screen-sub">We'll fill it in step by step. Every field is editable; you can change anything.</p>
+    </div>
+    <div class="template-grid" id="template-grid">
+      <!-- populated by JS -->
+    </div>
+  </div>
+  <div class="wiz-footer">
+    <button class="btn btn-ghost" onclick="goToStep('archetype')">← Back</button>
+    <div class="wiz-footer-meta" id="template-footer-meta">Pick a template above to continue.</div>
+  </div>
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN 3 — FILL IN (split: form left, preview right)
+     ════════════════════════════════════════════════════════════════-->
+<main id="screen-fill" class="screen" hidden>
+  <div class="screen-inner" style="max-width: 1320px;">
+    <div class="fill-shell">
+      <div class="fill-form" id="fill-form">
+        <!-- populated per section -->
+      </div>
+      <div class="preview-shell">
+        <div class="preview-header">
+          <span class="preview-label">Live preview</span>
+          <span class="preview-status live" id="preview-status">Up to date</span>
+        </div>
+        <div class="preview-frame-wrap">
+          <iframe class="preview-frame" id="preview-frame" title="Email preview"></iframe>
+          <div class="preview-overlay" id="preview-overlay">Building preview…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wiz-footer">
+    <button class="btn btn-ghost" id="fill-back" onclick="fillBack()">← Back</button>
+    <div class="wiz-footer-meta" id="fill-progress">Section 1 of N</div>
+    <button class="btn btn-secondary" onclick="goToStep('template')">Change template</button>
+    <button class="btn btn-primary" id="fill-next" onclick="fillNext()">Next →</button>
+  </div>
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN 4 — AUDIENCE & SEND
+     ════════════════════════════════════════════════════════════════-->
+<main id="screen-audience" class="screen" hidden>
+  <div class="screen-inner" style="max-width: 720px;">
+    <div class="screen-header">
+      <p class="screen-eyebrow">Step 4 of 5</p>
+      <h1 class="screen-title">Who's it going to?</h1>
+      <p class="screen-sub">Set the subject line, pick an audience, and choose when to send.</p>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Subject &amp; preview</h2>
+      <div class="field">
+        <label class="field-label field-help-required">Subject line</label>
+        <input class="field-input" type="text" id="meta-subject" maxlength="200"
+          oninput="onMetaChange('subject', this.value)" placeholder="e.g. Your Maldives trip is confirmed">
+        <p class="field-help">What recipients see in their inbox. Keep it under 60 characters where you can.</p>
+      </div>
+      <div class="field">
+        <label class="field-label">Preview text</label>
+        <input class="field-input" type="text" id="meta-preview" maxlength="200"
+          oninput="onMetaChange('previewText', this.value)" placeholder="The line that appears under the subject in most inboxes">
+        <p class="field-help">Optional, but recommended. Around 80 characters works well.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Audience</h2>
+      <div class="aud-grid">
+        <label class="aud-card" data-audience="Client">
+          <input type="radio" name="audience" value="Client" onchange="onAudienceChange(this.value)" class="sr-only">
+          <span class="aud-card-title">Existing clients</span>
+          <span class="aud-card-sub">People you've worked with before. Highest trust, highest conversion.</span>
+        </label>
+        <label class="aud-card" data-audience="Nurture">
+          <input type="radio" name="audience" value="Nurture" onchange="onAudienceChange(this.value)" class="sr-only">
+          <span class="aud-card-title">Nurture list</span>
+          <span class="aud-card-sub">Engaged prospects on your list. Warmed up but not yet booked.</span>
+        </label>
+        <label class="aud-card" data-audience="Cold">
+          <input type="radio" name="audience" value="Cold" onchange="onAudienceChange(this.value)" class="sr-only">
+          <span class="aud-card-title">Cold outreach</span>
+          <span class="aud-card-sub">First touch. Use sparingly &mdash; protect your sender reputation.</span>
+        </label>
+        <label class="aud-card" data-audience="Drip">
+          <input type="radio" name="audience" value="Drip" onchange="onAudienceChange(this.value)" class="sr-only">
+          <span class="aud-card-title">Drip sequence</span>
+          <span class="aud-card-sub">Automated follow-up step in a multi-email flow.</span>
+        </label>
+      </div>
+      <div class="field" style="margin-top: 18px;">
+        <label class="field-label">Segment label <span style="font-weight:400;color:var(--tg-text-tertiary)">(optional)</span></label>
+        <input class="field-input" type="text" id="meta-segment" maxlength="80"
+          oninput="onMetaChange('audienceSegment', this.value)" placeholder="e.g. Maldives 2026, July dropouts, B2B newsletter">
+        <p class="field-help">Helpful for tracking which sub-list this email targets. Doesn't filter recipients.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">When to send</h2>
+      <div class="when-options">
+        <label class="when-option" data-when="now">
+          <input type="radio" name="when" value="now" onchange="onWhenChange(this.value)" class="sr-only" checked>
+          <span class="when-option-title">Save to queue now</span>
+          <span class="when-option-sub">Adds it to your queue with status "Awaiting Approval". You can review and send manually.</span>
+        </label>
+        <label class="when-option" data-when="schedule">
+          <input type="radio" name="when" value="schedule" onchange="onWhenChange(this.value)" class="sr-only">
+          <span class="when-option-title">Schedule for later</span>
+          <span class="when-option-sub">Pick a date and time below.</span>
+        </label>
+      </div>
+      <div class="field" id="schedule-field" style="display: none; margin-top: 16px;">
+        <label class="field-label">Scheduled send time</label>
+        <input class="field-input" type="datetime-local" id="meta-schedule"
+          oninput="onMetaChange('scheduledSend', this.value)">
+        <p class="field-help">Your local timezone. Stored in UTC.</p>
+      </div>
+    </div>
+  </div>
+  <div class="wiz-footer">
+    <button class="btn btn-ghost" onclick="goToStep('fill')">← Back to editing</button>
+    <div class="wiz-footer-meta" id="audience-meta">Add a subject and pick an audience to continue.</div>
+    <button class="btn btn-primary" id="audience-save-btn" disabled onclick="finishAndSave()">Save to queue</button>
+  </div>
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCREEN 5 — DONE
+     ════════════════════════════════════════════════════════════════-->
+<main id="screen-done" class="screen" hidden>
+  <div class="screen-inner" style="max-width: 560px; text-align: center;">
+    <div class="done-icon" id="done-icon-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <div class="done-icon done-icon-error" id="done-icon-error" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        <circle cx="12" cy="12" r="10"></circle>
+      </svg>
+    </div>
+    <h1 class="screen-title" id="done-title">Your email is in the queue</h1>
+    <p class="screen-sub" id="done-sub">It's saved with status &ldquo;Awaiting Approval&rdquo; &mdash; review it in your queue when you're ready to send.</p>
+    <div class="done-summary" id="done-summary"></div>
+    <div class="done-actions">
+      <button class="btn btn-primary" onclick="startOver()">Compose another email</button>
+      <button class="btn btn-secondary" onclick="goToStep('audience')" id="done-back-btn" hidden>Try again</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ═════════════════════════════════════════════════════════════════════
+//  WIZARD STATE MACHINE
+// ═════════════════════════════════════════════════════════════════════
+//
+// One state object, persisted to localStorage. Resumable across tab closes.
+// State transitions are explicit — no implicit "the form just changed" magic.
+
+// Travelgenix B2B-SaaS client (only client type the marketing API accepts).
+// In production this would come from a session/auth layer; the skeleton
+// hardcodes it for the demo.
+var CLIENT_ID = 'recFXQY7be6gMr4In';
+
+var STORAGE_KEY = 'luna-wizard-state-v1';
+
+// Map archetype id → Email Templates Category filter.
+// If we want sharper filtering later, add an Archetype field in Airtable.
+var ARCHETYPE_CATEGORY = {
+  booking: 'Booking',
+  newsletter: 'Newsletter',
+  launch: 'Launch',
+  b2b: 'Newsletter',  // B2B Weekly currently lives under "Newsletter"
+};
+
+// Sub-filter for B2B archetype since it shares "Newsletter" with the
+// consumer marketing newsletter.
+var ARCHETYPE_NAME_HINT = {
+  b2b: /B2B|Weekly/i,
+};
+
+var state = {
+  step: 'archetype',
+  archetype: null,
+  templateId: null,
+  templateName: '',
+  sections: [],
+  currentSection: 0,
+  meta: { subject: '', previewText: '', audience: 'Nurture', audienceSegment: '', recipientEmail: '', scheduledSend: null },
+};
+
+var templatesCache = null;        // [{id, name, ...}, ...] from /api/email-templates
+var lastRenderRequestId = 0;      // Discriminates concurrent preview renders
+var renderDebounceTimer = null;
+
+// ── Persistence ─────────────────────────────────────────────────────
+function persist() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function restore() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    var s = JSON.parse(raw);
+    if (s && s.step) { Object.assign(state, s); return true; }
+  } catch (e) {}
+  return false;
+}
+function clearDraft() { try { localStorage.removeItem(STORAGE_KEY); } catch (e) {} }
+
+// ── Step routing ────────────────────────────────────────────────────
+var STEPS = ['archetype', 'template', 'fill', 'audience', 'done'];
+function goToStep(step) {
+  state.step = step;
+  STEPS.forEach(function(s) {
+    var el = document.getElementById('screen-' + s);
+    if (el) el.hidden = (s !== step);
+  });
+  updateStepper();
+  persist();
+  // Lifecycle hooks
+  if (step === 'template') ensureTemplatesLoaded();
+  if (step === 'fill') renderFillStep();
+  if (step === 'audience') hydrateAudienceStep();
+}
+function updateStepper() {
+  var idx = STEPS.indexOf(state.step);
+  document.querySelectorAll('.stepper-pill').forEach(function(pill) {
+    var pillIdx = STEPS.indexOf(pill.getAttribute('data-step'));
+    pill.classList.toggle('active', pillIdx === idx);
+    pill.classList.toggle('done', pillIdx < idx);
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SCREEN 1 — ARCHETYPE
+// ═════════════════════════════════════════════════════════════════════
+function selectArchetype(arch) {
+  state.archetype = arch;
+  state.templateId = null;
+  state.sections = [];
+  goToStep('template');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SCREEN 2 — TEMPLATE
+// ═════════════════════════════════════════════════════════════════════
+async function ensureTemplatesLoaded() {
+  if (templatesCache) { renderTemplateGrid(); return; }
+  var grid = document.getElementById('template-grid');
+  grid.innerHTML = '<div class="empty-state">Loading templates…</div>';
+  try {
+    var r = await fetch('/api/email-templates?clientId=' + encodeURIComponent(CLIENT_ID));
+    var j = await r.json();
+    if (!j.success) throw new Error(j.error || 'Could not load templates');
+    templatesCache = j.templates || [];
+    renderTemplateGrid();
+  } catch (e) {
+    grid.innerHTML = '<div class="empty-state">Couldn\'t load templates. <br>' + escHtml(e.message) + '</div>';
+  }
+}
+function renderTemplateGrid() {
+  var grid = document.getElementById('template-grid');
+  var cat = ARCHETYPE_CATEGORY[state.archetype];
+  var nameHint = ARCHETYPE_NAME_HINT[state.archetype];
+  // Filter logic: B2B keeps only Newsletter templates whose name matches the
+  // hint; everything else is a straight category match.
+  var matches = templatesCache.filter(function(t) {
+    if (t.category !== cat) return false;
+    if (state.archetype === 'b2b') return nameHint.test(t.name);
+    if (state.archetype === 'newsletter') {
+      // Exclude the B2B Weekly from the consumer newsletter list
+      return !ARCHETYPE_NAME_HINT.b2b.test(t.name);
+    }
+    return true;
+  });
+
+  if (!matches.length) {
+    grid.innerHTML = '<div class="empty-state">No templates yet for this type. <br>Try a different category.</div>';
+    return;
+  }
+
+  grid.innerHTML = matches.map(function(t) {
+    return '<button class="template-card" onclick="selectTemplate(\'' + escAttr(t.id) + '\')">'
+      + '<span class="template-card-cat">' + escHtml(t.category) + '</span>'
+      + '<h3 class="template-card-title">' + escHtml(t.name) + '</h3>'
+      + '<p class="template-card-desc">' + escHtml(t.description || '') + '</p>'
+      + '<div class="template-card-meta">' + (t.sections || []).length + ' sections · ready to fill in</div>'
+      + '</button>';
+  }).join('');
+}
+function selectTemplate(id) {
+  var t = templatesCache.find(function(x) { return x.id === id; });
+  if (!t) return;
+  state.templateId = t.id;
+  state.templateName = t.name;
+  // Deep-copy so the user's edits don't mutate the cached template.
+  state.sections = JSON.parse(JSON.stringify(t.sections || []));
+  state.meta.subject = t.subjectSuggestion || '';
+  state.meta.previewText = t.previewSuggestion || '';
+  state.currentSection = 0;
+  goToStep('fill');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SCREEN 3 — FILL IN
+// ═════════════════════════════════════════════════════════════════════
+//
+// Uses a small subset of the section schema vocabulary: text, longText,
+// url, group (one nested level), array (one nested level of groups). The
+// goal here isn't 1:1 parity with the existing client.html renderer
+// (which handles select / boolean / offer-filter etc) — those land in v2.
+// For the v1 skeleton, the templates we have today only use the basic
+// types listed below.
+
+// Compact schemas describing each section's *visible* fields. Mirrors the
+// existing SECTION_META in client.html but trimmed to the renderer needs
+// today. Long-term these should come from the server (see the architecture
+// doc — schema-source-of-truth refactor).
+var SCHEMAS = {
+  // ────────────────────────────────────────────────────────────────
+  // ARCHETYPE D — Transactional (Booking Confirmation)
+  // ────────────────────────────────────────────────────────────────
+  // Field shapes verified by reading each component's render() function
+  // on 10 May 2026. If a renderer changes, this table needs updating.
+  'top-bar': [
+    {key:'businessName', label:'Business name shown next to logo', type:'text'},
+    {key:'logoUrl', label:'Logo image URL (uses Travelgenix logo if blank)', type:'url'},
+    {key:'logoLinkUrl', label:'Logo link URL', type:'url'},
+  ],
+  'confirmation-block': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text', help:'Small uppercase line above the headline. e.g. "Booking confirmed".'},
+    {key:'headline', label:'Headline', type:'text', required:true},
+    {key:'text', label:'Body text', type:'longText', help:'Optional supporting paragraph below the headline.'},
+  ],
+  'trip-card': [
+    {key:'image_url', label:'Hero image URL', type:'url'},
+    {key:'image_tag', label:'Image overlay tag', type:'text', help:'Small badge in the top corner. e.g. "All-inclusive".'},
+    {key:'image_name', label:'Trip name', type:'text', required:true, help:'Big text overlay on the hero image.'},
+    {key:'details', label:'Trip details (label/value rows)', type:'array', itemLabel:'Row', itemFields:[
+      {key:'label', label:'Label', type:'text', help:'e.g. "Booking reference"'},
+      {key:'value', label:'Value', type:'text'},
+      {key:'secondary', label:'Secondary line (optional)', type:'text'},
+    ]},
+  ],
+  'cost-summary': [
+    {key:'title', label:'Section title', type:'text'},
+    {key:'line_items', label:'Cost line items', type:'array', itemLabel:'Line', itemFields:[
+      {key:'label', label:'Label', type:'text'},
+      {key:'amount', label:'Amount', type:'text', help:'e.g. "£2,450"'},
+    ]},
+    {key:'total', label:'Total row', type:'group', fields:[
+      {key:'label', label:'Total label', type:'text'},
+      {key:'amount', label:'Total amount', type:'text'},
+    ]},
+    {key:'payment', label:'Payment status note', type:'group', fields:[
+      {key:'text', label:'Payment text', type:'text'},
+      {key:'status', label:'Status pill', type:'text', help:'e.g. "Settled"'},
+    ]},
+  ],
+  'next-steps': [
+    {key:'title', label:'Section title', type:'text'},
+    {key:'steps', label:'Steps', type:'array', itemLabel:'Step', itemFields:[
+      {key:'title', label:'Step title', type:'text'},
+      {key:'text', label:'Step description (markdown supported)', type:'longText'},
+    ]},
+  ],
+  'help-block': [
+    {key:'title', label:'Section title', type:'text'},
+    {key:'text', label:'Body', type:'longText'},
+    {key:'contacts', label:'Contact details', type:'array', itemLabel:'Contact', itemFields:[
+      {key:'type', label:'Type', type:'text', help:'phone or email'},
+      {key:'value', label:'Display value', type:'text', help:'e.g. "+44 1202 123 456"'},
+      {key:'href', label:'Link target (optional)', type:'text', help:'e.g. "tel:+441202123456" or "mailto:..."'},
+    ]},
+  ],
+  'footer-meta': [
+    {key:'lines', label:'Legal lines (one per row)', type:'lineList', help:'Each line will appear as a separate row in the footer. e.g. ATOL number, postal address, registration.'},
+    {key:'reason', label:'Send reason', type:'text', help:'e.g. "You\'re getting this because you booked with us."'},
+    {key:'browser_url', label:'View-in-browser URL', type:'url'},
+  ],
+
+  // ────────────────────────────────────────────────────────────────
+  // ARCHETYPE B — Marketing newsletter
+  // ────────────────────────────────────────────────────────────────
+  // top-bar reused from D
+  'hero-image': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'headline', label:'Headline', type:'text', required:true},
+    {key:'deck', label:'Deck (subhead paragraph)', type:'longText'},
+    {key:'image_url', label:'Hero image URL', type:'url', required:true},
+    {key:'image_alt', label:'Image alt text', type:'text', help:'Description of the image for accessibility.'},
+    {key:'cta', label:'Call-to-action button', type:'group', fields:[
+      {key:'text', label:'Button text', type:'text'},
+      {key:'url', label:'Button URL', type:'url'},
+    ]},
+  ],
+  'destination-grid': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'title', label:'Section title', type:'text'},
+    {key:'lede', label:'Lede paragraph', type:'longText'},
+    {key:'cards', label:'Destination cards', type:'array', itemLabel:'Destination', itemFields:[
+      {key:'image_url', label:'Image URL', type:'url'},
+      {key:'tag', label:'Tag', type:'text', help:'e.g. "All-inclusive"'},
+      {key:'name', label:'Destination name', type:'text', required:true},
+      {key:'meta', label:'Meta line', type:'text', help:'e.g. "7 nights · From £589pp"'},
+      {key:'price_from', label:'"From" prefix text', type:'text', help:'e.g. "From"'},
+      {key:'price_amount', label:'Price amount', type:'text', help:'e.g. "£589"'},
+      {key:'price_unit', label:'Price unit', type:'text', help:'e.g. "pp"'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+  ],
+  'feature-story': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'title', label:'Headline', type:'text', required:true},
+    {key:'lede', label:'Lede paragraph', type:'longText'},
+    {key:'image_url', label:'Image URL', type:'url'},
+    {key:'image_alt', label:'Image alt text', type:'text'},
+    {key:'body_title', label:'Body sub-heading', type:'text'},
+    {key:'excerpt', label:'Body excerpt', type:'longText'},
+    {key:'link', label:'Read more link', type:'group', fields:[
+      {key:'text', label:'Link text', type:'text'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+  ],
+  'cta-banner': [
+    {key:'title', label:'Banner headline', type:'text', required:true},
+    {key:'text', label:'Supporting text', type:'longText'},
+    {key:'cta', label:'Button', type:'group', fields:[
+      {key:'text', label:'Button text', type:'text'},
+      {key:'url', label:'Button URL', type:'url'},
+    ]},
+  ],
+  'footer-light': [
+    {key:'logo_text', label:'Brand wordmark text', type:'text', help:'Used if no logo image.'},
+    {key:'logo_url', label:'Logo image URL', type:'url'},
+    {key:'logo_link_url', label:'Logo link URL', type:'url'},
+    {key:'tagline', label:'Tagline', type:'text'},
+    {key:'socials', label:'Social links', type:'array', itemLabel:'Social', itemFields:[
+      {key:'platform', label:'Platform', type:'text', help:'linkedin, facebook, instagram, x, youtube, or tiktok'},
+      {key:'url', label:'Profile URL', type:'url'},
+    ]},
+    {key:'manage_links', label:'Manage links (preferences, unsubscribe, etc)', type:'array', itemLabel:'Link', itemFields:[
+      {key:'label', label:'Link label', type:'text'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+    {key:'reason', label:'Send reason', type:'text'},
+    {key:'legal', label:'Legal line', type:'text'},
+  ],
+
+  // ────────────────────────────────────────────────────────────────
+  // ARCHETYPE A — B2B Weekly newsletter
+  // ────────────────────────────────────────────────────────────────
+  'masthead': [
+    {key:'issue_label', label:'Issue label', type:'text', help:'e.g. "Vol 02 · Issue 19"'},
+    {key:'date_label', label:'Date label', type:'text', help:'e.g. "09 May 2026"'},
+    {key:'title', label:'Newspaper title', type:'text', required:true, help:'e.g. "The Travelgenix Weekly"'},
+    {key:'tagline', label:'Tagline', type:'text'},
+  ],
+  'toc': [
+    {key:'label', label:'Section label', type:'text', help:'e.g. "In this issue"'},
+    {key:'items', label:'Table of contents items', type:'array', itemLabel:'Item', itemFields:[
+      {key:'number', label:'Number', type:'text', help:'e.g. "01"'},
+      {key:'text', label:'Item text', type:'text'},
+    ]},
+  ],
+  'lead-story': [
+    {key:'kicker', label:'Kicker line', type:'text', help:'e.g. "Lead story"'},
+    {key:'headline', label:'Headline', type:'text', required:true},
+    {key:'deck', label:'Deck (subhead paragraph)', type:'longText'},
+    {key:'image_url', label:'Image URL', type:'url'},
+    {key:'image_alt', label:'Image alt text', type:'text'},
+    {key:'byline', label:'Byline', type:'group', fields:[
+      {key:'name', label:'Author name', type:'text'},
+      {key:'meta', label:'Meta line', type:'text', help:'e.g. "4 min read · Industry analysis"'},
+    ]},
+    {key:'body', label:'Body text (markdown supported)', type:'longText'},
+    {key:'link_text', label:'Read-more link text', type:'text'},
+    {key:'link_url', label:'Read-more link URL', type:'url'},
+  ],
+  'duo-grid': [
+    {key:'left', label:'Left story', type:'group', fields:[
+      {key:'tag', label:'Tag', type:'text', help:'e.g. "Product"'},
+      {key:'headline', label:'Headline', type:'text'},
+      {key:'body', label:'Body text', type:'longText'},
+      {key:'link_text', label:'Link text', type:'text'},
+      {key:'link_url', label:'Link URL', type:'url'},
+    ]},
+    {key:'right', label:'Right story', type:'group', fields:[
+      {key:'tag', label:'Tag', type:'text'},
+      {key:'headline', label:'Headline', type:'text'},
+      {key:'body', label:'Body text', type:'longText'},
+      {key:'link_text', label:'Link text', type:'text'},
+      {key:'link_url', label:'Link URL', type:'url'},
+    ]},
+  ],
+  'pulse-stats': [
+    {key:'label', label:'Section label', type:'text', help:'e.g. "Industry pulse"'},
+    {key:'title', label:'Section title', type:'text'},
+    {key:'stats', label:'Three stats', type:'array', itemLabel:'Stat', itemFields:[
+      {key:'value', label:'Number/value', type:'text', help:'Wrap a portion in {curly braces} to teal-highlight it. e.g. "+{42}%"'},
+      {key:'label', label:'Label', type:'text'},
+    ]},
+    {key:'source', label:'Source line', type:'text', help:'e.g. "Travelgenix client telemetry, May 2026"'},
+  ],
+  'numbered-list': [
+    {key:'title', label:'Section title', type:'text', required:true},
+    {key:'meta', label:'Meta line', type:'text', help:'e.g. "10 min total"'},
+    {key:'items', label:'List items', type:'array', itemLabel:'Item', itemFields:[
+      {key:'title', label:'Item title', type:'text'},
+      {key:'text', label:'Item description (markdown supported)', type:'longText'},
+    ]},
+  ],
+  'pull-quote': [
+    {key:'variant', label:'Variant', type:'text', help:'"simple" or "labelled"'},
+    {key:'label', label:'Label', type:'text', help:'Used by the labelled variant. e.g. "Heard this week".'},
+    {key:'quote', label:'Quote text', type:'longText', required:true},
+    {key:'attribution', label:'Attribution', type:'group', fields:[
+      {key:'name', label:'Name', type:'text'},
+      {key:'role', label:'Role', type:'text'},
+    ]},
+  ],
+  'calendar-grid': [
+    {key:'title', label:'Section title', type:'text'},
+    {key:'sub', label:'Sub-line', type:'text'},
+    {key:'items', label:'Calendar items', type:'array', itemLabel:'Event', itemFields:[
+      {key:'month', label:'Month', type:'text', help:'e.g. "May"'},
+      {key:'day', label:'Day', type:'text', help:'e.g. "14"'},
+      {key:'title', label:'Event title', type:'text'},
+      {key:'text', label:'Event description', type:'text'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+  ],
+
+  // ────────────────────────────────────────────────────────────────
+  // ARCHETYPE C — Product Launch
+  // ────────────────────────────────────────────────────────────────
+  'hero-dark': [
+    {key:'logo_mark', label:'Logo mark (1-2 letters)', type:'text', help:'e.g. "T"'},
+    {key:'logo_text', label:'Logo wordmark', type:'text'},
+    {key:'logo_link_url', label:'Logo link URL', type:'url'},
+    {key:'badge_text', label:'Badge text', type:'text', help:'e.g. "New launch"'},
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'headline', label:'Headline', type:'text', required:true, help:'Wrap a phrase in *asterisks* to italic-teal it. e.g. "Live conversations.\\n*Smarter sales.*"'},
+    {key:'deck', label:'Deck (subhead paragraph)', type:'longText'},
+    {key:'primary_cta', label:'Primary button', type:'group', fields:[
+      {key:'text', label:'Button text', type:'text'},
+      {key:'url', label:'Button URL', type:'url'},
+    ]},
+    {key:'secondary_cta', label:'Secondary button (ghost)', type:'group', fields:[
+      {key:'text', label:'Button text', type:'text'},
+      {key:'url', label:'Button URL', type:'url'},
+    ]},
+  ],
+  'product-mockup': [
+    {key:'variant', label:'Variant', type:'text', help:'"chat" or "dashboard"'},
+    {key:'header_initial', label:'Chat: header avatar letter', type:'text', help:'Chat variant only. e.g. "L"'},
+    {key:'header_name', label:'Chat: header name', type:'text', help:'Chat variant only. e.g. "Luna"'},
+    {key:'header_status', label:'Chat: header status', type:'text', help:'Chat variant only. e.g. "Online · responds instantly"'},
+    {key:'messages', label:'Chat messages', type:'array', itemLabel:'Message', itemFields:[
+      {key:'from', label:'From', type:'text', help:'"bot" or "user"'},
+      {key:'text', label:'Message text', type:'longText'},
+    ]},
+    {key:'show_typing', label:'Show typing dots at end', type:'text', help:'true or false'},
+    {key:'dashboard_title', label:'Dashboard: title', type:'text', help:'Dashboard variant only.'},
+    {key:'dashboard_rows', label:'Dashboard rows', type:'array', itemLabel:'Row', itemFields:[
+      {key:'label', label:'Label', type:'text'},
+      {key:'value', label:'Value', type:'text'},
+      {key:'delta', label:'Delta', type:'text', help:'e.g. "+12%"'},
+      {key:'delta_direction', label:'Delta direction', type:'text', help:'"up" or "down"'},
+    ]},
+  ],
+  'features-section': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'title', label:'Section title', type:'text', required:true},
+    {key:'lede', label:'Lede paragraph', type:'longText'},
+    {key:'features', label:'Feature rows', type:'array', itemLabel:'Feature', itemFields:[
+      {key:'icon', label:'Icon', type:'text', help:'chat, bolt, users, clock, globe, star, shield, trending, search, or spark'},
+      {key:'heading', label:'Feature heading', type:'text'},
+      {key:'text', label:'Feature description', type:'longText'},
+    ]},
+  ],
+  'stats-strip': [
+    {key:'stats', label:'Stats (exactly 3)', type:'array', itemLabel:'Stat', itemFields:[
+      {key:'value', label:'Number/value', type:'text', help:'e.g. "3.2x", "42%", "90s"'},
+      {key:'label', label:'Label', type:'text'},
+    ]},
+  ],
+  'testimonial': [
+    {key:'quote', label:'Quote text', type:'longText', required:true},
+    {key:'author', label:'Author', type:'group', fields:[
+      {key:'initials', label:'Avatar initials', type:'text', help:'Auto-derived from name if blank.'},
+      {key:'name', label:'Name', type:'text'},
+      {key:'role', label:'Role / company', type:'text'},
+    ]},
+  ],
+  'cta-dark': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'title', label:'Headline', type:'text', required:true},
+    {key:'text', label:'Supporting text', type:'longText'},
+    {key:'cta', label:'Primary button', type:'group', fields:[
+      {key:'text', label:'Button text', type:'text'},
+      {key:'url', label:'Button URL', type:'url'},
+    ]},
+  ],
+  'footer-dark': [
+    {key:'logo_text', label:'Brand wordmark text', type:'text'},
+    {key:'logo_url', label:'Logo image URL', type:'url'},
+    {key:'logo_link_url', label:'Logo link URL', type:'url'},
+    {key:'inline_links', label:'Inline action links (Reply / Forward / Manage)', type:'array', itemLabel:'Link', itemFields:[
+      {key:'label', label:'Link label', type:'text'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+    {key:'socials', label:'Social links', type:'array', itemLabel:'Social', itemFields:[
+      {key:'platform', label:'Platform', type:'text', help:'linkedin, facebook, instagram, x, youtube, or tiktok'},
+      {key:'url', label:'Profile URL', type:'url'},
+    ]},
+    {key:'manage_links', label:'Manage links (preferences, unsubscribe)', type:'array', itemLabel:'Link', itemFields:[
+      {key:'label', label:'Link label', type:'text'},
+      {key:'url', label:'Link URL', type:'url'},
+    ]},
+    {key:'reason', label:'Send reason', type:'text'},
+    {key:'legal', label:'Legal line', type:'text'},
+  ],
+
+  // ────────────────────────────────────────────────────────────────
+  // STRUCTURAL — Used across all archetypes
+  // ────────────────────────────────────────────────────────────────
+  'divider': [
+    {key:'style', label:'Divider style', type:'select', options:[
+      {value:'thin',   label:'Thin line'},
+      {value:'thick',  label:'Thick line'},
+      {value:'dotted', label:'Dotted line'},
+      {value:'space',  label:'Just a space (no line)'},
+    ], help:'Visual break between sections.'},
+  ],
+
+  // ────────────────────────────────────────────────────────────────
+  // OFFERS — Live offer-fetching sections (the conversion engine).
+  // ────────────────────────────────────────────────────────────────
+  // The `fetch` field is a special offerPreset type — see below for the
+  // preset list. The renderer pulls live offers at preview time using
+  // these filters, so the wizard saves the filter object, not rendered
+  // offers. v1.5 ships a curated preset picker; full chip/airport/slider
+  // controls remain in the advanced editor (client.html).
+  'offers-hero': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text', help:'e.g. "Featured this week"'},
+    {key:'headline', label:'Headline', type:'text'},
+    {key:'ctaText', label:'CTA button text', type:'text', help:'e.g. "View this trip"'},
+    {key:'fetch', label:'Which offer to feature', type:'offerPreset'},
+  ],
+  'offers-three-up': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'heading', label:'Section heading', type:'text'},
+    {key:'ctaText', label:'CTA button text per card', type:'text', help:'e.g. "View"'},
+    {key:'fetch', label:'Which offers to show', type:'offerPreset'},
+  ],
+  'offers-two-up': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'heading', label:'Section heading', type:'text'},
+    {key:'fetch', label:'Which offers to show', type:'offerPreset'},
+  ],
+  'offers-list': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'heading', label:'Section heading', type:'text'},
+    {key:'maxItems', label:'Max items', type:'text', help:'Default 4'},
+    {key:'fetch', label:'Which offers to show', type:'offerPreset'},
+  ],
+  'offers-urgency': [
+    {key:'urgencyText', label:'Urgency message', type:'text', help:'e.g. "Last chance"'},
+    {key:'scarcityText', label:'Scarcity message', type:'text', help:'e.g. "Only 3 left"'},
+    {key:'ctaText', label:'CTA button text', type:'text'},
+    {key:'fetch', label:'Which offer to feature', type:'offerPreset'},
+  ],
+  'offers-editorial': [
+    {key:'eyebrow', label:'Eyebrow line', type:'text'},
+    {key:'headline', label:'Headline', type:'text'},
+    {key:'body', label:'Editorial copy', type:'longText'},
+    {key:'ctaText', label:'CTA button text', type:'text'},
+    {key:'fetch', label:'Which offer to feature', type:'offerPreset'},
+  ],
+};
+
+// Curated preset list for the wizard's offer-filter picker. These match
+// the OFFER_PRESETS in public/client.html exactly — same ids, same config
+// shapes — so the renderer interprets them identically. Power users who
+// want chips/airport pickers/sliders can switch to advanced mode after
+// saving.
+//
+// IF YOU EDIT THIS LIST, mirror the change in client.html OFFER_PRESETS.
+// Eventually this should come from a shared module; see the architecture
+// doc's schema-source-of-truth note.
+var OFFER_PRESETS_FOR_WIZARD = [
+  {
+    id: 'cheapest-anywhere',
+    label: 'Cheapest first, anywhere',
+    desc: 'No filters — just the lowest prices.',
+    config: { sort: 'price:asc' },
+  },
+  {
+    id: 'last-minute',
+    label: 'Last-minute departures',
+    desc: 'Going in the next 30 days, cheapest first.',
+    config: { DatesMin: 1, DatesMax: 30, sort: 'price:asc' },
+  },
+  {
+    id: 'family-beach',
+    label: 'Family beach holidays',
+    desc: 'Spain, Greece, Turkey · packages · under £1,500pp.',
+    config: {
+      type: 'BothPackages',
+      destinations: ['ES', 'GR', 'TR'],
+      origins: ['GB'],
+      budgetMax: 1500,
+      durationMax: 14,
+      sort: 'price:asc',
+    },
+  },
+  {
+    id: 'all-inclusive-greece',
+    label: 'All-inclusive Greek packages',
+    desc: 'Operator-named packages to Greece, AI only.',
+    config: {
+      type: 'PackageHolidays',
+      destinations: ['GR'],
+      boardBases: ['AllInclusive'],
+      origins: ['GB'],
+      sort: 'price:asc',
+    },
+  },
+  {
+    id: 'luxury',
+    label: 'Luxury escapes',
+    desc: '5-star hotels, sorted by highest price.',
+    config: { type: 'Accommodation', ratingMin: 5, sort: 'price:desc' },
+  },
+  {
+    id: 'cheap-flights',
+    label: 'Cheap flights from UK majors',
+    desc: 'Flights from LGW/MAN/STN to Europe.',
+    config: {
+      type: 'Flights',
+      origins: ['LGW', 'MAN', 'STN'],
+      destinations: ['ES', 'IT', 'GR', 'PT'],
+      sort: 'price:asc',
+    },
+  },
+];
+
+// Reverse-lookup helper: given a fetch object, can we recognise which
+// preset (if any) it matches? Used so the wizard pre-selects the right
+// preset when restoring/editing a section. We do a stable JSON compare.
+function fetchToPresetId(fetchObj) {
+  if (!fetchObj || typeof fetchObj !== 'object') return '';
+  var target = JSON.stringify(sortKeys(fetchObj));
+  for (var i = 0; i < OFFER_PRESETS_FOR_WIZARD.length; i++) {
+    var p = OFFER_PRESETS_FOR_WIZARD[i];
+    if (JSON.stringify(sortKeys(p.config)) === target) return p.id;
+  }
+  return '';  // It's a custom filter — wizard can't represent it.
+}
+function sortKeys(o) {
+  if (Array.isArray(o)) return o.slice().sort();  // sort arrays for stable compare
+  if (o && typeof o === 'object') {
+    var out = {};
+    Object.keys(o).sort().forEach(function(k) { out[k] = sortKeys(o[k]); });
+    return out;
+  }
+  return o;
+}
+
+function fieldsForSection(section) {
+  return SCHEMAS[section.type] || null;
+}
+
+function renderFillStep() {
+  var section = state.sections[state.currentSection];
+  if (!section) { goToStep('preview'); return; }
+
+  var formEl = document.getElementById('fill-form');
+  var fields = fieldsForSection(section);
+
+  // Header
+  var html = ''
+    + '<div class="fill-section-meta">Section ' + (state.currentSection + 1) + ' of ' + state.sections.length + ' · ' + escHtml(section.type) + '</div>'
+    + '<h2 class="fill-section-title">' + escHtml(prettyType(section.type)) + '</h2>'
+    + '<p class="fill-section-desc">Edit the fields below. The preview on the right updates as you type.</p>';
+
+  if (!fields) {
+    // Generic fallback — render JSON in a textarea.
+    html += '<div class="field">'
+      + '<label class="field-label">Section JSON</label>'
+      + '<textarea class="field-textarea" style="min-height:280px; font-family: \'SF Mono\', Monaco, Consolas, monospace; font-size:12px;" oninput="onJsonFieldChange(this.value)">'
+      + escHtml(JSON.stringify(section.props || {}, null, 2))
+      + '</textarea>'
+      + '<p class="field-help">No guided editor for this section type yet — direct JSON for now. Will expand in v2.</p>'
+      + '</div>';
+  } else {
+    fields.forEach(function(field) {
+      html += renderField(section.props, '', field);
+    });
+  }
+
+  formEl.innerHTML = html;
+
+  // Footer state
+  document.getElementById('fill-progress').textContent = 'Section ' + (state.currentSection + 1) + ' of ' + state.sections.length;
+  document.getElementById('fill-back').textContent = state.currentSection === 0 ? '← Change template' : '← Back';
+  document.getElementById('fill-next').textContent = state.currentSection === state.sections.length - 1 ? 'Send →' : 'Next →';
+
+  schedulePreviewRender();
+}
+
+function renderField(propsRoot, pathPrefix, field) {
+  var fullPath = pathPrefix + (pathPrefix ? '.' : '') + field.key;
+  var val = getByPath(propsRoot, fullPath) || (field.type === 'array' ? [] : (field.type === 'group' ? {} : ''));
+
+  if (field.type === 'group') {
+    var inner = (field.fields || []).map(function(child) {
+      return renderField(propsRoot, fullPath, child);
+    }).join('');
+    return ''
+      + '<div class="field-group">'
+      + '<label class="field-group-label">' + escHtml(field.label) + '</label>'
+      + inner
+      + '</div>';
+  }
+
+  if (field.type === 'array') {
+    var items = Array.isArray(val) ? val : [];
+    var itemsHtml = items.map(function(item, idx) {
+      var itemPath = fullPath + '.' + idx;
+      var inner = (field.itemFields || []).map(function(child) {
+        return renderField(propsRoot, itemPath, child);
+      }).join('');
+      return ''
+        + '<div class="field-array-item">'
+        + '<div class="field-array-item-meta">' + escHtml(field.itemLabel || 'Item') + ' ' + (idx + 1) + '</div>'
+        + '<button class="field-array-remove" type="button" aria-label="Remove" onclick="arrayRemove(\'' + escAttr(fullPath) + '\', ' + idx + ')">×</button>'
+        + inner
+        + '</div>';
+    }).join('');
+    return ''
+      + '<div class="field-array">'
+      + '<label class="field-array-label">' + escHtml(field.label) + '</label>'
+      + itemsHtml
+      + '<button class="field-array-add" type="button" onclick="arrayAdd(\'' + escAttr(fullPath) + '\', \'' + escAttr(JSON.stringify(field.itemFields || [])) + '\')">+ Add ' + escHtml((field.itemLabel || 'item').toLowerCase()) + '</button>'
+      + '</div>';
+  }
+
+  // text / longText / url / lineList / offerPreset
+  if (field.type === 'lineList') {
+    var listVal = Array.isArray(val) ? val.join('\n') : (val || '');
+    return ''
+      + '<div class="field">'
+      + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
+      + '<textarea class="field-textarea" oninput="onLineListChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(listVal) + '</textarea>'
+      + (field.help ? '<p class="field-help">' + escHtml(field.help) + '</p>' : '')
+      + '</div>';
+  }
+  if (field.type === 'select') {
+    var options = (field.options || []).map(function(opt) {
+      var value = (typeof opt === 'object' && opt !== null) ? opt.value : opt;
+      var label = (typeof opt === 'object' && opt !== null) ? (opt.label || opt.value) : opt;
+      var sel = String(val) === String(value) ? ' selected' : '';
+      return '<option value="' + escAttr(value) + '"' + sel + '>' + escHtml(label) + '</option>';
+    }).join('');
+    if (!field.required) {
+      options = '<option value="">— Default —</option>' + options;
+    }
+    return ''
+      + '<div class="field">'
+      + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
+      + '<select class="field-input" onchange="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + options + '</select>'
+      + (field.help ? '<p class="field-help">' + escHtml(field.help) + '</p>' : '')
+      + '</div>';
+  }
+  if (field.type === 'offerPreset') {
+    // val is the existing fetch object. Try to recognise it as one of
+    // our preset configs; if it doesn't match any, leave the dropdown
+    // blank but show a "custom filter" hint so the user knows they can
+    // open the advanced editor without losing data.
+    var current = fetchToPresetId(val || {});
+    var hasCustom = !current && val && typeof val === 'object' && Object.keys(val).length > 0;
+    var options = ['<option value="">— Pick a preset —</option>']
+      .concat(OFFER_PRESETS_FOR_WIZARD.map(function(p) {
+        return '<option value="' + escAttr(p.id) + '"' + (p.id === current ? ' selected' : '') + '>' + escHtml(p.label) + '</option>';
+      }))
+      .join('');
+    var selectedDesc = '';
+    if (current) {
+      var match = OFFER_PRESETS_FOR_WIZARD.filter(function(p) { return p.id === current; })[0];
+      if (match) selectedDesc = match.desc;
+    }
+    var customWarning = hasCustom ? '<p class="field-help" style="color: var(--tg-warning); margin-top: 8px;">⚠ This section currently has a custom filter the wizard can\'t represent. Picking a preset above will overwrite it. Switch to advanced mode if you want to keep the custom filter.</p>' : '';
+    return ''
+      + '<div class="field">'
+      + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
+      + '<select class="field-input" onchange="onPresetChange(\'' + escAttr(fullPath) + '\', this.value)">' + options + '</select>'
+      + '<p class="field-help" id="preset-desc-' + escAttr(fullPath.replace(/\./g, '-')) + '">' + escHtml(selectedDesc || 'The renderer pulls live offers matching this preset at send time. Change preset to see different selections in the preview.') + '</p>'
+      + customWarning
+      + '<p class="field-help" style="color: var(--tg-text-tertiary); margin-top: 8px;">Need finer control (specific destinations, airports, price range, star rating)? Switch to advanced mode after saving — the wizard offers presets only.</p>'
+      + '</div>';
+  }
+  var inputTag = field.type === 'longText'
+    ? '<textarea class="field-textarea" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
+    : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" value="' + escAttr(val) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
+  return ''
+    + '<div class="field">'
+    + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
+    + inputTag
+    + (field.help ? '<p class="field-help">' + escHtml(field.help) + '</p>' : '')
+    + '</div>';
+}
+
+// Path helpers — same shape as client.html's nested-path system. Numeric
+// path segments mean "this segment is an array index"; everything else is
+// an object key.
+function getByPath(obj, path) {
+  if (!path) return obj;
+  var parts = path.split('.');
+  var cur = obj;
+  for (var i = 0; i < parts.length; i++) {
+    if (cur == null) return undefined;
+    cur = cur[parts[i]];
+  }
+  return cur;
+}
+function setByPath(obj, path, val) {
+  var parts = path.split('.');
+  var cur = obj;
+  for (var i = 0; i < parts.length - 1; i++) {
+    var key = parts[i];
+    var nextKey = parts[i + 1];
+    var nextIsIdx = /^\d+$/.test(nextKey);
+    if (cur[key] == null) cur[key] = nextIsIdx ? [] : {};
+    cur = cur[key];
+  }
+  cur[parts[parts.length - 1]] = val;
+}
+
+function onFieldChange(path, val) {
+  var section = state.sections[state.currentSection];
+  setByPath(section.props, path, val);
+  persist();
+  schedulePreviewRender();
+}
+function onJsonFieldChange(json) {
+  var section = state.sections[state.currentSection];
+  try {
+    var parsed = JSON.parse(json);
+    section.props = parsed;
+    persist();
+    schedulePreviewRender();
+  } catch (e) { /* swallow until valid */ }
+}
+function onLineListChange(path, raw) {
+  var section = state.sections[state.currentSection];
+  var lines = String(raw).split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+  setByPath(section.props, path, lines);
+  persist();
+  schedulePreviewRender();
+}
+function onPresetChange(path, presetId) {
+  var section = state.sections[state.currentSection];
+  // Replace the entire fetch object with the preset's config (deep
+  // copy). This matches client.html line 5583's behaviour exactly.
+  // Empty selection clears the filter back to {}.
+  var preset = OFFER_PRESETS_FOR_WIZARD.filter(function(p) { return p.id === presetId; })[0];
+  var newFilter = preset ? JSON.parse(JSON.stringify(preset.config)) : {};
+  setByPath(section.props, path, newFilter);
+  // Update the help-text under the dropdown without re-rendering the
+  // whole form (preserves focus on other fields).
+  var helpEl = document.getElementById('preset-desc-' + path.replace(/\./g, '-'));
+  if (helpEl) {
+    helpEl.textContent = preset ? preset.desc : 'The renderer pulls live offers matching this preset at send time. Change preset to see different selections in the preview.';
+  }
+  persist();
+  schedulePreviewRender();
+}
+function arrayAdd(path, itemFieldsJson) {
+  var section = state.sections[state.currentSection];
+  var arr = getByPath(section.props, path) || [];
+  if (!Array.isArray(arr)) arr = [];
+  var itemFields = JSON.parse(itemFieldsJson || '[]');
+  var newItem = {};
+  itemFields.forEach(function(f) { newItem[f.key] = (f.type === 'array' ? [] : (f.type === 'group' ? {} : '')); });
+  arr.push(newItem);
+  setByPath(section.props, path, arr);
+  persist();
+  renderFillStep();
+}
+function arrayRemove(path, idx) {
+  var section = state.sections[state.currentSection];
+  var arr = getByPath(section.props, path);
+  if (!Array.isArray(arr)) return;
+  arr.splice(idx, 1);
+  setByPath(section.props, path, arr);
+  persist();
+  renderFillStep();
+}
+
+function fillBack() {
+  if (state.currentSection === 0) goToStep('template');
+  else { state.currentSection--; renderFillStep(); persist(); }
+}
+function fillNext() {
+  if (state.currentSection >= state.sections.length - 1) {
+    goToStep('audience');
+  } else {
+    state.currentSection++;
+    renderFillStep();
+    persist();
+  }
+}
+
+// ── Preview rendering ───────────────────────────────────────────────
+//
+// The preview iframe loads HTML produced by /api/email-render. We debounce
+// 300ms after every keystroke and discriminate concurrent requests via an
+// incrementing `lastRenderRequestId` so out-of-order responses don't
+// overwrite a fresher render.
+function schedulePreviewRender() {
+  clearTimeout(renderDebounceTimer);
+  setPreviewStatus('loading', 'Rendering…');
+  renderDebounceTimer = setTimeout(renderPreviewNow, 300);
+}
+async function renderPreviewNow() {
+  var requestId = ++lastRenderRequestId;
+  try {
+    var r = await fetch('/api/email-render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        sections: state.sections,
+        title: state.meta.subject,
+        previewText: state.meta.previewText,
+      }),
+    });
+    var j = await r.json();
+    if (requestId !== lastRenderRequestId) return;  // stale, ignore
+    if (!j.success || !j.html) {
+      setPreviewStatus('loading', 'Render error');
+      console.warn('Render error:', j.error || j.errors);
+      return;
+    }
+    var iframe = document.getElementById('preview-frame');
+    iframe.srcdoc = j.html;
+    document.getElementById('preview-overlay').classList.add('hidden');
+    setPreviewStatus('live', 'Up to date');
+  } catch (e) {
+    if (requestId !== lastRenderRequestId) return;
+    setPreviewStatus('loading', 'Network error');
+    console.warn('Preview fetch failed:', e);
+  }
+}
+function setPreviewStatus(cls, text) {
+  var el = document.getElementById('preview-status');
+  el.className = 'preview-status ' + cls;
+  el.textContent = text;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SCREEN 4 — AUDIENCE & SEND
+// ═════════════════════════════════════════════════════════════════════
+//
+// Sets subject, preview text, audience type, optional segment label, and
+// when to send. The "Save to queue" button is disabled until both subject
+// and audience are set. We don't validate too aggressively — the API does
+// final validation; we just enforce the obvious required-fields.
+
+function hydrateAudienceStep() {
+  // Restore values from state into the form fields (in case the user is
+  // resuming, or came back via "Back to editing")
+  document.getElementById('meta-subject').value = state.meta.subject || '';
+  document.getElementById('meta-preview').value = state.meta.previewText || '';
+  document.getElementById('meta-segment').value = state.meta.audienceSegment || '';
+
+  if (state.meta.audience) {
+    var radio = document.querySelector('input[name="audience"][value="' + state.meta.audience + '"]');
+    if (radio) { radio.checked = true; markSelectedCard('aud-card', state.meta.audience); }
+  }
+  if (state.meta.scheduledSend) {
+    document.getElementById('meta-schedule').value = state.meta.scheduledSend;
+    var schedRadio = document.querySelector('input[name="when"][value="schedule"]');
+    if (schedRadio) { schedRadio.checked = true; }
+    document.getElementById('schedule-field').style.display = 'block';
+    markSelectedCard('when-option', 'schedule');
+  } else {
+    markSelectedCard('when-option', 'now');
+  }
+  refreshAudienceSaveButton();
+}
+
+function onMetaChange(key, val) {
+  state.meta[key] = val;
+  persist();
+  refreshAudienceSaveButton();
+}
+function onAudienceChange(val) {
+  state.meta.audience = val;
+  markSelectedCard('aud-card', val);
+  persist();
+  refreshAudienceSaveButton();
+}
+function onWhenChange(val) {
+  markSelectedCard('when-option', val);
+  if (val === 'schedule') {
+    document.getElementById('schedule-field').style.display = 'block';
+  } else {
+    document.getElementById('schedule-field').style.display = 'none';
+    state.meta.scheduledSend = null;
+    persist();
+  }
+}
+function markSelectedCard(cls, val) {
+  // Clear all selected on cards of this class, mark the one matching val
+  document.querySelectorAll('.' + cls).forEach(function(el) {
+    el.classList.toggle('selected', el.getAttribute('data-' + (cls === 'aud-card' ? 'audience' : 'when')) === val);
+  });
+}
+function refreshAudienceSaveButton() {
+  var btn = document.getElementById('audience-save-btn');
+  var meta = document.getElementById('audience-meta');
+  var subjectOk = state.meta.subject && state.meta.subject.trim().length > 0;
+  var audienceOk = !!state.meta.audience;
+  var ready = subjectOk && audienceOk;
+  btn.disabled = !ready;
+  if (!subjectOk && !audienceOk) {
+    meta.textContent = 'Add a subject and pick an audience to continue.';
+  } else if (!subjectOk) {
+    meta.textContent = 'Add a subject line to continue.';
+  } else if (!audienceOk) {
+    meta.textContent = 'Pick an audience to continue.';
+  } else {
+    meta.textContent = 'Ready to save to your queue.';
+  }
+}
+
+// ── The actual save ────────────────────────────────────────────────
+//
+// We render once via /api/email-render to get the final HTML (with offers
+// pre-rendered if any), then post to /api/email-compose which writes to
+// the Email Queue table. On success we clear the localStorage draft and
+// land on the done screen. On failure we show the done screen in error
+// mode with a "Try again" option.
+
+async function finishAndSave() {
+  var btn = document.getElementById('audience-save-btn');
+  btn.setAttribute('aria-busy', 'true');
+  btn.disabled = true;
+  document.getElementById('audience-meta').textContent = 'Saving to your queue…';
+
+  try {
+    // Step 1 — render to HTML
+    var renderRes = await fetch('/api/email-render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        sections: state.sections,
+        title: state.meta.subject,
+        previewText: state.meta.previewText,
+      }),
+    });
+    var renderJson = await renderRes.json();
+    if (!renderJson.success || !renderJson.html) {
+      throw new Error(renderJson.error || 'Could not render the email');
+    }
+
+    // Step 2 — post to compose
+    var composeBody = {
+      clientId: CLIENT_ID,
+      subject: state.meta.subject,
+      previewText: state.meta.previewText || '',
+      bodyHTML: renderJson.html,
+      bodyPlain: renderJson.plainText || '',
+      audience: state.meta.audience,
+      audienceSegment: state.meta.audienceSegment || '',
+      emailType: emailTypeForArchetype(state.archetype),
+      sectionsJson: JSON.stringify(state.sections),
+    };
+    if (state.meta.scheduledSend) {
+      // datetime-local gives "YYYY-MM-DDTHH:MM" in the browser's local
+      // zone. Convert to ISO so the server gets a proper timestamp.
+      var localDate = new Date(state.meta.scheduledSend);
+      if (!isNaN(localDate.getTime())) {
+        composeBody.scheduledSend = localDate.toISOString();
+      }
+    }
+
+    var composeRes = await fetch('/api/email-compose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(composeBody),
+    });
+    var composeJson = await composeRes.json();
+    if (!composeJson.success) {
+      throw new Error(composeJson.error || 'Could not save to the queue');
+    }
+
+    // Success — populate the done screen and navigate
+    showDone({
+      success: true,
+      emailId: composeJson.emailId,
+      subject: state.meta.subject,
+      audience: state.meta.audience,
+      segment: state.meta.audienceSegment,
+      scheduledSend: state.meta.scheduledSend,
+    });
+  } catch (err) {
+    console.error('Save failed:', err);
+    showDone({ success: false, message: err.message || 'Something went wrong. Please try again.' });
+  } finally {
+    btn.removeAttribute('aria-busy');
+    btn.disabled = false;
+  }
+}
+
+// Map archetype to the Email Queue's "Email Type" column. The render API
+// validates against a fixed list (Newsletter / Promotion / Update / Drip);
+// anything outside that defaults to Newsletter at the API.
+function emailTypeForArchetype(archetype) {
+  if (archetype === 'booking') return 'Update';
+  if (archetype === 'launch') return 'Promotion';
+  return 'Newsletter';
+}
+
+function showDone(opts) {
+  var success = !!opts.success;
+  document.getElementById('done-icon-success').hidden = !success;
+  document.getElementById('done-icon-error').hidden = success;
+  document.getElementById('done-back-btn').hidden = success;
+
+  if (success) {
+    document.getElementById('done-title').textContent = 'Your email is in the queue';
+    var subText = state.meta.scheduledSend
+      ? 'Saved with status "Awaiting Approval" and scheduled for ' + formatScheduledFor(state.meta.scheduledSend) + '. Review it in your queue when you\'re ready.'
+      : 'Saved with status "Awaiting Approval" — review it in your queue when you\'re ready to send.';
+    document.getElementById('done-sub').textContent = subText;
+
+    var summary = document.getElementById('done-summary');
+    summary.innerHTML = ''
+      + summaryRow('Subject', opts.subject || '(no subject)')
+      + summaryRow('Audience', humanAudience(opts.audience))
+      + (opts.segment ? summaryRow('Segment', opts.segment) : '')
+      + (opts.scheduledSend ? summaryRow('Scheduled for', formatScheduledFor(opts.scheduledSend)) : '')
+      + summaryRow('Email ID', opts.emailId || '—');
+
+    // Clear the in-flight draft — work is complete
+    clearDraft();
+  } else {
+    document.getElementById('done-title').textContent = 'We couldn\'t save your email';
+    document.getElementById('done-sub').textContent = opts.message || 'Something went wrong. Please try again.';
+    document.getElementById('done-summary').innerHTML = '';
+  }
+  goToStep('done');
+}
+function summaryRow(label, value) {
+  return '<div class="done-summary-row"><span class="done-summary-label">' + escHtml(label) + '</span><span class="done-summary-value">' + escHtml(value) + '</span></div>';
+}
+function humanAudience(a) {
+  return a === 'Client' ? 'Existing clients'
+       : a === 'Nurture' ? 'Nurture list'
+       : a === 'Cold' ? 'Cold outreach'
+       : a === 'Drip' ? 'Drip sequence'
+       : a || '—';
+}
+function formatScheduledFor(iso) {
+  try {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch (e) { return iso; }
+}
+
+function startOver() {
+  // Wipe state and go back to step 1
+  state = {
+    step: 'archetype',
+    archetype: null,
+    templateId: null,
+    templateName: '',
+    sections: [],
+    currentSection: 0,
+    meta: { subject: '', previewText: '', audience: 'Nurture', audienceSegment: '', recipientEmail: '', scheduledSend: null },
+  };
+  clearDraft();
+  goToStep('archetype');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ═════════════════════════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escAttr(s) { return escHtml(s); }
+function prettyType(t) {
+  return String(t || '').replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function toggleTheme() {
+  var body = document.body;
+  var icon = document.getElementById('theme-icon');
+  var label = document.getElementById('theme-label');
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  label.textContent = isDark ? 'Dark' : 'Light';
+  icon.innerHTML = isDark
+    ? '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>'
+    : '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>';
+  try { localStorage.setItem('luna-wizard-theme', isDark ? 'light' : 'dark'); } catch (e) {}
+}
+
+// ── Boot ────────────────────────────────────────────────────────────
+(function init() {
+  // Restore theme
+  try {
+    var t = localStorage.getItem('luna-wizard-theme');
+    if (t === 'dark') { document.documentElement.setAttribute('data-theme', 'dark'); document.getElementById('theme-label').textContent = 'Light'; document.getElementById('theme-icon').innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>'; }
+  } catch (e) {}
+
+  // Restore in-flight wizard if there is one
+  var resumed = restore();
+  goToStep(state.step || 'archetype');
+  if (resumed && state.step === 'fill' && state.sections.length) {
+    // Render straight into the current section
+    setTimeout(renderFillStep, 0);
+  }
+})();
+</script>
+</body>
+</html>

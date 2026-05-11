@@ -87,6 +87,31 @@ body {
 }
 .topbar-title { font-size: 15px; }
 .topbar-spacer { flex: 1; }
+.topbar-client {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px; margin: 0 4px;
+  border-left: 1px solid var(--tg-border);
+  border-right: 1px solid var(--tg-border);
+}
+.topbar-client-label {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--tg-text-tertiary);
+}
+.client-picker {
+  font-family: inherit; font-size: 13px;
+  background: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 6px 10px; cursor: pointer;
+  max-width: 200px;
+}
+.client-picker:hover { border-color: var(--tg-text-tertiary); }
+.client-picker:focus {
+  outline: none; border-color: var(--tg-accent);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+}
 .stepper {
   display: flex; gap: 6px; align-items: center;
   font-size: 13px; color: var(--tg-text-tertiary);
@@ -673,6 +698,12 @@ body {
     <span class="topbar-brand-mark">L</span>
     <span class="topbar-title">Luna Marketing — New email</span>
   </div>
+  <div class="topbar-client" id="topbar-client" hidden>
+    <span class="topbar-client-label">Client</span>
+    <select id="client-picker" class="client-picker" onchange="onClientChange(this.value)">
+      <!-- populated by JS once brand kits load -->
+    </select>
+  </div>
   <div class="topbar-spacer"></div>
   <nav class="stepper" id="stepper" aria-label="Wizard progress">
     <span class="stepper-pill" data-step="archetype">1. Type</span>
@@ -908,10 +939,16 @@ body {
 // One state object, persisted to localStorage. Resumable across tab closes.
 // State transitions are explicit — no implicit "the form just changed" magic.
 
-// Travelgenix B2B-SaaS client (only client type the marketing API accepts).
-// In production this would come from a session/auth layer; the skeleton
-// hardcodes it for the demo.
-var CLIENT_ID = 'recFXQY7be6gMr4In';
+// Known clients available in the wizard. The picker UI loads brand kits
+// for each on boot. The wizard's "active" client is state.clientId,
+// which defaults to Travelgenix. Adding a new client = add a row here.
+// Long-term this should come from a /api/clients-for-wizard endpoint,
+// but for v1.5 we hardcode since the demo set is small.
+var KNOWN_CLIENTS = [
+  { id: 'recFXQY7be6gMr4In', label: 'Travelgenix' },
+  { id: 'rec0OV2MrJhCN3P1e', label: 'Sunset Travels (demo)' },
+];
+var DEFAULT_CLIENT_ID = 'recFXQY7be6gMr4In';
 
 var STORAGE_KEY = 'luna-wizard-state-v1';
 
@@ -932,6 +969,7 @@ var ARCHETYPE_NAME_HINT = {
 
 var state = {
   step: 'archetype',
+  clientId: DEFAULT_CLIENT_ID,
   archetype: null,
   templateId: null,
   templateName: '',
@@ -940,7 +978,8 @@ var state = {
   meta: { subject: '', previewText: '', audience: 'Nurture', audienceSegment: '', recipientEmail: '', scheduledSend: null },
 };
 
-var templatesCache = null;        // [{id, name, ...}, ...] from /api/email-templates
+var templatesCache = null;        // Templates from /api/email-templates (per session)
+var brandKitsCache = {};          // clientId → brand kit object (per session)
 var lastRenderRequestId = 0;      // Discriminates concurrent preview renders
 var renderDebounceTimer = null;
 
@@ -1001,7 +1040,7 @@ async function ensureTemplatesLoaded() {
   var grid = document.getElementById('template-grid');
   grid.innerHTML = '<div class="empty-state">Loading templates…</div>';
   try {
-    var r = await fetch('/api/email-templates?clientId=' + encodeURIComponent(CLIENT_ID));
+    var r = await fetch('/api/email-templates?clientId=' + encodeURIComponent(state.clientId));
     var j = await r.json();
     if (!j.success) throw new Error(j.error || 'Could not load templates');
     templatesCache = j.templates || [];
@@ -1047,10 +1086,153 @@ function selectTemplate(id) {
   state.templateName = t.name;
   // Deep-copy so the user's edits don't mutate the cached template.
   state.sections = JSON.parse(JSON.stringify(t.sections || []));
+  // Merge the current client's brand kit into the cloned sections so
+  // top-bar businessName, footer reason/legal/socials, logo URLs etc
+  // are pre-filled. Only fills EMPTY fields — never overwrites template
+  // content. See applyBrandKitToSections() for the full rule set.
+  var kit = brandKitsCache[state.clientId];
+  if (kit) applyBrandKitToSections(state.sections, kit);
   state.meta.subject = t.subjectSuggestion || '';
   state.meta.previewText = t.previewSuggestion || '';
   state.currentSection = 0;
   goToStep('fill');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  BRAND KIT — fetch on boot, apply to template sections as they load
+// ═════════════════════════════════════════════════════════════════════
+//
+// Brand kit is the client's identity: logo, sender, footer legal,
+// social URLs, etc. We fetch it once per client per session (cached in
+// brandKitsCache) and apply its defaults to template sections when the
+// user picks a template. The applier ONLY fills empty fields — if the
+// template author specified a value, we keep it.
+//
+// Push 1 ships the text/URL fields only. Colours and fonts come in
+// Push 2 (which will need a render-engine refactor — see
+// /api/email-render).
+
+async function ensureBrandKitLoaded(clientId) {
+  if (!clientId) return null;
+  if (brandKitsCache[clientId]) return brandKitsCache[clientId];
+  try {
+    var r = await fetch('/api/brand-kit?clientId=' + encodeURIComponent(clientId));
+    var j = await r.json();
+    if (!j.success || !j.brandKit) {
+      console.warn('Brand kit fetch failed for', clientId, j.error);
+      return null;
+    }
+    brandKitsCache[clientId] = j.brandKit;
+    return j.brandKit;
+  } catch (e) {
+    console.warn('Brand kit fetch error', e);
+    return null;
+  }
+}
+
+// Mutates `sections` in place. For each section, walk its props and
+// fill brand-kit-aware fields ONLY when they're empty/missing. Never
+// overwrites template content.
+//
+// The mapping is small and explicit — not a generic "merge brand kit
+// onto props." Easier to reason about, easier to extend.
+function applyBrandKitToSections(sections, kit) {
+  if (!Array.isArray(sections) || !kit) return;
+  for (var i = 0; i < sections.length; i++) {
+    var s = sections[i];
+    if (!s || !s.type || !s.props) continue;
+    switch (s.type) {
+      case 'top-bar':
+        fillIfEmpty(s.props, 'businessName', kit.businessDisplayName);
+        fillIfEmpty(s.props, 'logoUrl', kit.logoUrl);
+        fillIfEmpty(s.props, 'logoLinkUrl', kit.websiteUrl);
+        break;
+
+      case 'hero-dark':
+        fillIfEmpty(s.props, 'logo_text', kit.businessDisplayName);
+        fillIfEmpty(s.props, 'logo_link_url', kit.websiteUrl);
+        // logo_mark defaults to the first letter of the business name
+        // if blank. Component already handles that, so we skip.
+        break;
+
+      case 'footer-light':
+      case 'footer-dark':
+        fillIfEmpty(s.props, 'logo_text', kit.businessDisplayName);
+        fillIfEmpty(s.props, 'logo_url', kit.logoUrl);
+        fillIfEmpty(s.props, 'logo_link_url', kit.websiteUrl);
+        fillIfEmpty(s.props, 'reason', kit.footerReason);
+        // legal: footer-light/dark accepts a string. Brand kit gives an
+        // array. Join with " · " for a single line. Skip if footer has
+        // its own legal already.
+        if (!s.props.legal && Array.isArray(kit.footerLegalLines) && kit.footerLegalLines.length) {
+          s.props.legal = kit.footerLegalLines.join(' · ');
+        }
+        // socials: only seed if the template has no socials. The
+        // precomputed socials array already excludes empty URLs.
+        if (!Array.isArray(s.props.socials) || s.props.socials.length === 0) {
+          if (Array.isArray(kit.socials) && kit.socials.length) {
+            s.props.socials = kit.socials.slice();
+          }
+        }
+        break;
+
+      case 'footer-meta':
+        // footer-meta uses lines as an array of strings (a lineList).
+        // Seed when empty.
+        if ((!Array.isArray(s.props.lines) || s.props.lines.length === 0)
+            && Array.isArray(kit.footerLegalLines) && kit.footerLegalLines.length) {
+          s.props.lines = kit.footerLegalLines.slice();
+        }
+        fillIfEmpty(s.props, 'reason', kit.footerReason);
+        break;
+
+      // All other sections have no brand-kit-aware fields. Leave alone.
+    }
+  }
+}
+
+// Helper: set obj[key] = val ONLY if the existing value is empty
+// (undefined, null, empty string, or only-whitespace string).
+function fillIfEmpty(obj, key, val) {
+  if (val == null || val === '') return;
+  var current = obj[key];
+  if (current == null || (typeof current === 'string' && !current.trim())) {
+    obj[key] = val;
+  }
+}
+
+// ── Client picker ───────────────────────────────────────────────────
+//
+// Populates the dropdown in the topbar with known clients. Switching
+// resets in-flight wizard state (since templates and brand kit are
+// client-scoped). Auto-fetches the new client's brand kit.
+
+function initClientPicker() {
+  var picker = document.getElementById('client-picker');
+  if (!picker) return;
+  picker.innerHTML = KNOWN_CLIENTS.map(function(c) {
+    var sel = c.id === state.clientId ? ' selected' : '';
+    return '<option value="' + escAttr(c.id) + '"' + sel + '>' + escHtml(c.label) + '</option>';
+  }).join('');
+  document.getElementById('topbar-client').hidden = false;
+}
+
+async function onClientChange(newClientId) {
+  if (newClientId === state.clientId) return;
+  // Reset state — different client = different templates and brand kit
+  state.clientId = newClientId;
+  state.archetype = null;
+  state.templateId = null;
+  state.templateName = '';
+  state.sections = [];
+  state.currentSection = 0;
+  state.meta = { subject: '', previewText: '', audience: 'Nurture', audienceSegment: '', recipientEmail: '', scheduledSend: null };
+  templatesCache = null;  // bust template cache (different client may have different templates)
+  persist();
+  // Fetch brand kit for new client (cached) — no UI block, fire and forget
+  ensureBrandKitLoaded(newClientId);
+  // Go back to step 1
+  goToStep('archetype');
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -1783,7 +1965,7 @@ async function renderPreviewNow() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: CLIENT_ID,
+        clientId: state.clientId,
         sections: state.sections,
         title: state.meta.subject,
         previewText: state.meta.previewText,
@@ -1909,7 +2091,7 @@ async function finishAndSave() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: CLIENT_ID,
+        clientId: state.clientId,
         sections: state.sections,
         title: state.meta.subject,
         previewText: state.meta.previewText,
@@ -1922,7 +2104,7 @@ async function finishAndSave() {
 
     // Step 2 — post to compose
     var composeBody = {
-      clientId: CLIENT_ID,
+      clientId: state.clientId,
       subject: state.meta.subject,
       previewText: state.meta.previewText || '',
       bodyHTML: renderJson.html,
@@ -2027,9 +2209,13 @@ function formatScheduledFor(iso) {
 }
 
 function startOver() {
-  // Wipe state and go back to step 1
+  // Wipe state and go back to step 1. Preserve the active client so the
+  // user doesn't get dumped back to the default when they choose to
+  // compose another email.
+  var preservedClientId = state.clientId || DEFAULT_CLIENT_ID;
   state = {
     step: 'archetype',
+    clientId: preservedClientId,
     archetype: null,
     templateId: null,
     templateName: '',
@@ -2077,6 +2263,18 @@ function toggleTheme() {
 
   // Restore in-flight wizard if there is one
   var resumed = restore();
+  // Make sure the restored state has a clientId (older drafts may not)
+  if (!state.clientId) state.clientId = DEFAULT_CLIENT_ID;
+
+  // Initialise the client picker UI
+  initClientPicker();
+
+  // Pre-fetch the brand kit for the active client — happens in parallel
+  // with the rest of init, no UI block. Result lands in brandKitsCache.
+  // selectTemplate() later reads from the cache; if the kit hasn't
+  // arrived yet, it just skips the merge step (templates still load).
+  ensureBrandKitLoaded(state.clientId);
+
   goToStep(state.step || 'archetype');
   if (resumed && state.step === 'fill' && state.sections.length) {
     // Render straight into the current section

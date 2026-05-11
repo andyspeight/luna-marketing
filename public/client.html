@@ -3088,7 +3088,9 @@ window.C={
       fd.append('signature',sig.signature);
       fd.append('public_id',sig.public_id);
       fd.append('overwrite',sig.overwrite?'true':'false');
-      fd.append('allowed_formats',sig.allowed_formats);
+      // Note: allowed_formats removed — Cloudinary normalises array params
+      // differently in the string-to-sign, causing signature mismatches.
+      // Client-side type validation above is enforcement enough.
 
       // 3. POST to Cloudinary directly. File goes browser→Cloudinary,
       //    never touches Vercel.

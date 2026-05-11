@@ -549,6 +549,155 @@ body {
 @keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ───────────────────────────────────────────────────────────────────
+   Image picker — modal grid of Pexels search results, used by url-type
+   fields that hold an image source. The "Pick an image" button next
+   to each eligible field opens this; clicking a thumb fills the field.
+   ───────────────────────────────────────────────────────────────────*/
+.image-picker-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 24px;
+  animation: fade-in 0.15s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.image-picker-modal {
+  background: var(--tg-bg-primary);
+  border-radius: var(--tg-radius-lg);
+  width: 100%; max-width: 960px;
+  max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--tg-shadow-xl);
+}
+.image-picker-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 24px; border-bottom: 1px solid var(--tg-border-light);
+}
+.image-picker-title {
+  font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+  margin: 0; flex: 1;
+}
+.image-picker-close {
+  background: transparent; border: 0; cursor: pointer;
+  padding: 6px; border-radius: var(--tg-radius-sm);
+  color: var(--tg-text-secondary);
+  font-size: 20px; line-height: 1;
+}
+.image-picker-close:hover { background: var(--tg-bg-tertiary); }
+.image-picker-search {
+  display: flex; gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--tg-border-light);
+}
+.image-picker-search input {
+  flex: 1;
+  font-family: inherit; font-size: 14px;
+  background: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 10px 14px;
+}
+.image-picker-search input:focus {
+  outline: none; border-color: var(--tg-accent);
+  box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+}
+.image-picker-search select {
+  font-family: inherit; font-size: 13px;
+  background: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 0 12px;
+  cursor: pointer;
+}
+.image-picker-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 0 24px 16px;
+  border-bottom: 1px solid var(--tg-border-light);
+}
+.image-picker-chip {
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  background: var(--tg-bg-tertiary);
+  color: var(--tg-text-secondary);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 12px; cursor: pointer;
+}
+.image-picker-chip:hover { background: var(--tg-border-light); color: var(--tg-text-primary); }
+.image-picker-body {
+  flex: 1; overflow: auto;
+  padding: 20px 24px;
+}
+.image-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.image-picker-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--tg-radius-sm);
+  overflow: hidden; cursor: pointer;
+  background: var(--tg-bg-tertiary);
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.image-picker-thumb:hover {
+  border-color: var(--tg-accent);
+  transform: translateY(-2px);
+}
+.image-picker-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.image-picker-thumb-credit {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  color: white; font-size: 10px;
+  padding: 18px 8px 6px;
+  opacity: 0; transition: opacity 0.15s;
+  pointer-events: none;
+}
+.image-picker-thumb:hover .image-picker-thumb-credit { opacity: 1; }
+.image-picker-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--tg-text-tertiary);
+  font-size: 14px;
+}
+.image-picker-loading {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.image-picker-loading .skeleton {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--tg-radius-sm);
+}
+.image-picker-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--tg-border-light);
+  font-size: 11px;
+  color: var(--tg-text-tertiary);
+  text-align: center;
+}
+
+/* "Pick an image" button next to image-source url fields */
+.field-pick-image {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  background: var(--tg-bg-tertiary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  padding: 6px 12px; cursor: pointer;
+  margin-top: 6px;
+}
+.field-pick-image:hover { background: var(--tg-border-light); }
+.field-pick-image svg { width: 14px; height: 14px; }
+
+/* ───────────────────────────────────────────────────────────────────
    Audience screen — cards, when picker, summary card
    ───────────────────────────────────────────────────────────────────*/
 .card {
@@ -931,6 +1080,38 @@ body {
   </div>
 </main>
 
+<!-- ════════════════════════════════════════════════════════════════
+     IMAGE PICKER MODAL — hidden until openImagePicker() is called.
+     Hits /api/images (Pexels) when the user searches, renders thumbs
+     in a 3-column grid. Click a thumb to drop its URL into the field
+     that opened the picker.
+     ════════════════════════════════════════════════════════════════-->
+<div id="image-picker" class="image-picker-backdrop" hidden>
+  <div class="image-picker-modal" role="dialog" aria-modal="true" aria-labelledby="image-picker-title">
+    <div class="image-picker-header">
+      <h2 class="image-picker-title" id="image-picker-title">Pick an image</h2>
+      <button class="image-picker-close" type="button" onclick="closeImagePicker()" aria-label="Close">×</button>
+    </div>
+    <div class="image-picker-search">
+      <input id="image-picker-input" type="search" placeholder="Search for images — try 'mykonos sunset' or 'luxury hotel'" autocomplete="off">
+      <select id="image-picker-orientation" aria-label="Orientation">
+        <option value="landscape">Landscape</option>
+        <option value="portrait">Portrait</option>
+        <option value="square">Square</option>
+      </select>
+    </div>
+    <div class="image-picker-chips" id="image-picker-chips">
+      <!-- chip buttons injected by JS -->
+    </div>
+    <div class="image-picker-body" id="image-picker-body">
+      <!-- grid / loading / empty state injected by JS -->
+    </div>
+    <div class="image-picker-footer">
+      Photos via <a href="https://www.pexels.com" target="_blank" rel="noopener">Pexels</a> — free for commercial use, no attribution required.
+    </div>
+  </div>
+</div>
+
 <script>
 // ═════════════════════════════════════════════════════════════════════
 //  WIZARD STATE MACHINE
@@ -981,6 +1162,18 @@ var state = {
 var templatesCache = null;        // Templates from /api/email-templates (per session)
 var brandKitsCache = {};          // clientId → brand kit object (per session)
 var lastRenderRequestId = 0;      // Discriminates concurrent preview renders
+
+// Image picker — Pexels-backed search, opens as a modal grid from "Pick
+// an image" buttons next to url-type image-source fields. State is just
+// (a) the field path that opened the modal and (b) a per-session cache
+// keyed by query+orientation.
+var imagePickerFieldPath = null;    // null when closed; field path string when open
+var imagePickerOrientation = 'landscape';
+var imagePickerCache = {};          // 'query|orientation' → array of image results
+var imagePickerSuggestions = [
+  'beach', 'mountains', 'city break', 'luxury hotel',
+  'tropical island', 'family travel', 'food', 'sunset',
+];
 var renderDebounceTimer = null;
 
 // ── Persistence ─────────────────────────────────────────────────────
@@ -1359,6 +1552,201 @@ async function onClientChange(newClientId) {
   ensureBrandKitLoaded(newClientId);
   // Go back to step 1
   goToStep('archetype');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  IMAGE PICKER — Pexels-backed modal grid
+// ═════════════════════════════════════════════════════════════════════
+//
+// Triggered by the "Pick an image" button next to url-type image-source
+// fields. Workflow:
+//   1. openImagePicker(fieldPath) — stash the path, show the modal,
+//      render the suggested-chips empty state, focus the search input
+//   2. User types a query (or clicks a chip) → runImageSearch()
+//   3. Results render as a 3-column grid of thumbnails
+//   4. Click a thumb → selectImage(url) writes the URL to the field,
+//      closes the modal, triggers a preview refresh
+//
+// Cache: by 'query|orientation' to avoid duplicate Pexels hits in one
+// session. ~200 req/hr is the Pexels free-tier limit; we're well under.
+
+// Returns true if a url-type schema field should show the picker button.
+// Image-source keys: contain 'image', 'logo', etc. Excludes link URLs
+// (logo_link_url, logoLinkUrl) and alt/text/name fields.
+function isPickerEligibleField(field) {
+  if (!field || field.type !== 'url') return false;
+  var key = (field.key || '').toLowerCase();
+  if (/link_url|linkurl/.test(key)) return false;
+  if (/(^|_)alt(_|$)|(^|_)tag(_|$)|(^|_)name(_|$)|(^|_)text(_|$)|(^|_)mark(_|$)|(^|_)initial(_|$)/.test(key)) return false;
+  var label = (field.label || '').toLowerCase();
+  return /image|logo|photo|picture|thumb|avatar/.test(key + ' ' + label);
+}
+
+function openImagePicker(fieldPath) {
+  imagePickerFieldPath = fieldPath;
+  imagePickerOrientation = 'landscape';
+  // Reset UI
+  var modal = document.getElementById('image-picker');
+  var input = document.getElementById('image-picker-input');
+  var orient = document.getElementById('image-picker-orientation');
+  var body = document.getElementById('image-picker-body');
+  if (!modal || !input || !body) return;
+  input.value = '';
+  orient.value = 'landscape';
+  body.innerHTML = '';
+  renderImagePickerChips();
+  modal.hidden = false;
+  // Focus the input after the modal renders
+  setTimeout(function() { input.focus(); }, 50);
+  // Wire input events (idempotent — re-binding is fine)
+  input.oninput = onImagePickerSearchInput;
+  input.onkeydown = function(e) {
+    if (e.key === 'Escape') { closeImagePicker(); }
+    else if (e.key === 'Enter') { runImageSearch(input.value, orient.value); }
+  };
+  orient.onchange = function() {
+    imagePickerOrientation = orient.value;
+    // Re-search if there's a query — orientation change matters
+    if (input.value.trim()) runImageSearch(input.value, orient.value);
+  };
+  // Backdrop click closes
+  modal.onclick = function(e) {
+    if (e.target === modal) closeImagePicker();
+  };
+}
+
+function closeImagePicker() {
+  var modal = document.getElementById('image-picker');
+  if (modal) modal.hidden = true;
+  imagePickerFieldPath = null;
+}
+
+function renderImagePickerChips() {
+  var el = document.getElementById('image-picker-chips');
+  if (!el) return;
+  el.innerHTML = imagePickerSuggestions.map(function(s) {
+    return '<button class="image-picker-chip" type="button" onclick="onImagePickerChipClick(\'' + escAttr(s) + '\')">' + escHtml(s) + '</button>';
+  }).join('');
+}
+
+function onImagePickerChipClick(query) {
+  var input = document.getElementById('image-picker-input');
+  if (input) input.value = query;
+  runImageSearch(query, imagePickerOrientation);
+}
+
+// Debounced search-as-you-type (250ms after last keystroke)
+var imagePickerSearchTimer = null;
+function onImagePickerSearchInput(e) {
+  clearTimeout(imagePickerSearchTimer);
+  var q = e.target.value;
+  if (!q.trim()) {
+    // Empty query → show suggested chips empty state
+    var body = document.getElementById('image-picker-body');
+    if (body) body.innerHTML = '';
+    return;
+  }
+  imagePickerSearchTimer = setTimeout(function() {
+    runImageSearch(q, imagePickerOrientation);
+  }, 250);
+}
+
+async function runImageSearch(query, orientation) {
+  var q = (query || '').trim();
+  if (!q) return;
+  var orient = orientation || 'landscape';
+  var body = document.getElementById('image-picker-body');
+  if (!body) return;
+
+  // Render skeleton loading state
+  body.innerHTML = '<div class="image-picker-loading">'
+    + Array(6).fill('<div class="skeleton"></div>').join('')
+    + '</div>';
+
+  var cacheKey = q.toLowerCase() + '|' + orient;
+  if (imagePickerCache[cacheKey]) {
+    renderImagePickerGrid(imagePickerCache[cacheKey]);
+    return;
+  }
+
+  try {
+    var url = '/api/images?q=' + encodeURIComponent(q)
+      + '&orientation=' + encodeURIComponent(orient)
+      + '&per_page=12';
+    var r = await fetch(url);
+    var j = await r.json();
+    if (!r.ok || j.error) {
+      body.innerHTML = '<div class="image-picker-empty">Couldn\'t load images. ' + escHtml(j.error || 'Try a different search.') + '</div>';
+      return;
+    }
+    var images = Array.isArray(j.images) ? j.images : [];
+    imagePickerCache[cacheKey] = images;
+    renderImagePickerGrid(images);
+  } catch (e) {
+    body.innerHTML = '<div class="image-picker-empty">Couldn\'t reach the image service. Check your connection and try again.</div>';
+  }
+}
+
+function renderImagePickerGrid(images) {
+  var body = document.getElementById('image-picker-body');
+  if (!body) return;
+  if (!images.length) {
+    body.innerHTML = '<div class="image-picker-empty">No images found for that search. Try different words.</div>';
+    return;
+  }
+  // Each thumb stores its url + description in data-* attributes. A single
+  // delegated click handler on the grid picks them up — much more robust
+  // than encoding JSON into inline onclick strings (which has to survive
+  // both HTML-attribute and JS-string layers of escaping).
+  body.innerHTML = '<div class="image-picker-grid">'
+    + images.map(function(img) {
+      var src = img.src || {};
+      var thumb = src.small || src.medium || src.original || '';
+      var picked = src.large || src.medium || src.original || '';  // dropped into the field
+      var photographer = escHtml(img.photographer || '');
+      var alt = escHtml(img.description || 'Pexels image');
+      return '<div class="image-picker-thumb"'
+        + ' data-image-url="' + escAttr(picked) + '"'
+        + ' data-image-alt="' + escAttr(img.description || '') + '"'
+        + ' title="' + alt + '">'
+        + '<img src="' + escAttr(thumb) + '" alt="' + alt + '" loading="lazy">'
+        + (photographer ? '<div class="image-picker-thumb-credit">' + photographer + '</div>' : '')
+        + '</div>';
+    }).join('')
+    + '</div>';
+
+  // Wire up single delegated click handler on the grid
+  var grid = body.querySelector('.image-picker-grid');
+  if (grid) {
+    grid.onclick = function(e) {
+      var thumb = e.target.closest('.image-picker-thumb');
+      if (!thumb) return;
+      selectImage(thumb.getAttribute('data-image-url'), thumb.getAttribute('data-image-alt'));
+    };
+  }
+}
+
+// Click handler for thumbnails. Sets the field value to the picked URL
+// and (if there's a sibling *_alt field on the same section) writes a
+// fallback alt-text. Closes the modal and triggers a preview refresh.
+function selectImage(url, description) {
+  if (!imagePickerFieldPath || !url) { closeImagePicker(); return; }
+  var path = imagePickerFieldPath;
+  // Set the image URL via the normal field-change handler so preview refreshes
+  onFieldChange(path, url);
+
+  // Also fill the sibling *_alt field if present and currently empty.
+  // Path is dot-separated like "image_url" or "cards.0.image_url". We try
+  // swapping the trailing "_url" segment for "_alt".
+  var altPath = path.replace(/_url$/i, '_alt').replace(/Url$/, 'Alt');
+  if (altPath !== path) {
+    var current = getByPath(state.sections[state.currentSection].props, altPath);
+    if (!current || (typeof current === 'string' && !current.trim())) {
+      onFieldChange(altPath, description || '');
+    }
+  }
+
+  closeImagePicker();
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -1971,10 +2359,27 @@ function renderField(propsRoot, pathPrefix, field) {
   var inputTag = field.type === 'longText'
     ? '<textarea class="field-textarea" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
     : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" value="' + escAttr(val) + '" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
+
+  // For url-type fields that hold an image source (image_url, logo_url, etc),
+  // surface a "Pick an image" button that opens the Pexels picker modal.
+  // See isPickerEligibleField — it excludes link URLs (logo_link_url) and
+  // text-only fields (image_alt, image_tag). Picked URL drops into this
+  // field; if there's a sibling *_alt field that's empty, the picker also
+  // fills it with the image description.
+  var pickButton = '';
+  if (isPickerEligibleField(field)) {
+    pickButton = ''
+      + '<button class="field-pick-image" type="button" onclick="openImagePicker(\'' + escAttr(fullPath) + '\')">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+      + 'Pick an image'
+      + '</button>';
+  }
+
   return ''
     + '<div class="field">'
     + '<label class="field-label' + (field.required ? ' field-help-required' : '') + '">' + escHtml(field.label) + '</label>'
     + inputTag
+    + pickButton
     + (field.help ? '<p class="field-help">' + escHtml(field.help) + '</p>' : '')
     + '</div>';
 }

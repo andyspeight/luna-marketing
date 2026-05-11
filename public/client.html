@@ -2775,9 +2775,9 @@ function renderSettings(){
   h+='<div class="card full-width" style="grid-column:1/-1"><div class="card-title">Brand Assets</div>';
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-6)">';
   h+='<div>';
-  h+=settingText('Logo URL (light backgrounds)','logo_url',c.logo_url||'','url','PNG with transparent background works best. Right-click your logo on your website → Copy image address.');
-  h+=settingText('Logo URL (dark backgrounds)','logo_dark_url',c.logo_dark_url||'','url','Used in dark-themed emails. Leave blank to use the light logo on both.');
-  h+=settingText('Logo mark URL','logo_mark_url',c.logo_mark_url||'','url','Square icon-only version, used in tight spaces like email avatars.');
+  h+=settingTextWithUpload('Logo URL (light backgrounds)','logo_url',c.logo_url||'','PNG with transparent background works best. Upload a file or paste a URL.');
+  h+=settingTextWithUpload('Logo URL (dark backgrounds)','logo_dark_url',c.logo_dark_url||'','Used in dark-themed emails. Leave blank to use the light logo on both.');
+  h+=settingTextWithUpload('Logo mark URL','logo_mark_url',c.logo_mark_url||'','Square icon-only version, used in tight spaces like email avatars.');
   h+='</div><div>';
   h+=settingText('Business display name','business_display_name',c.business_display_name||'','text','Shown in emails. Defaults to Business Name above if blank.');
   h+=settingText('Sender name (from)','sender_name',c.sender_name||'','text','The "From" name recipients see in their inbox.');
@@ -2933,6 +2933,31 @@ function settingSelect(label,key,val,options){
     +'</div>';
 }
 
+// settingText variant that adds a Cloudinary upload button alongside the URL
+// input. Click "Upload" → file picker → file goes directly to Cloudinary
+// (browser bypasses Vercel's 4.5MB function body limit). On success, the
+// returned secure_url drops into the text field and the existing onblur
+// save fires. Used only for logo fields where uploading makes sense; plain
+// URL fields (social URLs etc) still use settingText.
+function settingTextWithUpload(label,key,val,help,placeholder){
+  var p=placeholder?(' placeholder="'+esc(placeholder)+'"'):'';
+  return '<div style="margin-bottom:var(--space-4)">'
+    +'<div class="input-label">'+esc(label)+'</div>'
+    +'<div style="display:flex;gap:var(--space-2);align-items:center">'
+    +'<input type="url" id="bk-'+key+'" value="'+esc(val||'')+'"'+p
+    +' style="flex:1;font-family:inherit;font-size:var(--text-sm);height:36px;padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-primary)"'
+    +' onblur="C.setText(\''+key+'\',this.value)">'
+    +'<input type="file" id="bk-'+key+'-file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none" onchange="C.uploadLogo(\''+key+'\',this)">'
+    +'<button type="button" id="bk-'+key+'-btn" onclick="document.getElementById(\'bk-'+key+'-file\').click()"'
+    +' style="display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:var(--text-sm);height:36px;padding:0 var(--space-3);border-radius:var(--radius-sm);border:1px solid var(--tg-border);background:var(--tg-bg-tertiary);color:var(--tg-text-primary);cursor:pointer;white-space:nowrap">'
+    +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+    +'Upload</button>'
+    +'</div>'
+    +'<div id="bk-'+key+'-feedback" style="font-size:var(--text-xs);margin-top:var(--space-1);line-height:1.5;min-height:14px"></div>'
+    +(help?'<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-1);line-height:1.5">'+help+'</div>':'')
+    +'</div>';
+}
+
 async function save(f){try{await fetch('/api/clients',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({clientId:state.profile.id},f))})}catch(e){console.error(e)}}
 function flash(id){var el=$(id);if(el){el.classList.add('show');setTimeout(function(){el.classList.remove('show')},2000)}}
 
@@ -3003,6 +3028,81 @@ window.C={
     var apiKey=apiMap[key];
     if(!apiKey){console.warn('setSelect: no API mapping for',key);return}
     var o={};o[apiKey]=val;save(o);
+  },
+  // Cloudinary upload. Browser-direct upload pattern:
+  //   1. Fetch signature from /api/upload-signature
+  //   2. Build FormData with file + signature params
+  //   3. POST directly to Cloudinary (bypasses Vercel's 4.5MB limit)
+  //   4. Drop returned URL into the text input + fire save
+  // Client-side validation here is for UX (instant feedback). Server-side
+  // validation in Cloudinary (allowed_formats) is the real enforcement.
+  uploadLogo:async function(key,fileInput){
+    var file=fileInput.files&&fileInput.files[0];
+    if(!file)return;
+    var fb=document.getElementById('bk-'+key+'-feedback');
+    var btn=document.getElementById('bk-'+key+'-btn');
+    var input=document.getElementById('bk-'+key);
+    function setFeedback(msg,color){if(fb){fb.textContent=msg;fb.style.color=color||'var(--tg-text-tertiary)'}}
+    function setBusy(busy){if(btn){btn.disabled=busy;btn.style.opacity=busy?'0.6':'1';btn.style.cursor=busy?'wait':'pointer'}}
+
+    // Validate locally before bothering Cloudinary
+    var allowedTypes=['image/png','image/jpeg','image/jpg','image/svg+xml','image/webp'];
+    if(allowedTypes.indexOf(file.type)===-1){
+      setFeedback('File type not supported. Use PNG, JPG, SVG, or WebP.','var(--tg-error)');
+      fileInput.value='';return;
+    }
+    var maxBytes=5*1024*1024;
+    if(file.size>maxBytes){
+      setFeedback('File is too large ('+(file.size/1024/1024).toFixed(1)+'MB). Max 5MB.','var(--tg-error)');
+      fileInput.value='';return;
+    }
+
+    setBusy(true);
+    setFeedback('Getting upload signature…');
+
+    try{
+      // 1. Fetch signature
+      var sigRes=await fetch('/api/upload-signature',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({clientId:state.profile.id,fieldKey:key})
+      });
+      var sig=await sigRes.json();
+      if(!sigRes.ok||sig.error)throw new Error(sig.error||'Failed to get signature');
+
+      // 2. Build FormData with EXACTLY the params that were signed.
+      //    Order doesn't matter for FormData but param names must match.
+      setFeedback('Uploading to Cloudinary…');
+      var fd=new FormData();
+      fd.append('file',file);
+      fd.append('api_key',sig.api_key);
+      fd.append('timestamp',sig.timestamp);
+      fd.append('signature',sig.signature);
+      fd.append('public_id',sig.public_id);
+      fd.append('overwrite',sig.overwrite?'true':'false');
+      fd.append('allowed_formats',sig.allowed_formats);
+
+      // 3. POST to Cloudinary directly. File goes browser→Cloudinary,
+      //    never touches Vercel.
+      var upRes=await fetch(sig.upload_url,{method:'POST',body:fd});
+      var up=await upRes.json();
+      if(!upRes.ok||up.error)throw new Error((up.error&&up.error.message)||'Cloudinary rejected the upload');
+
+      // 4. Success. The returned secure_url is the CDN URL. Drop it in
+      //    the input and fire the existing save handler.
+      var url=up.secure_url;
+      input.value=url;
+      C.setText(key,url);
+      setFeedback('✓ Uploaded','var(--tg-success)');
+      // Clear feedback after a few seconds so it doesn't sit forever
+      setTimeout(function(){setFeedback('')},4000);
+    }catch(e){
+      console.error('uploadLogo error:',e);
+      setFeedback('Upload failed: '+e.message,'var(--tg-error)');
+    }finally{
+      setBusy(false);
+      fileInput.value='';  // allow re-selecting the same file
+    }
   },
   toggleSpec:function(btn,s){var on=btn.classList.toggle('active');btn.innerHTML=(on?'&#10003; ':'')+s;var sp=[];btn.parentElement.querySelectorAll('.ps-btn.active').forEach(function(p){sp.push(p.textContent.replace('✓ ','').trim())});state.profile.specialisms=sp;save({specialisms:sp.join(', ')})},
   removeDest:function(el,d){var ds=(state.profile.destinations||'').split(',').map(function(x){return x.trim()}).filter(function(x){return x&&x!==d});state.profile.destinations=ds.join(', ');el.parentElement.remove();save({destinations:ds.join(', ')})},

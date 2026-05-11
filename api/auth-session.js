@@ -49,7 +49,29 @@ const FID = {
   contentPillars:             'Content Pillars',
   targetChannels:             'Target Channels',
   metricoolBlogIdPersonal:    'Metricool Blog ID - Personal',
-  connectedPlatformsPersonal: 'Connected Platforms Personal'
+  connectedPlatformsPersonal: 'Connected Platforms Personal',
+
+  // Brand kit — all 18 fields that the Settings extension added. Without
+  // these, fields appear blank on page reload even though they're saved
+  // in Airtable. Must mirror /api/clients' GET side.
+  logoDarkUrl:                'Logo Dark Variant URL',
+  logoMarkUrl:                'Logo Mark URL',
+  businessDisplayName:        'Business Display Name',
+  senderName:                 'Sender Name',
+  replyToEmail:               'Reply To Email',
+  phone:                      'Phone',
+  brandDarkHex:               'Brand Dark Hex',
+  brandFont:                  'Brand Font',
+  footerReason:               'Footer Reason Default',
+  footerLegalLines:           'Footer Legal Lines',
+  companyAddress:             'Company Address',
+  supportHours:               'Support Hours',
+  abtaNumber:                 'ABTA Number',
+  atolNumber:                 'ATOL Number',
+  socialLinkedinUrl:          'Social LinkedIn URL',
+  socialFacebookUrl:          'Social Facebook URL',
+  socialInstagramUrl:         'Social Instagram URL',
+  socialXUrl:                 'Social X URL'
 };
 
 function applyCors(req, res) {
@@ -115,7 +137,30 @@ function buildProfile(record) {
     content_pillars: pickNames(f[FID.contentPillars]),
     target_channels: pickNames(f[FID.targetChannels]),
     metricool_blog_id_personal: f[FID.metricoolBlogIdPersonal] || '',
-    connected_platforms_personal: pickNames(f[FID.connectedPlatformsPersonal])
+    connected_platforms_personal: pickNames(f[FID.connectedPlatformsPersonal]),
+
+    // Brand kit. Snake_case keys mirror what /api/clients' GET endpoint
+    // returns, so the Settings page reads from the same shape regardless
+    // of whether the profile came from auth-session (page load) or from
+    // /api/clients (refresh after edit).
+    logo_dark_url: f[FID.logoDarkUrl] || '',
+    logo_mark_url: f[FID.logoMarkUrl] || '',
+    business_display_name: f[FID.businessDisplayName] || '',
+    sender_name: f[FID.senderName] || '',
+    reply_to_email: f[FID.replyToEmail] || '',
+    phone: f[FID.phone] || '',
+    brand_dark_hex: f[FID.brandDarkHex] || '',
+    brand_font: pickName(f[FID.brandFont]),
+    footer_reason: f[FID.footerReason] || '',
+    footer_legal_lines: f[FID.footerLegalLines] || '',
+    company_address: f[FID.companyAddress] || '',
+    support_hours: f[FID.supportHours] || '',
+    abta_number: f[FID.abtaNumber] || '',
+    atol_number: f[FID.atolNumber] || '',
+    social_linkedin_url: f[FID.socialLinkedinUrl] || '',
+    social_facebook_url: f[FID.socialFacebookUrl] || '',
+    social_instagram_url: f[FID.socialInstagramUrl] || '',
+    social_x_url: f[FID.socialXUrl] || ''
   };
 }
 

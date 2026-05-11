@@ -67,6 +67,38 @@ module.exports = async function handler(req, res) {
       if (typeof body.notes === "string") fields["Notes"] = body.notes;
       if (body.specialisms) fields["Specialisms"] = body.specialisms.split ? body.specialisms.split(", ") : body.specialisms;
 
+      // Brand kit — visual identity fields. Allow empty strings so users can
+      // clear a value back to "use default". Phone/Hex/etc are singleLineText
+      // so empty string is a valid clear value to Airtable.
+      var brandKitMap = {
+        // Brand Assets
+        logoUrl: "Logo URL",
+        logoDarkUrl: "Logo Dark Variant URL",
+        logoMarkUrl: "Logo Mark URL",
+        businessDisplayName: "Business Display Name",
+        senderName: "Sender Name",
+        replyToEmail: "Reply To Email",
+        phone: "Phone",
+        // Colours & Font (primaryColour/secondaryColour handled above)
+        brandDarkHex: "Brand Dark Hex",
+        brandFont: "Brand Font",
+        // Footer & Legal
+        footerReason: "Footer Reason Default",
+        footerLegalLines: "Footer Legal Lines",
+        companyAddress: "Company Address",
+        supportHours: "Support Hours",
+        abtaNumber: "ABTA Number",
+        atolNumber: "ATOL Number",
+        // Social Links
+        socialLinkedinUrl: "Social LinkedIn URL",
+        socialFacebookUrl: "Social Facebook URL",
+        socialInstagramUrl: "Social Instagram URL",
+        socialXUrl: "Social X URL",
+      };
+      Object.keys(brandKitMap).forEach(function(k) {
+        if (typeof body[k] === "string") fields[brandKitMap[k]] = body[k];
+      });
+
       if (Object.keys(fields).length === 0) return res.status(400).json({ error: "No valid fields to update" });
 
       var updated = await updateClient(clientId, fields);
@@ -123,6 +155,28 @@ module.exports = async function handler(req, res) {
           secondary_colour: f["Secondary Colour"] || "",
           example_phrases: f["Example Phrases"] || "",
           notes: f["Notes"] || "",
+          // Brand kit — these mirror what /api/brand-kit returns. The
+          // settings UI consumes these to populate form fields; saving
+          // back hits PATCH with the camelCase keys above.
+          logo_url: f["Logo URL"] || "",
+          logo_dark_url: f["Logo Dark Variant URL"] || "",
+          logo_mark_url: f["Logo Mark URL"] || "",
+          business_display_name: f["Business Display Name"] || "",
+          sender_name: f["Sender Name"] || "",
+          reply_to_email: f["Reply To Email"] || "",
+          phone: f["Phone"] || "",
+          brand_dark_hex: f["Brand Dark Hex"] || "",
+          brand_font: getStatusName(f["Brand Font"]),
+          footer_reason: f["Footer Reason Default"] || "",
+          footer_legal_lines: f["Footer Legal Lines"] || "",
+          company_address: f["Company Address"] || "",
+          support_hours: f["Support Hours"] || "",
+          abta_number: f["ABTA Number"] || "",
+          atol_number: f["ATOL Number"] || "",
+          social_linkedin_url: f["Social LinkedIn URL"] || "",
+          social_facebook_url: f["Social Facebook URL"] || "",
+          social_instagram_url: f["Social Instagram URL"] || "",
+          social_x_url: f["Social X URL"] || "",
           connected_platforms: Array.isArray(f["Connected Platforms"]) ? f["Connected Platforms"].map(function(p) { return typeof p === "object" ? p.name : p; }) : [],
           fb_connected: !!f["FB Page ID"] || (Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "Facebook"; })),
           ig_connected: !!f["IG Account ID"] || (Array.isArray(f["Connected Platforms"]) && f["Connected Platforms"].some(function(p) { return (typeof p === "object" ? p.name : p) === "Instagram"; })),

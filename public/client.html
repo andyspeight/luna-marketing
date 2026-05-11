@@ -3053,7 +3053,8 @@ window.C={
     function setFeedback(msg,color){if(fb){fb.textContent=msg;fb.style.color=color||'var(--tg-text-tertiary)'}}
     function setBusy(busy){if(btn){btn.disabled=busy;btn.style.opacity=busy?'0.6':'1';btn.style.cursor=busy?'wait':'pointer'}}
 
-    // Validate locally before bothering Cloudinary
+    // Validate locally — Cloudinary doesn't enforce types on unsigned uploads
+    // unless the preset is configured to, so the browser is our only line.
     var allowedTypes=['image/png','image/jpeg','image/jpg','image/svg+xml','image/webp'];
     if(allowedTypes.indexOf(file.type)===-1){
       setFeedback('File type not supported. Use PNG, JPG, SVG, or WebP.','var(--tg-error)');
@@ -3066,45 +3067,32 @@ window.C={
     }
 
     setBusy(true);
-    setFeedback('Getting upload signature…');
+    setFeedback('Uploading to Cloudinary…');
+
+    // Unsigned upload — browser POSTs directly to Cloudinary with just the
+    // preset name. No signature, no server roundtrip. The preset
+    // ("luna-marketing-logos") is configured in the Cloudinary dashboard
+    // with restrictions (allowed formats, max size, folder). Public id
+    // is deterministic per (client × field) so re-uploads overwrite.
+    var CLOUD_NAME='diivxkrcz';
+    var UPLOAD_PRESET='luna-marketing-logos';
+    var fieldSlug={logo_url:'logo',logo_dark_url:'logo-dark',logo_mark_url:'logo-mark'}[key];
+    var publicId='luna-marketing/'+state.profile.id+'/'+fieldSlug;
 
     try{
-      // 1. Fetch signature
-      var sigRes=await fetch('/api/upload-signature',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({clientId:state.profile.id,fieldKey:key})
-      });
-      var sig=await sigRes.json();
-      if(!sigRes.ok||sig.error)throw new Error(sig.error||'Failed to get signature');
-
-      // 2. Build FormData with EXACTLY the params that were signed.
-      //    Order doesn't matter for FormData but param names must match.
-      setFeedback('Uploading to Cloudinary…');
       var fd=new FormData();
       fd.append('file',file);
-      fd.append('api_key',sig.api_key);
-      fd.append('timestamp',sig.timestamp);
-      fd.append('signature',sig.signature);
-      fd.append('public_id',sig.public_id);
-      fd.append('overwrite',sig.overwrite?'true':'false');
-      // Note: allowed_formats removed — Cloudinary normalises array params
-      // differently in the string-to-sign, causing signature mismatches.
-      // Client-side type validation above is enforcement enough.
-
-      // 3. POST to Cloudinary directly. File goes browser→Cloudinary,
-      //    never touches Vercel.
-      var upRes=await fetch(sig.upload_url,{method:'POST',body:fd});
+      fd.append('upload_preset',UPLOAD_PRESET);
+      fd.append('public_id',publicId);
+      var upRes=await fetch('https://api.cloudinary.com/v1_1/'+CLOUD_NAME+'/image/upload',{method:'POST',body:fd});
       var up=await upRes.json();
       if(!upRes.ok||up.error)throw new Error((up.error&&up.error.message)||'Cloudinary rejected the upload');
 
-      // 4. Success. The returned secure_url is the CDN URL. Drop it in
-      //    the input and fire the existing save handler.
+      // Drop the URL into the field and fire the existing save handler.
       var url=up.secure_url;
       input.value=url;
       C.setText(key,url);
       setFeedback('✓ Uploaded','var(--tg-success)');
-      // Clear feedback after a few seconds so it doesn't sit forever
       setTimeout(function(){setFeedback('')},4000);
     }catch(e){
       console.error('uploadLogo error:',e);

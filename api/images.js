@@ -19,6 +19,11 @@ module.exports = async function handler(req, res) {
       req.method === "GET"
         ? parseInt(req.query.per_page || "5")
         : (req.body && req.body.per_page) || 5;
+    // page param for "Load more" — defaults to 1. Pexels uses 1-indexed pages.
+    const page =
+      req.method === "GET"
+        ? parseInt(req.query.page || "1")
+        : (req.body && req.body.page) || 1;
 
     if (!query) {
       return res.status(400).json({ error: "Query is required. Use ?q=beach+turkey or POST {query: 'beach turkey'}" });
@@ -29,7 +34,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Search Pexels
-    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=${perPage}&size=large`;
+    const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=${perPage}&page=${page}&size=large`;
 
     const response = await fetch(url, {
       headers: { Authorization: PEXELS_KEY },
@@ -66,6 +71,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       query,
       orientation,
+      page,
+      per_page: perPage,
       total_results: data.total_results,
       images,
     });

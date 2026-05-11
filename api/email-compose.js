@@ -50,7 +50,7 @@ async function authenticateClient(clientId) {
     const data = await airtableFetch(url);
     if (!data || !data.fields) return null;
     const clientType = (data.fields["Client Type"] || "").toLowerCase();
-    if (clientType !== "b2b-saas") return null;
+    if (!["b2b-saas", "b2c-travel"].includes(clientType)) return null;
     return { id: data.id, ...data.fields };
   } catch {
     return null;

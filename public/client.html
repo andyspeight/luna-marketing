@@ -694,6 +694,14 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
   pointer-events: none;
   transition: opacity var(--duration-normal);
 }
+/* The `hidden` HTML attribute should hide the overlay entirely. Without
+   this override, the `.showcase-overlay { display: flex }` rule above wins
+   over the user-agent `[hidden] { display: none }` stylesheet, so the
+   overlay sits invisible-but-present in front of the page. Modal children
+   (.showcase-visual etc) then intercept clicks/keyboard on anything below
+   them in the viewport — text inputs in the lower half of Settings stop
+   responding. Fix: explicit higher-specificity hide. */
+.showcase-overlay[hidden] { display: none; }
 .showcase-overlay.active { opacity: 1; pointer-events: auto; }
 
 .showcase-modal {

@@ -1838,6 +1838,49 @@ function selectImage(url, description) {
   var input = document.querySelector('[data-field-path="' + cssEscape(path) + '"]');
   if (input) input.value = url;
 
+  // Some sections have a sibling "showXxxImage" boolean that controls
+  // whether the image actually renders. The Newsletter top-bar, for
+  // example, ships with showLogoImage:false so the brand wordmark shows
+  // as text. If the user just picked a logo image, that's a clear signal
+  // they want the image to display — flip the toggle. Without this, the
+  // image URL sits in state but never appears in the preview, which
+  // looks like the picker did nothing.
+  // Pattern: if path ends with "Url" or "_url", look for a sibling prop
+  // named "show<Base>Image" (camelCase) or "show_<base>_image" (snake).
+  var match = path.match(/^(.*?)([_]?[Uu]rl)$/);
+  if (match) {
+    var base = match[1];  // e.g. "logo" from "logoUrl", or "image" from "image_url"
+    if (base) {
+      var siblingPaths = [
+        // camelCase: logoUrl → showLogoImage
+        base.charAt(0).toUpperCase() + base.slice(1),
+      ];
+      // If base is something like "logo_url" we'd get "logo_" with the
+      // trailing underscore — strip it before building variants.
+      var cleanBase = base.replace(/_$/, '');
+      siblingPaths = [
+        'show' + cleanBase.charAt(0).toUpperCase() + cleanBase.slice(1) + 'Image',  // showLogoImage
+        'show_' + cleanBase.toLowerCase() + '_image',                                  // show_logo_image
+      ];
+      for (var i = 0; i < siblingPaths.length; i++) {
+        var toggleKey = siblingPaths[i];
+        // Sibling path lives at the same level as the URL field. If the
+        // URL path is nested (e.g. "cards.0.image_url"), the sibling is
+        // "cards.0.showImageImage" — strip the last segment and append.
+        var pathParts = path.split('.');
+        pathParts[pathParts.length - 1] = toggleKey;
+        var togglePath = pathParts.join('.');
+        var currentVal = getByPath(state.sections[state.currentSection].props, togglePath);
+        // Only flip if the sibling exists in state AND is currently false.
+        // We don't want to add new props that the section's schema doesn't know about.
+        if (currentVal === false) {
+          onFieldChange(togglePath, true);
+          break;  // only one toggle per section
+        }
+      }
+    }
+  }
+
   // Also fill the sibling *_alt field if present and currently empty.
   // Path is dot-separated like "image_url" or "cards.0.image_url". We try
   // swapping the trailing "_url" segment for "_alt".

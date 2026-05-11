@@ -2784,7 +2784,7 @@ function renderSettings(){
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-6)">';
   h+='<div>';
   h+=settingTextWithUpload('Logo URL (light backgrounds)','logo_url',c.logo_url||'','PNG with transparent background works best. Upload a file or paste a URL.');
-  h+=settingTextWithUpload('Logo URL (dark backgrounds)','logo_dark_url',c.logo_dark_url||'','Used in dark-themed emails. Leave blank to use the light logo on both.');
+  h+=settingTextWithUpload('Logo URL (dark backgrounds)','logo_dark_url',c.logo_dark_url||'','Used in dark-themed emails. Leave blank to use the light logo on both.','',{darkBg:true});
   h+=settingTextWithUpload('Logo mark URL','logo_mark_url',c.logo_mark_url||'','Square icon-only version, used in tight spaces like email avatars.');
   h+='</div><div>';
   h+=settingText('Business display name','business_display_name',c.business_display_name||'','text','Shown in emails. Defaults to Business Name above if blank.');
@@ -2947,13 +2947,17 @@ function settingSelect(label,key,val,options){
 // returned secure_url drops into the text field and the existing onblur
 // save fires. Used only for logo fields where uploading makes sense; plain
 // URL fields (social URLs etc) still use settingText.
-function settingTextWithUpload(label,key,val,help,placeholder){
+function settingTextWithUpload(label,key,val,help,placeholder,opts){
+  opts=opts||{};
   var p=placeholder?(' placeholder="'+esc(placeholder)+'"'):'';
   var hasVal=!!(val&&val.trim());
-  // Preview thumbnail: 80x80, light grey checkerboard-ish background so both
-  // light and dark logos are visible, dotted border for the same reason.
-  // Hidden when no value; updatePreview() toggles display + src.
-  var previewStyle='display:'+(hasVal?'inline-block':'none')+';margin-top:var(--space-2);width:80px;height:80px;padding:8px;border:1px dashed var(--tg-border);border-radius:var(--radius-sm);background:var(--tg-bg-tertiary);object-fit:contain;vertical-align:middle';
+  // Preview thumbnail. Dark-variant fields (logo_dark_url) preview on a
+  // dark background so dark-variant logos read correctly. Everything else
+  // previews on a light tinted background.
+  var darkBg=opts.darkBg||false;
+  var bgColour=darkBg?(state.profile.brand_dark_hex||'#0A0F1F'):'var(--tg-bg-tertiary)';
+  var borderColour=darkBg?'rgba(255,255,255,0.15)':'var(--tg-border)';
+  var previewStyle='display:'+(hasVal?'block':'none')+';margin-top:var(--space-2);width:140px;height:140px;padding:12px;border:1px dashed '+borderColour+';border-radius:var(--radius-sm);background:'+bgColour+';object-fit:contain';
   return '<div style="margin-bottom:var(--space-4)">'
     +'<div class="input-label">'+esc(label)+'</div>'
     +'<div style="display:flex;gap:var(--space-2);align-items:center">'

@@ -8,7 +8,7 @@
 // GET /api/email-templates?clientId=rec...
 // Returns: { success, templates: [{ id, name, description, category, sections, subjectSuggestion, previewSuggestion }] }
 //
-// Auth: clientId required, must be b2b-saas. Templates are global (not per-client) for now.
+// Auth: clientId required. Allowed client types: b2b-saas, b2c-travel. Templates are global (not per-client) for now.
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -38,7 +38,7 @@ async function authenticateClient(clientId) {
     const data = await airtableFetch(url);
     if (!data || !data.fields) return null;
     const clientType = (data.fields["Client Type"] || "").toLowerCase();
-    if (clientType !== "b2b-saas") return null;
+    if (!["b2b-saas", "b2c-travel"].includes(clientType)) return null;
     return { id: data.id, ...data.fields };
   } catch {
     return null;

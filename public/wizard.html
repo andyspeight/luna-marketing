@@ -560,6 +560,10 @@ body {
   z-index: 100; padding: 24px;
   animation: fade-in 0.15s ease-out;
 }
+/* `display: flex` on the backdrop overrides the browser's default
+   [hidden] { display: none } rule. Make [hidden] explicit so the
+   modal actually stays hidden until openImagePicker() opens it. */
+.image-picker-backdrop[hidden] { display: none; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 .image-picker-modal {
   background: var(--tg-bg-primary);

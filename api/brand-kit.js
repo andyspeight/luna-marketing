@@ -59,6 +59,21 @@ const DEFAULTS = {
   socialXUrl: "",
   socialYoutubeUrl: "",
   socialTiktokUrl: "",
+
+  // Contact / compliance — all default empty. The wizard's placeholder
+  // mapping uses these when set, otherwise the placeholder gets stripped
+  // and shown as a [bracketed hint] for the user to fill in manually.
+  // companyAddress, supportHours, abtaNumber, atolNumber require new
+  // Airtable fields (see brand-kit-airtable-fields-todo.md). supportPhone
+  // and supportPhoneRaw both read from the existing "Phone" column —
+  // supportPhone shows it as-typed (e.g. "+44 1202 123 456") while
+  // supportPhoneRaw strips formatting for tel: links ("+441202123456").
+  companyAddress: "",
+  supportPhone: "",
+  supportPhoneRaw: "",
+  supportHours: "",
+  abtaNumber: "",
+  atolNumber: "",
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -165,10 +180,35 @@ function buildBrandKit(client) {
     socialYoutubeUrl: f["Social YouTube URL"] || "",
     socialTiktokUrl: f["Social TikTok URL"] || "",
 
+    // Contact / compliance — all the placeholders the wizard wants to
+    // be able to substitute. companyAddress, supportHours, abtaNumber,
+    // atolNumber require new Airtable fields (currently empty everywhere
+    // until they're added by Andy). supportPhone and supportPhoneRaw
+    // both read from the existing "Phone" column — supportPhone keeps
+    // the human formatting, supportPhoneRaw strips it for tel: links.
+    companyAddress: f["Company Address"] || "",
+    supportPhone: f["Phone"] || "",
+    supportPhoneRaw: stripPhoneFormatting(f["Phone"]) || "",
+    supportHours: f["Support Hours"] || "",
+    abtaNumber: f["ABTA Number"] || "",
+    atolNumber: f["ATOL Number"] || "",
+
     // Provenance — useful for debugging "why is this colour wrong"
     source: "airtable",
     clientId: client.id,
   };
+}
+
+// Strip everything that isn't a digit or leading + from a phone string.
+// "+44 1202 123 456" → "+441202123456" — safe for tel: links.
+function stripPhoneFormatting(phone) {
+  if (!phone || typeof phone !== "string") return "";
+  const trimmed = phone.trim();
+  if (!trimmed) return "";
+  // Preserve a leading + sign, strip everything else that isn't a digit.
+  const leadingPlus = trimmed.startsWith("+") ? "+" : "";
+  const digits = trimmed.replace(/\D/g, "");
+  return leadingPlus + digits;
 }
 
 // ─────────────────────────────────────────────────────────────────────

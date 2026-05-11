@@ -26,6 +26,8 @@
 
 const { renderEmail } = require("../lib/email-renderer");
 const { prepareSections } = require("../lib/email-render-prepare");
+const { getBrand } = require("../lib/email-brand");
+const { buildBrandKit } = require("./brand-kit");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -135,13 +137,25 @@ module.exports = async (req, res) => {
     const { sections: hydratedSections, warnings: prepWarnings } =
       await prepareSections(sections);
 
-    // ── RENDER STEP — synchronous, exactly as before ────────────────
+    // ── BRAND KIT — build from the already-loaded client record ─────
+    // The client object was loaded by authenticateClient above and has
+    // all the Airtable fields we need. buildBrandKit normalises them into
+    // the {primaryColour, accentColour, font, ...} shape that getBrand()
+    // expects. Then getBrand merges into Travelgenix defaults.
+    //
+    // Falls back to Travelgenix defaults gracefully if any brand-kit field
+    // is missing — see brand-kit.js for the fallback logic.
+    const clientKit = buildBrandKit(client);
+    const brand = getBrand(clientKit);
+
+    // ── RENDER STEP — synchronous ──────────────────────────────────
     const result = renderEmail({
       sections: hydratedSections,
       previewText: previewText || "",
       title: title || "Travelgenix",
       unsubUrl,
       bodyBackground: bodyBackground || undefined,
+      brand,
     });
 
     if (result.errors.length > 0) {

@@ -13,7 +13,7 @@
 //
 // Actions:
 //   approve      — Status -> "Approved", sets Consent Verified At = now
-//   reject       — Status -> "Cancelled", saves rejectionReason
+//   reject       — Status -> "Cancelled", saves rejectionReason + optional rejectionNotes
 //   edit         — Updates subject, previewText, bodyHTML, bodyPlain, scheduledSend
 //   cancel       — Status -> "Cancelled" (use when an Approved email needs pulling back)
 
@@ -129,13 +129,22 @@ async function approve(emailId, actor, ip) {
   return { status: "Approved" };
 }
 
-async function reject(emailId, actor, ip, rejectionReason) {
+async function reject(emailId, actor, ip, rejectionReason, rejectionNotes) {
   const current = await getEmail(emailId);
   if (!current) throw new Error("Email not found");
 
+  const reason = rejectionReason ? String(rejectionReason).slice(0, 200) : "";
+  const notes = rejectionNotes ? String(rejectionNotes).slice(0, 2000) : "";
+
+  // Single "Rejection Reason" field on the Email Queue table holds both:
+  // the structured category first, then free-text notes if any. This keeps
+  // us schema-compatible while still surfacing the full picture in-row.
   const updates = { "Status": "Cancelled" };
-  if (rejectionReason) {
-    updates["Rejection Reason"] = String(rejectionReason).slice(0, 5000);
+  if (reason || notes) {
+    const combined = notes
+      ? (reason ? `${reason} — ${notes}` : notes)
+      : reason;
+    updates["Rejection Reason"] = combined.slice(0, 5000);
   }
 
   await patchEmail(emailId, updates);
@@ -147,7 +156,8 @@ async function reject(emailId, actor, ip, rejectionReason) {
     details: {
       previousStatus: current.fields["Status"],
       subject: current.fields["Subject"],
-      reason: rejectionReason || "(no reason given)",
+      reason: reason || "(no reason given)",
+      notes: notes || "",
     },
     ip,
   });
@@ -248,7 +258,7 @@ module.exports = async (req, res) => {
         result = await approve(emailId, actor, ip);
         break;
       case "reject":
-        result = await reject(emailId, actor, ip, body.rejectionReason);
+        result = await reject(emailId, actor, ip, body.rejectionReason, body.rejectionNotes);
         break;
       case "edit":
         result = await edit(emailId, actor, ip, body.edits || {});

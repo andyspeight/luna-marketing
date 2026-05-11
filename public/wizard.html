@@ -687,6 +687,27 @@ body {
   text-align: center;
 }
 
+/* "Load more images" button shown below the grid when more results
+   exist on the next Pexels page. Sits inside .image-picker-body so it
+   scrolls with the grid rather than floating at the bottom. */
+.image-picker-load-more {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 24px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  background: var(--tg-bg-tertiary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius-sm);
+  cursor: pointer;
+}
+.image-picker-load-more:hover:not(:disabled) {
+  background: var(--tg-border-light);
+}
+.image-picker-load-more:disabled {
+  opacity: 0.6; cursor: wait;
+}
+
 /* "Pick an image" button next to image-source url fields */
 .field-pick-image {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1174,6 +1195,13 @@ var lastRenderRequestId = 0;      // Discriminates concurrent preview renders
 var imagePickerFieldPath = null;    // null when closed; field path string when open
 var imagePickerOrientation = 'landscape';
 var imagePickerCache = {};          // 'query|orientation' → array of image results
+// Load-more state — what's currently shown in the modal, separate from
+// the cache (which is the union of all pages we've ever fetched). We
+// track the last query+orientation+page so the "Load more" button knows
+// what to ask for next.
+var imagePickerLastQuery = '';
+var imagePickerLastPage = 0;
+var imagePickerLastTotal = 0;
 var imagePickerSuggestions = [
   'beach', 'mountains', 'city break', 'luxury hotel',
   'tropical island', 'family travel', 'food', 'sunset',
@@ -1655,78 +1683,143 @@ function onImagePickerSearchInput(e) {
   }, 250);
 }
 
-async function runImageSearch(query, orientation) {
+async function runImageSearch(query, orientation, page, append) {
   var q = (query || '').trim();
   if (!q) return;
   var orient = orientation || 'landscape';
+  var pg = page || 1;
+  var doAppend = !!append;
   var body = document.getElementById('image-picker-body');
   if (!body) return;
 
-  // Render skeleton loading state
-  body.innerHTML = '<div class="image-picker-loading">'
-    + Array(6).fill('<div class="skeleton"></div>').join('')
-    + '</div>';
+  // For a fresh search (page 1), reset the body to a skeleton. For a
+  // "Load more" call (page > 1), show a small loading row below the
+  // existing grid instead of wiping it.
+  if (!doAppend) {
+    body.innerHTML = '<div class="image-picker-loading">'
+      + Array(6).fill('<div class="skeleton"></div>').join('')
+      + '</div>';
+  } else {
+    // Disable the load-more button while in-flight so we don't double-fire
+    var lm = body.querySelector('.image-picker-load-more');
+    if (lm) { lm.disabled = true; lm.textContent = 'Loading…'; }
+  }
 
-  var cacheKey = q.toLowerCase() + '|' + orient;
+  // Cache keyed by query|orientation|page so each page is fetched once
+  var cacheKey = q.toLowerCase() + '|' + orient + '|' + pg;
   if (imagePickerCache[cacheKey]) {
-    renderImagePickerGrid(imagePickerCache[cacheKey]);
+    var cached = imagePickerCache[cacheKey];
+    imagePickerLastQuery = q;
+    imagePickerLastPage = pg;
+    imagePickerLastTotal = cached.totalResults;
+    renderImagePickerGrid(cached.images, doAppend);
     return;
   }
 
   try {
     var url = '/api/images?q=' + encodeURIComponent(q)
       + '&orientation=' + encodeURIComponent(orient)
-      + '&per_page=12';
+      + '&per_page=12'
+      + '&page=' + pg;
     var r = await fetch(url);
     var j = await r.json();
     if (!r.ok || j.error) {
-      body.innerHTML = '<div class="image-picker-empty">Couldn\'t load images. ' + escHtml(j.error || 'Try a different search.') + '</div>';
+      if (doAppend) {
+        // Restore the load-more button into a recoverable state
+        var lm2 = body.querySelector('.image-picker-load-more');
+        if (lm2) { lm2.disabled = false; lm2.textContent = 'Couldn\'t load more — try again'; }
+      } else {
+        body.innerHTML = '<div class="image-picker-empty">Couldn\'t load images. ' + escHtml(j.error || 'Try a different search.') + '</div>';
+      }
       return;
     }
     var images = Array.isArray(j.images) ? j.images : [];
-    imagePickerCache[cacheKey] = images;
-    renderImagePickerGrid(images);
+    var totalResults = j.total_results || images.length;
+    imagePickerCache[cacheKey] = { images: images, totalResults: totalResults };
+    imagePickerLastQuery = q;
+    imagePickerLastPage = pg;
+    imagePickerLastTotal = totalResults;
+    renderImagePickerGrid(images, doAppend);
   } catch (e) {
-    body.innerHTML = '<div class="image-picker-empty">Couldn\'t reach the image service. Check your connection and try again.</div>';
+    if (doAppend) {
+      var lm3 = body.querySelector('.image-picker-load-more');
+      if (lm3) { lm3.disabled = false; lm3.textContent = 'Couldn\'t reach the image service — try again'; }
+    } else {
+      body.innerHTML = '<div class="image-picker-empty">Couldn\'t reach the image service. Check your connection and try again.</div>';
+    }
   }
 }
 
-function renderImagePickerGrid(images) {
+// Renders thumbnails. With append=true, adds them to the existing grid
+// rather than replacing. Also (re-)renders the "Load more" button below
+// the grid if more results exist on the next page.
+function renderImagePickerGrid(images, append) {
   var body = document.getElementById('image-picker-body');
   if (!body) return;
-  if (!images.length) {
+  if (!images.length && !append) {
     body.innerHTML = '<div class="image-picker-empty">No images found for that search. Try different words.</div>';
     return;
   }
-  // Each thumb stores its url + description in data-* attributes. A single
-  // delegated click handler on the grid picks them up — much more robust
-  // than encoding JSON into inline onclick strings (which has to survive
-  // both HTML-attribute and JS-string layers of escaping).
-  body.innerHTML = '<div class="image-picker-grid">'
-    + images.map(function(img) {
-      var src = img.src || {};
-      var thumb = src.small || src.medium || src.original || '';
-      var picked = src.large || src.medium || src.original || '';  // dropped into the field
-      var photographer = escHtml(img.photographer || '');
-      var alt = escHtml(img.description || 'Pexels image');
-      return '<div class="image-picker-thumb"'
-        + ' data-image-url="' + escAttr(picked) + '"'
-        + ' data-image-alt="' + escAttr(img.description || '') + '"'
-        + ' title="' + alt + '">'
-        + '<img src="' + escAttr(thumb) + '" alt="' + alt + '" loading="lazy">'
-        + (photographer ? '<div class="image-picker-thumb-credit">' + photographer + '</div>' : '')
-        + '</div>';
-    }).join('')
-    + '</div>';
 
-  // Wire up single delegated click handler on the grid
-  var grid = body.querySelector('.image-picker-grid');
+  // Build the new thumbnails. Each thumb stores its url + description in
+  // data-* attributes — robust against quote/ampersand encoding issues
+  // that an inline onclick handler with JSON.stringify would have.
+  var thumbsHtml = images.map(function(img) {
+    var src = img.src || {};
+    var thumb = src.small || src.medium || src.original || '';
+    var picked = src.large || src.medium || src.original || '';  // dropped into the field
+    var photographer = escHtml(img.photographer || '');
+    var alt = escHtml(img.description || 'Pexels image');
+    return '<div class="image-picker-thumb"'
+      + ' data-image-url="' + escAttr(picked) + '"'
+      + ' data-image-alt="' + escAttr(img.description || '') + '"'
+      + ' title="' + alt + '">'
+      + '<img src="' + escAttr(thumb) + '" alt="' + alt + '" loading="lazy">'
+      + (photographer ? '<div class="image-picker-thumb-credit">' + photographer + '</div>' : '')
+      + '</div>';
+  }).join('');
+
+  var grid;
+  if (append) {
+    // Find existing grid and append new thumbs to it. Remove any
+    // existing "Load more" button — we'll re-add at the end.
+    grid = body.querySelector('.image-picker-grid');
+    var oldLm = body.querySelector('.image-picker-load-more');
+    if (oldLm) oldLm.parentNode.removeChild(oldLm);
+    if (grid) {
+      grid.insertAdjacentHTML('beforeend', thumbsHtml);
+    } else {
+      // Defensive fallback — if there's no grid for some reason, just
+      // rebuild as a fresh search would.
+      body.innerHTML = '<div class="image-picker-grid">' + thumbsHtml + '</div>';
+      grid = body.querySelector('.image-picker-grid');
+    }
+  } else {
+    body.innerHTML = '<div class="image-picker-grid">' + thumbsHtml + '</div>';
+    grid = body.querySelector('.image-picker-grid');
+  }
+
+  // Wire (or re-wire) the delegated thumb click handler
   if (grid) {
     grid.onclick = function(e) {
-      var thumb = e.target.closest('.image-picker-thumb');
-      if (!thumb) return;
-      selectImage(thumb.getAttribute('data-image-url'), thumb.getAttribute('data-image-alt'));
+      var t = e.target.closest('.image-picker-thumb');
+      if (!t) return;
+      selectImage(t.getAttribute('data-image-url'), t.getAttribute('data-image-alt'));
     };
+  }
+
+  // Add a "Load more" button if more results exist on Pexels than we've
+  // shown so far. 12 per page → after page N we've shown N*12 thumbs.
+  var shownCount = grid ? grid.children.length : 0;
+  if (imagePickerLastTotal > shownCount) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'image-picker-load-more';
+    btn.textContent = 'Load more images';
+    btn.onclick = function() {
+      runImageSearch(imagePickerLastQuery, imagePickerOrientation, imagePickerLastPage + 1, true);
+    };
+    body.appendChild(btn);
   }
 }
 
@@ -1738,6 +1831,12 @@ function selectImage(url, description) {
   var path = imagePickerFieldPath;
   // Set the image URL via the normal field-change handler so preview refreshes
   onFieldChange(path, url);
+  // Also update the actual DOM input value — onFieldChange writes to state
+  // and refreshes the preview, but it does NOT update the input element
+  // the user is looking at. Without this the field appears empty even
+  // though state has the right value.
+  var input = document.querySelector('[data-field-path="' + cssEscape(path) + '"]');
+  if (input) input.value = url;
 
   // Also fill the sibling *_alt field if present and currently empty.
   // Path is dot-separated like "image_url" or "cards.0.image_url". We try
@@ -1747,10 +1846,21 @@ function selectImage(url, description) {
     var current = getByPath(state.sections[state.currentSection].props, altPath);
     if (!current || (typeof current === 'string' && !current.trim())) {
       onFieldChange(altPath, description || '');
+      // Mirror the same DOM update for the alt-text input
+      var altInput = document.querySelector('[data-field-path="' + cssEscape(altPath) + '"]');
+      if (altInput) altInput.value = description || '';
     }
   }
 
   closeImagePicker();
+}
+
+// Minimal CSS.escape polyfill for older browsers. Escapes any special
+// chars in attribute-selector values. CSS.escape is supported in all
+// modern browsers but the polyfill is cheap insurance.
+function cssEscape(value) {
+  if (typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(value);
+  return String(value).replace(/([\u0000-\u001f"'\\#.:?+*~^$()\[\]{}|,>!= ])/g, '\\$1');
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -2360,9 +2470,13 @@ function renderField(propsRoot, pathPrefix, field) {
   // This is what makes stripAndMapPlaceholders() usable — strip the {{...}} on
   // load and the input's placeholder takes over.
   var hintText = field.label || '';
+  // Tag the input with data-field-path so other code (image picker,
+  // future drag-drop reorder) can find and update it by path. Without
+  // this, a programmatic value change to state.props is invisible in
+  // the form input until the form is fully re-rendered.
   var inputTag = field.type === 'longText'
-    ? '<textarea class="field-textarea" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
-    : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" value="' + escAttr(val) + '" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
+    ? '<textarea class="field-textarea" data-field-path="' + escAttr(fullPath) + '" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">' + escHtml(val) + '</textarea>'
+    : '<input class="field-input" type="' + (field.type === 'url' ? 'url' : 'text') + '" data-field-path="' + escAttr(fullPath) + '" value="' + escAttr(val) + '" placeholder="' + escAttr(hintText) + '" oninput="onFieldChange(\'' + escAttr(fullPath) + '\', this.value)">';
 
   // For url-type fields that hold an image source (image_url, logo_url, etc),
   // surface a "Pick an image" button that opens the Pexels picker modal.

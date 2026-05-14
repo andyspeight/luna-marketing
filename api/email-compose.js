@@ -229,6 +229,30 @@ module.exports = async (req, res) => {
 
     const emailId = created.records[0].id;
 
+    // Extract any promoted products from the sectionsJson for cooldown tracking.
+    // The renderEmailCalloutSection() helper leaves a _promotionSource block on
+    // any product-callout section it injects. The compose-form UI (separate
+    // session) will be the source of these — this file just captures them.
+    let promotedProducts = [];
+    if (sectionsJson) {
+      try {
+        const sections = JSON.parse(sectionsJson);
+        if (Array.isArray(sections)) {
+          for (const s of sections) {
+            if (s && s.props && s.props._promotionSource) {
+              promotedProducts.push({
+                productId: s.props._promotionSource.productId,
+                productName: s.props._promotionSource.productName,
+                prominence: s.props._promotionSource.prominence,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // Sections JSON malformed — skip promotion extraction silently
+      }
+    }
+
     // Audit log
     await writeAuditLog({
       actor,
@@ -240,6 +264,7 @@ module.exports = async (req, res) => {
         audience: fields["Audience"],
         recipient: fields["Recipient Email"] || fields["Audience Segment"] || "(audience-based)",
         sectionsStored: storedSections,
+        promotedProducts,
       },
       ip,
     });

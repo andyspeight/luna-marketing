@@ -5,6 +5,7 @@
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { importAndPublishBlog } = require("./duda-blog.js");
+const { promotionDecide, renderBlogSolutionsBlock } = require("../lib/promotion-client.js");
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -166,6 +167,32 @@ module.exports = async (req, res) => {
     blog.description = stripCitations(blog.description);
     blog.excerpt = stripCitations(blog.excerpt);
     blog.linkedInTeaser = stripCitations(blog.linkedInTeaser);
+
+    // ── PROMOTION ENGINE — append Solutions block to the blog body ──
+    // Asks the engine to pick a relevant TG product based on the blog topic,
+    // then renders the HTML Solutions block and appends it to blog.content
+    // so it ships to Duda as part of the article.
+    //
+    // Fails closed — engine outages don't block publishing. The blog ships
+    // without a Solutions block on those days.
+    try {
+      const decision = await promotionDecide({
+        tenantId: TRAVELGENIX_CLIENT,
+        channel: "blog",
+        contentTopic: [blog.title || "", blog.excerpt || ""].join(". ").slice(0, 500),
+        contentArchetype: "thought-leadership"
+      });
+
+      if (decision && decision.shouldPromote && decision.product) {
+        const block = renderBlogSolutionsBlock(decision);
+        if (block) {
+          blog.content = blog.content + "\n\n" + block;
+          console.log(`[promo] Blog promoting ${decision.product.name} (${decision.prominence})`);
+        }
+      }
+    } catch (promoErr) {
+      console.error("[promo] Blog promotion decision failed (continuing without):", promoErr.message);
+    }
 
     // Get hero image from Pexels
     let imageUrl = null;

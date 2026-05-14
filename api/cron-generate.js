@@ -19,6 +19,7 @@ const { buildB2BSystemPrompt } = require("./b2b-prompt.js");
 const { tagPostUrls, channelToUtmSource, postUtmContent, addUtm, replaceUrlsInText } = require("./utm-helper.js");
 const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
 const { validatePost } = require("./validate-content.js");
+const { promotionDecide, renderSocialCloser } = require("../lib/promotion-client.js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -72,6 +73,21 @@ function normaliseChannel(channel) {
     "gbp": "Google Business Profile",
   };
   return map[(channel || "").toLowerCase()] || channel || "LinkedIn Personal";
+}
+
+// Map our internal target-channel labels to the Promotion Engine's channel values
+function channelToEngineChannel(targetChannel) {
+  const map = {
+    "LinkedIn Personal": "linkedin-personal",
+    "LinkedIn Company":  "linkedin-company",
+    "Facebook":          "facebook",
+    "Instagram":         "instagram",
+    "Twitter/X":         "twitter",
+    "Pinterest":         "pinterest",
+    "TikTok":            "tiktok",
+    "Google Business Profile": "gbp",
+  };
+  return map[targetChannel] || "linkedin-personal";
 }
 
 // ── Airtable Fetchers ──
@@ -410,6 +426,53 @@ async function processClient(record, events) {
 
     let imageUrl = null;
     if (post.imagePrompt) imageUrl = await searchPexelsImage(post.imagePrompt);
+
+    // ── PROMOTION ENGINE — decide if this post should plug a TG product ──
+    // Builds a content topic from the post title + LinkedIn caption (the
+    // richest caption), asks the engine for a decision, and if it says yes,
+    // appends a platform-appropriate closer to every caption.
+    //
+    // Fails closed — engine outages don't block content. Promotions just
+    // don't fire on those posts.
+    let promotedProductId = null;
+    try {
+      const primaryChannel = isB2B
+        ? channelToEngineChannel(normaliseChannel(post.targetChannel))
+        : "linkedin-personal";
+
+      const archetype = isB2B
+        ? (post.pillar === "Education" ? "thought-leadership" : "nurture")
+        : "nurture";
+
+      const contentTopic = [
+        post.postTitle || "",
+        post.captionLinkedIn || post.captionFacebook || ""
+      ].join(". ").slice(0, 500);
+
+      const decision = await promotionDecide({
+        tenantId: clientId,
+        channel: primaryChannel,
+        contentTopic,
+        contentArchetype: archetype
+      });
+
+      if (decision && decision.shouldPromote && decision.product) {
+        promotedProductId = decision.product.id;
+
+        // Append the right closer flavour to each caption
+        if (post.captionLinkedIn)  post.captionLinkedIn  += renderSocialCloser(decision, "linkedin-personal") || "";
+        if (post.captionFacebook)  post.captionFacebook  += renderSocialCloser(decision, "facebook")          || "";
+        if (post.captionInstagram) post.captionInstagram += renderSocialCloser(decision, "instagram")         || "";
+        if (post.captionTwitter)   post.captionTwitter   += renderSocialCloser(decision, "twitter")           || "";
+        if (post.captionPinterest) post.captionPinterest += renderSocialCloser(decision, "pinterest")         || "";
+        if (post.captionTikTok)    post.captionTikTok    += renderSocialCloser(decision, "tiktok")            || "";
+        if (post.captionGBP)       post.captionGBP       += renderSocialCloser(decision, "gbp")               || "";
+
+        console.log(`  [promo] Post ${i + 1}: promoting ${decision.product.name} (${decision.prominence})`);
+      }
+    } catch (promoErr) {
+      console.error(`  [promo] Post ${i + 1} promotion decision failed (continuing without promo):`, promoErr.message);
+    }
 
     let scheduledDate = null;
     let scheduledTime = null;

@@ -33,7 +33,16 @@ const CLIENTS_TABLE = "tblUkzvBujc94Yali";
 const ID_HOST = "https://id.travelify.io";
 const OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
 
-const MODEL = "claude-opus-4-7";
+// Models available for HTML generation. Sonnet is the default because
+// HTML generation is a pattern-matching task — the system prompt encodes
+// the design intelligence, Sonnet just has to follow the pattern. Sonnet
+// is roughly 3-4x faster than Opus for output-heavy tasks like this.
+// Opus is retained as an option for the most demanding briefs.
+const ALLOWED_MODELS = {
+  "sonnet": "claude-sonnet-4-6",
+  "opus":   "claude-opus-4-7"
+};
+const DEFAULT_MODEL_KEY = "sonnet";
 const DEFAULT_MAX_TOKENS = 16000;
 const MAX_PROMPT_LEN = 30000;
 const MAX_BRIEF_LEN = 2000;
@@ -147,6 +156,10 @@ module.exports = async function handler(req, res) {
     const deviceScale = Math.max(1, Math.min(3, parseInt(body.deviceScale, 10) || 2));
     const maxTokens = Math.max(2000, Math.min(32000, parseInt(body.maxTokens, 10) || DEFAULT_MAX_TOKENS));
 
+    // Model selection — accept "sonnet" or "opus", default to sonnet for speed
+    const modelKey = (body.model && ALLOWED_MODELS[body.model]) ? body.model : DEFAULT_MODEL_KEY;
+    const modelId = ALLOWED_MODELS[modelKey];
+
     const auth = await validateOwnerSession(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
@@ -158,14 +171,14 @@ module.exports = async function handler(req, res) {
 
     const userMessage = `Brief: ${body.userBrief}
 
-Canvas: ${viewportWidth}x${viewportHeight}px (this is the design size — the renderer outputs at ${deviceScale}x for retina, so final PNG is ${viewportWidth * deviceScale}x${viewportHeight * deviceScale}px)
+Canvas: ${viewportWidth}x${viewportHeight}px (this is the design size, the renderer outputs at ${deviceScale}x for retina, so final PNG is ${viewportWidth * deviceScale}x${viewportHeight * deviceScale}px)
 
 Produce the complete HTML document. Output ONLY the HTML, starting with <!DOCTYPE html>. No preamble, no markdown fences, no explanation.`;
 
     let response;
     try {
       response = await client.messages.create({
-        model: MODEL,
+        model: modelId,
         max_tokens: maxTokens,
         system: body.systemPrompt,
         messages: [{ role: "user", content: userMessage }]
@@ -276,6 +289,8 @@ Produce the complete HTML document. Output ONLY the HTML, starting with <!DOCTYP
       elapsedMs: Date.now() - startedAt,
       claudeMs,
       hctiMs,
+      model: modelKey,
+      modelId,
       usage: response.usage
     });
 

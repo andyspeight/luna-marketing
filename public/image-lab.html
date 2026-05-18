@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Lab — Luna Marketing</title>
+<style>
+  :root {
+    --tg-primary: #1B2B5B;
+    --tg-primary-dark: #0A0F1F;
+    --tg-primary-light: #2A3F7A;
+    --tg-accent: #00B4D8;
+    --tg-accent-light: #48CAE4;
+    --tg-accent-dark: #0096B7;
+    --tg-text-primary: #0F172A;
+    --tg-text-secondary: #475569;
+    --tg-text-tertiary: #94A3B8;
+    --tg-bg-primary: #FFFFFF;
+    --tg-bg-secondary: #F8FAFC;
+    --tg-bg-tertiary: #F1F5F9;
+    --tg-border: #E2E8F0;
+    --tg-border-light: #F1F5F9;
+    --tg-success: #10B981;
+    --tg-error: #EF4444;
+    --tg-warning: #F59E0B;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--tg-bg-secondary);
+    color: var(--tg-text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .topbar {
+    background: var(--tg-primary);
+    color: #fff;
+    padding: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--tg-primary-dark);
+  }
+  .topbar h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .topbar h1 .accent { color: var(--tg-accent-light); }
+  .topbar .meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 480px 1fr;
+    gap: 0;
+    height: calc(100vh - 52px);
+  }
+  .panel-left, .panel-right { overflow-y: auto; }
+  .panel-left {
+    background: var(--tg-bg-primary);
+    border-right: 1px solid var(--tg-border);
+    padding: var(--space-5);
+  }
+  .panel-right {
+    background: var(--tg-bg-secondary);
+    padding: var(--space-5);
+  }
+  .section { margin-bottom: var(--space-5); }
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--tg-text-tertiary);
+    margin-bottom: var(--space-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .section-title button {
+    background: none;
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    font-size: 10px;
+    color: var(--tg-text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  textarea, input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--tg-bg-primary);
+    color: var(--tg-text-primary);
+    line-height: 1.4;
+  }
+  textarea.prompt {
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 320px;
+    resize: vertical;
+  }
+  textarea.brief {
+    min-height: 80px;
+    resize: vertical;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+  label.field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--tg-text-secondary);
+    margin-bottom: 4px;
+  }
+  .checkbox-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { font-size: 13px; color: var(--tg-text-secondary); cursor: pointer; }
+
+  .btn {
+    background: var(--tg-bg-primary);
+    color: var(--tg-text-primary);
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-md);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms;
+  }
+  .btn:hover { background: var(--tg-bg-tertiary); }
+  .btn-primary { background: var(--tg-accent); color: #fff; border-color: var(--tg-accent); }
+  .btn-primary:hover { background: var(--tg-accent-dark); border-color: var(--tg-accent-dark); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-navy { background: var(--tg-primary); color: #fff; border-color: var(--tg-primary); }
+  .btn-navy:hover { background: var(--tg-primary-dark); }
+
+  .actions-row { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+
+  .preset-list {
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-md);
+    background: var(--tg-bg-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .preset-item {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--tg-border);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .preset-item:last-child { border-bottom: none; }
+  .preset-item:hover { background: var(--tg-bg-tertiary); }
+  .preset-item .name { font-weight: 600; color: var(--tg-text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .preset-item .del { background: none; border: none; color: var(--tg-text-tertiary); cursor: pointer; font-size: 12px; padding: 2px 6px; }
+  .preset-item .del:hover { color: var(--tg-error); }
+
+  .result-card {
+    background: var(--tg-bg-primary);
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    overflow: hidden;
+  }
+  .result-header {
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--tg-border-light);
+    background: var(--tg-bg-secondary);
+  }
+  .result-header .left { display: flex; gap: var(--space-3); align-items: center; }
+  .result-header .timestamp {
+    font-size: 11px;
+    color: var(--tg-text-tertiary);
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+  }
+  .result-header .stats {
+    font-size: 11px;
+    color: var(--tg-text-secondary);
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+  }
+  .result-header .actions { display: flex; gap: 6px; }
+  .result-body { padding: var(--space-4); display: flex; gap: var(--space-4); }
+  .result-body .image-wrap {
+    flex: 1;
+    background: #f1f5f9;
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+  }
+  .result-body img {
+    max-width: 100%;
+    max-height: 600px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.08);
+    background: #fff;
+  }
+  .result-meta {
+    flex: 0 0 280px;
+    font-size: 12px;
+    color: var(--tg-text-secondary);
+    line-height: 1.6;
+  }
+  .result-meta .key {
+    font-weight: 600;
+    color: var(--tg-text-primary);
+    display: inline-block;
+    min-width: 90px;
+  }
+  .result-brief {
+    background: var(--tg-bg-tertiary);
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-3);
+    font-style: italic;
+  }
+  .svg-source {
+    margin: 0;
+    padding: var(--space-3);
+    background: #0A0F1F;
+    color: #cbd5e1;
+    font-family: ui-monospace, SF Mono, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    max-height: 300px;
+    overflow: auto;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .error-card {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--tg-error);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    font-size: 13px;
+  }
+  .plan-text {
+    background: rgba(0, 180, 216, 0.06);
+    border-left: 3px solid var(--tg-accent);
+    padding: var(--space-3) var(--space-4);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--tg-text-secondary);
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .empty-state {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--tg-text-tertiary);
+  }
+  .empty-state h3 { font-size: 16px; margin: 0 0 var(--space-2); color: var(--tg-text-secondary); }
+  .empty-state p { font-size: 13px; margin: 0; }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--space-4);
+    background: var(--tg-bg-primary);
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-4);
+    font-size: 13px;
+    color: var(--tg-text-secondary);
+  }
+  .loading .dots { display: inline-flex; gap: 4px; }
+  .loading .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--tg-accent);
+    border-radius: 50%;
+    animation: dot-pulse 1.4s infinite ease-in-out both;
+  }
+  .loading .dot:nth-child(1) { animation-delay: 0s; }
+  .loading .dot:nth-child(2) { animation-delay: 0.16s; }
+  .loading .dot:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes dot-pulse {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  .toggle-link {
+    background: none;
+    border: none;
+    color: var(--tg-accent);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .toggle-link:hover { color: var(--tg-accent-dark); }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--tg-primary);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(15,23,42,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Image <span class="accent">Lab</span> · prompt iteration workbench</h1>
+  <div class="meta" id="auth-status">checking…</div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT PANEL: editor -->
+  <div class="panel-left">
+    <div class="section">
+      <div class="section-title">
+        <span>System prompt</span>
+        <button onclick="loadDefault()">Load default</button>
+      </div>
+      <textarea id="systemPrompt" class="prompt" placeholder="Paste or write the full system prompt here…"></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Brief</div>
+      <textarea id="userBrief" class="brief" placeholder="e.g. Luna Chat widget on a travel website, showing a holiday search result inside the chat window."></textarea>
+    </div>
+
+    <div class="section">
+      <div class="row-3">
+        <div>
+          <label class="field-label">Width (px)</label>
+          <input type="number" id="width" value="1200" min="200" max="2400">
+        </div>
+        <div>
+          <label class="field-label">Height (px)</label>
+          <input type="number" id="height" value="800" min="200" max="2400">
+        </div>
+        <div>
+          <label class="field-label">Max tokens</label>
+          <input type="number" id="maxTokens" value="16000" min="2000" max="32000">
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="useReasoning">
+        <label for="useReasoning">Two-step: design plan, then SVG (slower, often better)</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="actions-row">
+        <button class="btn btn-primary" id="generateBtn" onclick="generate()">Generate</button>
+        <button class="btn" onclick="savePreset()">Save as preset</button>
+        <button class="btn" onclick="clearResults()">Clear results</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span>Saved presets</span>
+        <button onclick="loadPresets()">Refresh</button>
+      </div>
+      <div id="presetList" class="preset-list">
+        <div style="padding:10px;font-size:12px;color:var(--tg-text-tertiary);text-align:center">Loading presets…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: results -->
+  <div class="panel-right">
+    <div id="results">
+      <div class="empty-state">
+        <h3>No results yet</h3>
+        <p>Configure the prompt and brief on the left, then click Generate.<br>Try different system prompts to see how output quality changes.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var results = [];
+var presets = [];
+
+// ─── DEFAULT SYSTEM PROMPT ───────────────────────────────────────
+var DEFAULT_PROMPT = `You are a senior visual designer producing magazine-quality SVG illustrations for Travelgenix marketing materials.
+
+QUALITY BAR
+
+Your output should look like it came from a senior design studio. Not wireframes. Not placeholder boxes. Real, content-rich, editorial illustrations that feel polished and intentional.
+
+Reference quality: Linear product launch graphics, Stripe documentation illustrations, Vercel changelog imagery, Apple keynote graphics, magazine editorial design.
+
+WHAT MAKES A GREAT SVG (do all of these)
+
+1. Real, specific content
+   - Real place names ("Santorini" not "Destination")
+   - Real-looking numbers ("£229/month" not "£XXX")
+   - Real metadata ("247 reviews", "10-year averages", "Last analysed: 3 hours ago")
+   - Plausible UI text, not placeholder bars
+   - Specific dates, times, prices, percentages
+
+2. Typography hierarchy with multiple weights and styles
+   - Serif font for major headlines (use Georgia or 'Source Serif Pro' as fallback)
+   - Sans-serif (Inter) for body text and UI
+   - Monospace (SF Mono, ui-monospace) for technical details, sources, IDs
+   - Multiple sizes: large display, medium headline, body, eyebrow caption
+   - Use font-weight 700 for emphasis, 600 for headlines, 400 for body
+
+3. Real data visualisations when appropriate
+   - Bar charts with actual values and axis labels
+   - Progress bars with percentages
+   - Sentiment strips
+   - Status badges with semantic colour (green positive, amber neutral, red negative)
+   - Sparklines, distribution dots, comparison strips
+
+4. Editorial polish
+   - Source attributions ("Open-Meteo · Live", "Powered by Luna AI")
+   - Subtle metadata lines below content ("Refreshes nightly", "Last updated 3 hours ago")
+   - Status pills ("LIVE", "BEST", "MOST POPULAR", "BETA")
+   - Subtle glow effects on important elements (use feGaussianBlur for soft glows)
+   - Drop shadows for cards (multi-layer for depth)
+
+5. Sophisticated composition
+   - Asymmetric layouts where appropriate (not just centred grids)
+   - Cards within cards (overall card containing feature cards)
+   - Multiple zones each with its own hierarchy
+   - Strategic use of negative space
+   - Breathing room around important elements
+
+BRAND TOKENS (use these exact colours)
+- Navy primary: #1B2B5B
+- Navy dark: #0A0F1F
+- Navy light: #2A3F7A
+- Teal accent: #00B4D8
+- Teal light: #48CAE4
+- Teal dark: #0096B7
+- Text primary: #0F172A
+- Text secondary: #475569
+- Text tertiary: #94A3B8
+- Background primary: #FFFFFF
+- Background secondary: #F8FAFC
+- Background tertiary: #F1F5F9
+- Border: #E2E8F0
+- Semantic success: #10B981
+- Semantic warning: #F59E0B
+- Semantic error: #EF4444
+- Highlight yellow: #FEF3C7
+
+TECHNICAL RULES
+
+1. Output ONLY valid SVG. Begin with <svg, end with </svg>. No markdown fences, no preamble.
+2. Use width and height attributes matching the brief's canvas size.
+3. Use viewBox matching the canvas size.
+4. NO <script> tags. NO <foreignObject>. NO external URLs in href.
+5. Text uses font-family with specific stack: "Inter, -apple-system, system-ui, sans-serif" for sans; "Georgia, 'Source Serif Pro', serif" for serif; "ui-monospace, 'SF Mono', Menlo, monospace" for monospace.
+6. Use proper SVG primitives. Use <g> groups generously.
+7. Use <filter> with feGaussianBlur for shadows. Use multiple shadow layers for cards.
+8. NO em dashes or en dashes anywhere in text content.
+9. Generate substantial SVG. A simple mockup is at least 1500 lines. A rich data visualisation can be 3000+.
+
+ANTI-PATTERNS (never do these)
+
+- Empty rectangles where content should be
+- Rows of dots representing text (use REAL text)
+- Single-colour flat backgrounds with nothing else
+- Three identical cards with no differentiation
+- Generic "device frames" with empty interior
+- No typography hierarchy (everything one size)
+- One font only across the whole image
+- Missing the brand colours
+
+Now read the brief carefully and produce the SVG. Take your time. Make it count.`;
+
+document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
+document.getElementById('userBrief').value = 'Santorini destination spotlight card. Show: place name in serif type, live weather (temperature, conditions, wind), a 12-month climate bar chart with rainfall strip below, an AI "best time to visit" recommendation card, and a footer CTA. Use Travelgenix navy as the header. Editorial magazine quality.';
+
+function loadDefault() {
+  if (!confirm('Replace current prompt with the default?')) return;
+  document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
+}
+
+// ─── AUTH CHECK ──────────────────────────────────────────────────
+async function checkAuth() {
+  try {
+    var r = await fetch('/api/image-lab-presets', { credentials: 'include' });
+    if (r.status === 401) {
+      document.getElementById('auth-status').textContent = 'NOT SIGNED IN — go to portal first';
+      document.getElementById('auth-status').style.color = '#FEF3C7';
+      return false;
+    }
+    if (r.status === 403) {
+      document.getElementById('auth-status').textContent = 'OWNER ONLY — Travelgenix account required';
+      document.getElementById('auth-status').style.color = '#FEF3C7';
+      return false;
+    }
+    if (!r.ok) {
+      document.getElementById('auth-status').textContent = 'AUTH ERROR ' + r.status;
+      return false;
+    }
+    document.getElementById('auth-status').textContent = 'signed in · owner';
+    document.getElementById('auth-status').style.color = '#48CAE4';
+    var d = await r.json();
+    presets = d.presets || [];
+    renderPresets();
+    return true;
+  } catch (e) {
+    document.getElementById('auth-status').textContent = 'AUTH CHECK FAILED';
+    return false;
+  }
+}
+
+// ─── PRESETS ─────────────────────────────────────────────────────
+async function loadPresets() {
+  try {
+    var r = await fetch('/api/image-lab-presets', { credentials: 'include' });
+    var d = await r.json();
+    if (d.ok) {
+      presets = d.presets || [];
+      renderPresets();
+    }
+  } catch (e) {
+    console.warn('Load presets failed:', e);
+  }
+}
+
+function renderPresets() {
+  var el = document.getElementById('presetList');
+  if (presets.length === 0) {
+    el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--tg-text-tertiary);text-align:center">No saved presets yet</div>';
+    return;
+  }
+  var h = '';
+  presets.forEach(function(p) {
+    h += '<div class="preset-item">';
+    h += '<div class="name" onclick="applyPreset(\'' + escapeAttr(p.name) + '\')">' + escHtml(p.name) + '</div>';
+    h += '<button class="del" onclick="event.stopPropagation();deletePreset(\'' + escapeAttr(p.name) + '\')" title="Delete">✕</button>';
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function applyPreset(name) {
+  var p = presets.find(function(p) { return p.name === name; });
+  if (!p) return;
+  document.getElementById('systemPrompt').value = p.systemPrompt;
+  if (p.defaultBrief) document.getElementById('userBrief').value = p.defaultBrief;
+  if (p.defaultWidth) document.getElementById('width').value = p.defaultWidth;
+  if (p.defaultHeight) document.getElementById('height').value = p.defaultHeight;
+  document.getElementById('useReasoning').checked = !!p.useReasoning;
+  toast('Applied preset: ' + p.name);
+}
+
+async function savePreset() {
+  var name = prompt('Name this preset:');
+  if (!name) return;
+  var systemPrompt = document.getElementById('systemPrompt').value;
+  var defaultBrief = document.getElementById('userBrief').value;
+  var defaultWidth = parseInt(document.getElementById('width').value, 10);
+  var defaultHeight = parseInt(document.getElementById('height').value, 10);
+  var useReasoning = document.getElementById('useReasoning').checked;
+  try {
+    var r = await fetch('/api/image-lab-presets', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, systemPrompt: systemPrompt, defaultBrief: defaultBrief, defaultWidth: defaultWidth, defaultHeight: defaultHeight, useReasoning: useReasoning })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Save failed');
+    presets = (await (await fetch('/api/image-lab-presets', { credentials: 'include' })).json()).presets || [];
+    renderPresets();
+    toast('Saved: ' + name);
+  } catch (e) {
+    alert('Could not save: ' + e.message);
+  }
+}
+
+async function deletePreset(name) {
+  if (!confirm('Delete preset "' + name + '"?')) return;
+  try {
+    var r = await fetch('/api/image-lab-presets?name=' + encodeURIComponent(name), {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Delete failed');
+    presets = presets.filter(function(p) { return p.name !== name; });
+    renderPresets();
+    toast('Deleted: ' + name);
+  } catch (e) {
+    alert('Could not delete: ' + e.message);
+  }
+}
+
+// ─── GENERATE ────────────────────────────────────────────────────
+async function generate() {
+  var systemPrompt = document.getElementById('systemPrompt').value;
+  var userBrief = document.getElementById('userBrief').value;
+  var width = parseInt(document.getElementById('width').value, 10) || 1200;
+  var height = parseInt(document.getElementById('height').value, 10) || 800;
+  var maxTokens = parseInt(document.getElementById('maxTokens').value, 10) || 16000;
+  var useReasoning = document.getElementById('useReasoning').checked;
+
+  if (!systemPrompt.trim()) { alert('System prompt is required'); return; }
+  if (!userBrief.trim()) { alert('Brief is required'); return; }
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  // Insert loading card
+  var loadingId = 'loading-' + Date.now();
+  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating (' + (useReasoning ? '~30-60s with reasoning' : '~15-30s') + ')…</span></div>';
+  var resultsEl = document.getElementById('results');
+  if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
+  resultsEl.insertAdjacentHTML('afterbegin', loadingHtml);
+
+  try {
+    var r = await fetch('/api/image-lab-generate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemPrompt: systemPrompt, userBrief: userBrief, width: width, height: height, maxTokens: maxTokens, useReasoning: useReasoning })
+    });
+    var d = await r.json();
+
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    if (!r.ok) {
+      addError(d.error || ('HTTP ' + r.status), userBrief);
+    } else if (!d.ok) {
+      addError(d.error || 'Generation failed', userBrief, d);
+    } else {
+      addResult(d, userBrief, width, height, useReasoning);
+    }
+  } catch (e) {
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+    addError(e.message, userBrief);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate';
+}
+
+function addResult(d, brief, w, h, hadReasoning) {
+  results.unshift({ data: d, brief: brief, width: w, height: h, hadReasoning: hadReasoning, ts: Date.now() });
+  renderResults();
+}
+
+function addError(msg, brief, fullData) {
+  var resultsEl = document.getElementById('results');
+  var card = '<div class="error-card"><strong>Generation failed</strong><br>' + escHtml(msg) + '<br><br><em style="font-size:11px">Brief: ' + escHtml(brief) + '</em>';
+  if (fullData && fullData.svg) {
+    card += '<br><br><button class="toggle-link" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'">Show SVG that failed to rasterise</button>';
+    card += '<pre class="svg-source" style="display:none;margin-top:8px">' + escHtml(fullData.svg.slice(0, 5000)) + '</pre>';
+  }
+  if (fullData && fullData.rawTextSnippet) {
+    card += '<br><br><button class="toggle-link" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'">Show raw response</button>';
+    card += '<pre class="svg-source" style="display:none;margin-top:8px">' + escHtml(fullData.rawTextSnippet) + '</pre>';
+  }
+  card += '</div>';
+  if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
+  resultsEl.insertAdjacentHTML('afterbegin', card);
+}
+
+function renderResults() {
+  var resultsEl = document.getElementById('results');
+  var h = '';
+  results.forEach(function(r, idx) {
+    var d = r.data;
+    var ts = new Date(r.ts).toLocaleTimeString();
+    var inputTokens = d.usage && d.usage.svg ? d.usage.svg.input_tokens : '?';
+    var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';
+    var planTokens = d.usage && d.usage.plan ? (d.usage.plan.input_tokens + d.usage.plan.output_tokens) : 0;
+
+    h += '<div class="result-card">';
+    h += '<div class="result-header">';
+    h += '<div class="left">';
+    h += '<span class="timestamp">' + ts + '</span>';
+    h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ' + (d.svgSize || 0) + ' chars · in ' + inputTokens + ' / out ' + outputTokens + (planTokens ? ' + plan ' + planTokens : '') + '</span>';
+    if (r.hadReasoning) h += '<span class="stats" style="color:var(--tg-accent)">REASONED</span>';
+    h += '</div>';
+    h += '<div class="actions">';
+    h += '<button class="btn" onclick="toggleSvg(' + idx + ')">SVG source</button>';
+    h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
+    h += '<button class="btn" onclick="downloadSvg(' + idx + ')">SVG</button>';
+    if (d.planText) h += '<button class="btn" onclick="togglePlan(' + idx + ')">Plan</button>';
+    h += '</div>';
+    h += '</div>';
+    h += '<div class="result-body">';
+    h += '<div class="image-wrap">';
+    h += '<img src="' + d.pngUrl + '" alt="Generated image">';
+    h += '</div>';
+    h += '<div class="result-meta">';
+    h += '<div class="result-brief"><span class="key">Brief:</span> ' + escHtml(r.brief) + '</div>';
+    h += '</div>';
+    h += '</div>';
+    if (d.planText) {
+      h += '<pre class="plan-text" id="plan-' + idx + '" style="display:none">' + escHtml(d.planText) + '</pre>';
+    }
+    h += '<pre class="svg-source" id="svg-' + idx + '" style="display:none">' + escHtml(d.svg) + '</pre>';
+    h += '</div>';
+  });
+  if (h === '') {
+    h = '<div class="empty-state"><h3>No results yet</h3><p>Configure the prompt and brief on the left, then click Generate.</p></div>';
+  }
+  resultsEl.innerHTML = h;
+}
+
+function toggleSvg(idx) {
+  var el = document.getElementById('svg-' + idx);
+  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function togglePlan(idx) {
+  var el = document.getElementById('plan-' + idx);
+  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function downloadPng(url) {
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'image-lab-' + Date.now() + '.png';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function downloadSvg(idx) {
+  var d = results[idx] && results[idx].data;
+  if (!d || !d.svg) return;
+  var blob = new Blob([d.svg], { type: 'image/svg+xml' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'image-lab-' + Date.now() + '.svg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function clearResults() {
+  if (results.length > 0 && !confirm('Clear all results?')) return;
+  results = [];
+  renderResults();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escapeAttr(s) {
+  return String(s).replace(/'/g, "\\'");
+}
+function toast(msg) {
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+checkAuth();
+</script>
+
+</body>
+</html>

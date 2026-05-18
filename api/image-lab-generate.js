@@ -30,6 +30,7 @@
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { put } = require("@vercel/blob");
 const sharp = require("sharp");
+const { convertTextToPaths } = require("../lib/svg-text-to-path");
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
@@ -244,13 +245,31 @@ Output the spec as plain prose. No JSON, no markdown headers, just specific desi
       });
     }
 
+    // ─── STEP 2.5: Convert <text> to <path> for reliable rasterisation ──
+    // libvips on Vercel can't find the fonts the AI specifies, so without this
+    // step every glyph would render as a missing-glyph rectangle. By converting
+    // text to actual path data, sharp can render perfectly regardless of system fonts.
+    let textConvertedSvg = svg;
+    let textConversionInfo = { count: 0, errors: [] };
+    try {
+      const conv = convertTextToPaths(svg);
+      textConvertedSvg = conv.converted;
+      textConversionInfo = { count: conv.count, errors: conv.errors };
+    } catch (e) {
+      // Don't fail the whole render — fall back to original SVG (will probably show tofu but better than nothing)
+      console.warn("[image-lab-generate] Text-to-path failed, using original:", e.message);
+      textConversionInfo.errors.push("Text conversion threw: " + e.message);
+    }
+
     // ─── STEP 3: Rasterise ───────────────────────────────────────
-    const { png, error: rasterError } = await rasteriseSvg(svg, width, height);
+    const { png, error: rasterError } = await rasteriseSvg(textConvertedSvg, width, height);
     if (!png) {
       return res.status(200).json({
         ok: false,
         error: rasterError,
         svg,
+        textConvertedSvg,
+        textConversionInfo,
         planText,
         usage
       });
@@ -278,7 +297,8 @@ Output the spec as plain prose. No JSON, no markdown headers, just specific desi
       elapsedMs: Date.now() - startedAt,
       usage,
       planText,
-      svgSize: svg.length
+      svgSize: svg.length,
+      textConversionInfo
     });
 
   } catch (err) {

@@ -171,18 +171,58 @@ Produce the complete HTML document. Output ONLY the HTML, starting with <!DOCTYP
         messages: [{ role: "user", content: userMessage }]
       });
     } catch (e) {
+      // Anthropic SDK errors include rate limits, timeouts, malformed
+      // upstream responses, etc. Surface a clear message with stage info.
+      const detail = e && e.message ? e.message : String(e);
+      const status = e && e.status ? e.status : null;
+      let userMsg = "Claude API error: " + detail.slice(0, 300);
+      if (status === 529 || /overloaded/i.test(detail)) {
+        userMsg = "Claude is overloaded right now (HTTP 529). Try again in 10-20 seconds.";
+      } else if (status === 429 || /rate.?limit/i.test(detail)) {
+        userMsg = "Claude rate-limited the request. Try again in a moment.";
+      } else if (/unexpected token/i.test(detail)) {
+        userMsg = "Anthropic returned a non-JSON response (likely an upstream error). Try again. Detail: " + detail.slice(0, 200);
+      } else if (/timeout|timed out/i.test(detail)) {
+        userMsg = "Claude took too long to respond. Try a simpler brief or split it into stages.";
+      }
       return res.status(200).json({
         ok: false,
-        error: `Claude API error: ${e.message}`,
-        stage: "claude"
+        error: userMsg,
+        stage: "claude",
+        statusFromAnthropic: status,
+        rawError: detail.slice(0, 500)
       });
     }
 
     const claudeMs = Date.now() - claudeStart;
 
+    // Defensively unpack the response — handle malformed shapes
+    if (!response || !response.content || !Array.isArray(response.content)) {
+      return res.status(200).json({
+        ok: false,
+        error: "Claude returned an unexpected response shape (no content array)",
+        stage: "claude-shape",
+        claudeMs,
+        responseKeys: response ? Object.keys(response) : null
+      });
+    }
+
     let rawText = "";
     for (const block of response.content) {
-      if (block.type === "text") rawText += block.text;
+      if (block && block.type === "text" && typeof block.text === "string") {
+        rawText += block.text;
+      }
+    }
+
+    if (!rawText) {
+      return res.status(200).json({
+        ok: false,
+        error: "Claude returned no text content (stop_reason: " + (response.stop_reason || "unknown") + ")",
+        stage: "claude-empty",
+        claudeMs,
+        stopReason: response.stop_reason,
+        usage: response.usage
+      });
     }
 
     const { html, error: parseError } = extractHtml(rawText);

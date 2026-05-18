@@ -1424,6 +1424,295 @@ select.of-input { cursor: pointer; height: 34px; }
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   STAGE C — per-slot image generation
+   Generate button on every image url field, modal, job pills
+   ───────────────────────────────────────────────────────────────── */
+.email-builder-image-field {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.email-builder-img-gen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--tg-primary);
+  color: var(--tg-text-inverse);
+  border: 1px solid var(--tg-primary);
+  border-radius: var(--radius-md, 8px);
+  font-family: var(--tg-font-body, inherit);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.email-builder-img-gen-btn:hover:not(:disabled) {
+  background: var(--tg-primary-light, #2A3F7A);
+}
+.email-builder-img-gen-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.email-builder-img-gen-btn:disabled {
+  cursor: default;
+  opacity: 0.9;
+}
+.email-builder-img-gen-btn-running {
+  background: var(--tg-accent, #00B4D8);
+  border-color: var(--tg-accent, #00B4D8);
+}
+.email-builder-img-gen-btn svg { flex-shrink: 0; }
+.email-builder-img-gen-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: stage-c-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.email-builder-img-gen-label { line-height: 1; }
+@keyframes stage-c-spin { to { transform: rotate(360deg); } }
+
+/* AI compose: highlight Generate button when AI flagged this slot */
+.email-builder-img-gen-btn.ai-suggested {
+  box-shadow: 0 0 0 3px rgba(0,180,216,0.25);
+  animation: stage-c-ai-pulse 2.4s ease-in-out infinite;
+}
+@keyframes stage-c-ai-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(0,180,216,0.25); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,180,216,0.10); }
+}
+
+/* The modal */
+.tg-img-gen-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.6);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+.tg-img-gen-modal {
+  background: var(--tg-bg-primary, #fff);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  max-width: 640px;
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tg-img-gen-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--tg-border, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tg-img-gen-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tg-text-primary, #0F172A);
+  margin: 0;
+}
+.tg-img-gen-close {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--tg-text-tertiary, #94A3B8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tg-img-gen-close:hover {
+  background: var(--tg-bg-secondary, #F8FAFC);
+  color: var(--tg-text-primary, #0F172A);
+}
+.tg-img-gen-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.tg-img-gen-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--tg-border, #E2E8F0);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  background: var(--tg-bg-secondary, #F8FAFC);
+}
+.tg-img-gen-field { margin-bottom: 14px; }
+.tg-img-gen-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tg-text-secondary, #475569);
+  margin-bottom: 6px;
+}
+.tg-img-gen-help {
+  font-size: 11px;
+  color: var(--tg-text-tertiary, #94A3B8);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.tg-img-gen-input, .tg-img-gen-select, .tg-img-gen-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--tg-border, #E2E8F0);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--tg-text-primary, #0F172A);
+  background: var(--tg-bg-primary, #fff);
+  box-sizing: border-box;
+}
+.tg-img-gen-textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+.tg-img-gen-input:focus, .tg-img-gen-select:focus, .tg-img-gen-textarea:focus {
+  outline: none;
+  border-color: var(--tg-accent, #00B4D8);
+  box-shadow: 0 0 0 3px rgba(0,180,216,0.12);
+}
+.tg-img-gen-btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+.tg-img-gen-btn-ghost {
+  background: transparent;
+  border-color: var(--tg-border, #E2E8F0);
+  color: var(--tg-text-secondary, #475569);
+}
+.tg-img-gen-btn-ghost:hover { background: var(--tg-bg-secondary, #F8FAFC); }
+.tg-img-gen-btn-primary {
+  background: var(--tg-primary, #1B2B5B);
+  color: var(--tg-text-inverse, #fff);
+  border-color: var(--tg-primary, #1B2B5B);
+}
+.tg-img-gen-btn-primary:hover:not(:disabled) {
+  background: var(--tg-primary-light, #2A3F7A);
+}
+.tg-img-gen-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Progress steps inside the modal during generation */
+.tg-img-gen-progress { padding: 8px 0; }
+.tg-img-gen-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--tg-text-secondary, #475569);
+}
+.tg-img-gen-step-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--tg-border, #E2E8F0);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tg-bg-primary, #fff);
+}
+.tg-img-gen-step.is-active .tg-img-gen-step-icon {
+  border-color: var(--tg-accent, #00B4D8);
+  border-right-color: transparent;
+  animation: stage-c-spin 0.8s linear infinite;
+}
+.tg-img-gen-step.is-done .tg-img-gen-step-icon {
+  background: var(--tg-success, #10B981);
+  border-color: var(--tg-success, #10B981);
+}
+.tg-img-gen-step.is-done .tg-img-gen-step-icon::after {
+  content: "";
+  width: 6px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg) translate(-1px,-1px);
+}
+.tg-img-gen-step.is-active, .tg-img-gen-step.is-done {
+  color: var(--tg-text-primary, #0F172A);
+}
+.tg-img-gen-elapsed {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: var(--tg-font-mono, ui-monospace, monospace);
+  color: var(--tg-text-tertiary, #94A3B8);
+}
+
+.tg-img-gen-error {
+  padding: 10px 12px;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 6px;
+  color: var(--tg-error, #EF4444);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+/* Banner shown at the top of the AI compose modal when Luna flagged
+   AI-eligible image slots */
+.tg-img-needs-banner {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(0,180,216,0.10), rgba(27,43,91,0.05));
+  border: 1px solid rgba(0,180,216,0.30);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--tg-text-primary, #0F172A);
+}
+.tg-img-needs-banner-text { flex: 1; }
+.tg-img-needs-banner-btn {
+  padding: 6px 12px;
+  background: var(--tg-primary, #1B2B5B);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Dark mode */
+[data-theme="dark"] .tg-img-gen-modal {
+  background: var(--tg-bg-primary, #0F172A);
+}
+[data-theme="dark"] .tg-img-gen-footer {
+  background: var(--tg-bg-secondary, #1E293B);
+}
+
+@media (max-width: 640px) {
+  .tg-img-gen-modal { max-height: 96vh; border-radius: 12px; }
+  .tg-img-gen-header, .tg-img-gen-body, .tg-img-gen-footer { padding-left: 16px; padding-right: 16px; }
+  .email-builder-image-field { flex-wrap: wrap; }
+  .email-builder-img-gen-btn { flex: 1 1 auto; justify-content: center; }
+}
+
 </style>
 </head>
 <body data-theme="light">
@@ -3621,6 +3910,12 @@ var emailState = {
   previewMode: 'html',  // 'html' | 'plain'
   editing: false,
   editedFields: {},
+  // ── Stage C: per-slot image generation jobs ─────────────────────
+  // Keyed by jobId. Each entry: { jobId, sectionId, fieldPath, status,
+  // startedAt, briefInputs, result, error, elapsedSec }
+  // Status values: 'pending' | 'running' | 'done' | 'error'
+  // Jobs survive modal close so the URL can land after the modal is shut.
+  imageJobs: {},
 };
 
 function renderEmails() {
@@ -4351,6 +4646,9 @@ function drawComposeForm() {
     { type: 'cta-banner', icon: '<rect x="2" y="6" width="20" height="12" rx="1.5" fill="currentColor" opacity="0.15"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="5" y1="13" x2="14" y2="13"/><rect x="14" y="14" width="6" height="3" rx="1.5"/>' },
     { type: 'footer-light', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.08"/><line x1="9" y1="16" x2="15" y2="16"/><circle cx="8" cy="19" r="0.8"/><circle cx="12" cy="19" r="0.8"/><circle cx="16" cy="19" r="0.8"/>' },
 
+    // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
+    { type: 'generated-image', icon: '<rect x="2" y="3" width="20" height="18" rx="1"/><path d="M4 16l4-4 3 3 4-5 5 7" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>' },
+
     // ── B2B Weekly sections (Archetype A, May 2026) ────────────────────
     { type: 'masthead', icon: '<line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="20" x2="22" y2="20" stroke-width="2.4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.4"/>' },
     { type: 'toc', icon: '<rect x="2" y="4" width="2" height="2" rx="0.4"/><line x1="6" y1="5" x2="20" y2="5"/><rect x="2" y="9" width="2" height="2" rx="0.4"/><line x1="6" y1="10" x2="20" y2="10"/><rect x="2" y="14" width="2" height="2" rx="0.4"/><line x1="6" y1="15" x2="20" y2="15"/><rect x="2" y="19" width="2" height="2" rx="0.4"/><line x1="6" y1="20" x2="20" y2="20"/>' },
@@ -5034,6 +5332,22 @@ var SECTION_META = {
       { key: 'legal', label: 'Legal meta line', type: 'text', maxLength: 200 },
     ],
   },
+
+  // ── Generated image (Stage C, May 2026) ────────────────────────────
+  // A single AI-generated PNG. The Generate button on imageUrl opens the
+  // Stage B pipeline. Width/height are kept as text fields so the user
+  // can paste any preset; native pipeline returns 2400 wide, email scales.
+  'generated-image': {
+    label: 'Generated image',
+    description: 'A single AI-generated visual. Click Generate on the image URL field to create one.',
+    fields: [
+      { key: 'imageUrl', label: 'Image URL', type: 'url', help: 'Click Generate to create with AI, or paste a URL.' },
+      { key: 'imageAlt', label: 'Alt text', type: 'text', required: true, maxLength: 200 },
+      { key: 'caption', label: 'Caption (optional)', type: 'text', maxLength: 200 },
+      { key: 'width', label: 'Native width (px)', type: 'text', help: 'Used for download metadata. Rendered at 600px wide in email.' },
+      { key: 'height', label: 'Native height (px)', type: 'text' },
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -5098,6 +5412,11 @@ function sectionSummary(section) {
     }
     case 'cta-banner': return p.title || (p.cta && p.cta.text) || 'CTA banner';
     case 'footer-light': return p.logo_text || p.tagline || 'Light footer';
+    // ── Generated image (Stage C) ────────────────────────────────────
+    case 'generated-image': {
+      if (p.imageUrl) return (p.imageAlt || 'Generated image').slice(0, 50);
+      return '(not yet generated)';
+    }
     // ── B2B Weekly ──────────────────────────────────────────────────
     case 'masthead': return p.title || 'Masthead';
     case 'toc': {
@@ -5340,7 +5659,34 @@ function renderField(section, basePath, field, depth) {
     h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.checked)"> ' + esc(field.checkboxLabel || field.label) + '</label>';
   } else {
     var t = field.type === 'url' ? 'url' : 'text';
-    h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+    // ── Stage C: image-field generate button ─────────────────────────
+    // A url field whose key ends in imageUrl, image_url, logoUrl, etc. is
+    // an image slot and gets a Generate button to its right that opens
+    // the per-slot image-generate modal.
+    var isImageField = field.type === 'url' && isImageFieldKey(field.key);
+    var activeJob = isImageField ? getActiveImageJob(section.id, path) : null;
+    if (isImageField) {
+      h += '<div class="email-builder-image-field" style="display:flex;gap:6px;align-items:stretch">';
+      h += '<input id="' + fid + '" type="url" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" style="flex:1;min-width:0" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+      if (activeJob) {
+        h += '<button type="button" disabled class="email-builder-img-gen-btn email-builder-img-gen-btn-running" title="Generation in progress">';
+        h += '<span class="email-builder-img-gen-spinner"></span>';
+        h += '<span class="email-builder-img-gen-label">Generating' + (activeJob.elapsedSec ? ' ' + activeJob.elapsedSec + 's' : '') + '</span>';
+        h += '</button>';
+      } else {
+        h += '<button type="button" class="email-builder-img-gen-btn" onclick="window.__imageGenerateOpen(\'' + sidAttr + '\',\'' + pathAttr + '\')" title="Generate with AI">';
+        h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>';
+        h += '<span class="email-builder-img-gen-label">Generate</span>';
+        h += '</button>';
+      }
+      h += '</div>';
+      // Preview thumbnail if URL set
+      if (val && typeof val === 'string' && val.match(/^https?:\/\//)) {
+        h += '<div class="email-builder-image-preview" style="margin-top:6px"><img src="' + esc(val) + '" alt="Preview" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid var(--tg-border);display:block;background:var(--tg-bg-secondary)"></div>';
+      }
+    } else {
+      h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+    }
   }
   if (field.help) {
     h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin-top:4px;">' + esc(field.help) + '</div>';
@@ -6582,6 +6928,14 @@ function defaultPropsForType(type) {
       ],
       reason: '',
       legal: '',
+    };
+    // ── Generated image (Stage C, May 2026) ────────────────────────
+    case 'generated-image': return {
+      imageUrl: '',
+      imageAlt: '',
+      caption: '',
+      width: '1200',
+      height: '600',
     };
     // ── B2B Weekly (Archetype A) ────────────────────────────────────
     case 'masthead': return {
@@ -8457,11 +8811,84 @@ window.__aiImageGenerate = async function(idx) {
   var briefText = brief ? brief.suggestion : '';
   var style = brief ? brief.style : 'product-mockup';
   var dimensions = brief ? brief.dimensions : 'hero';
+  var briefFacts = (brief && Array.isArray(brief.facts)) ? brief.facts : [];
 
   if (!briefText) {
     // Fall back to constructing a brief from the section's headline/title
     briefText = section.props.headline || section.props.title || section.props.body_title || 'On-brand visual for this section';
   }
+
+  // Lifestyle images route via the legacy AI fallback flow which calls
+  // a different endpoint. The Stage B pipeline doesn't do photorealism.
+  // For lifestyle, we keep the older /api/image-generate behaviour.
+  if (style === 'lifestyle') {
+    return __legacyImageGenerate(idx, briefText, style, dimensions);
+  }
+
+  // Map AI compose section.type to a v2 sectionType. The v2 pipeline
+  // expects one of: hero, feature-card, pricing-card, data-card,
+  // product-mockup, comparison, value-prop, destination-spotlight, other.
+  var v2SectionType = mapAiSectionToV2SectionType(section.type, style);
+  // Map dimensions string to v2 slot string.
+  var v2Slot = mapDimensionsToV2Slot(dimensions);
+
+  imgState.loading = true;
+  imgState.error = null;
+  imgState.mode = 'generating';
+  renderAiComposeModal();
+
+  try {
+    var r = await fetch('/api/image-generate-v2', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        sectionType: v2SectionType,
+        sectionContent: {
+          headline: section.props.headline || section.props.title || section.props.body_title || '',
+          subhead: section.props.subhead || section.props.deck || section.props.lede || '',
+          bodyText: section.props.body || section.props.excerpt || section.props.text || '',
+          productContext: briefText,
+          facts: briefFacts,
+          cta: (section.props.cta && section.props.cta.text) || section.props.ctaText || '',
+        },
+        slot: v2Slot,
+        source: 'composer'
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Generation failed');
+
+    // Find the right image key on this section
+    var imageKey = 'image_url';
+    if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
+    if (section.props.heroImage !== undefined) imageKey = 'heroImage';
+
+    section.props[imageKey] = d.pngUrl;
+    // v2 returns html instead of svg — we don't support refinement on v2
+    // images yet (refinement would mean re-running brief, not editing HTML).
+    // Hide the refine UI when we have a v2 image.
+    imgState.currentSvg = null;
+    imgState.v2Result = d;
+    imgState.loading = false;
+    imgState.mode = null;
+    imgState.error = null;
+    renderAiComposeModal();
+    schedulePreviewRefresh(200);
+  } catch (e) {
+    imgState.loading = false;
+    imgState.error = e.message;
+    renderAiComposeModal();
+  }
+};
+
+// Legacy v1 image generation, kept for lifestyle (which v2 doesn't do)
+// and as a fallback while v2 is still bedding in.
+async function __legacyImageGenerate(idx, briefText, style, dimensions) {
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  var imgState = section.__image;
 
   imgState.loading = true;
   imgState.error = null;
@@ -8483,7 +8910,6 @@ window.__aiImageGenerate = async function(idx) {
     var d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.error || 'Generation failed');
 
-    // Find the right image key on this section
     var imageKey = 'image_url';
     if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
     if (section.props.heroImage !== undefined) imageKey = 'heroImage';
@@ -8500,7 +8926,46 @@ window.__aiImageGenerate = async function(idx) {
     imgState.error = e.message;
     renderAiComposeModal();
   }
-};
+}
+
+// Map AI compose section.type to a Stage B v2 sectionType.
+// v2 expects: hero, feature-card, pricing-card, data-card, product-mockup,
+// comparison, value-prop, destination-spotlight, other
+function mapAiSectionToV2SectionType(aiSectionType, style) {
+  if (style === 'product-mockup') return 'product-mockup';
+  switch (aiSectionType) {
+    case 'hero':
+    case 'hero-image':
+    case 'lead-story':
+      return 'hero';
+    case 'feature-story':
+    case 'duo-grid':
+      return 'feature-card';
+    case 'destination-grid':
+      return 'destination-spotlight';
+    case 'pulse-stats':
+      return 'data-card';
+    case 'cta-banner':
+      return 'value-prop';
+    default:
+      return 'other';
+  }
+}
+
+// Map a dimensions label (the AI's choice) to a v2 slot label.
+// v2 slots: hero, hero-square, hero-tall, feature-story, card, card-square,
+//           thumbnail, banner, wide
+function mapDimensionsToV2Slot(dimensions) {
+  switch (dimensions) {
+    case 'hero': return 'hero';
+    case 'hero-square': return 'hero-square';
+    case 'feature-story': return 'feature-story';
+    case 'card': return 'card';
+    case 'thumbnail': return 'thumbnail';
+    case 'banner': return 'banner';
+    default: return 'hero';
+  }
+}
 
 window.__aiImageRefine = async function(idx) {
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
@@ -8876,6 +9341,599 @@ window.__emailComposeAiSave = async function() {
     alert('Could not save: ' + e.message);
   }
 };
+
+// ════════════════════════════════════════════════════════════════════
+// STAGE C — PER-SLOT IMAGE GENERATION (regular builder)
+// ════════════════════════════════════════════════════════════════════
+//
+// The existing aiCompose modal already has image generation (now ported
+// to v2 above). This block adds the same capability to the REGULAR
+// builder — every imageUrl/image_url field across hero, hero-image,
+// feature-story, destination-grid cards, two-column cells, lead-story,
+// trip-card, and the new generated-image section.
+//
+// The flow:
+//   1. User clicks Generate next to an image field
+//   2. Modal opens, prefilled from the section's existing copy
+//   3. User edits facts/headline/subhead, clicks Generate image
+//   4. Job registers in emailState.imageJobs, fetch fires
+//   5. Modal can be closed; the job continues
+//   6. On success, URL drops into the field; toast appears
+//
+// All Stage B endpoint contract terms documented in stage-c-handover.md.
+
+// ── helpers ─────────────────────────────────────────────────────────
+
+// Does this field key look like an image url?
+// Matches: imageUrl, image_url, logoUrl, logo_url, heroImage, pinterest_image_url
+window.isImageFieldKey = function(key) {
+  if (!key || typeof key !== 'string') return false;
+  var lower = key.toLowerCase();
+  // Trailing-segment match so left.imageUrl and cards.0.image_url both qualify
+  var segments = lower.split('.');
+  var last = segments[segments.length - 1];
+  // Numeric array indices: look one segment further left
+  if (/^\d+$/.test(last) && segments.length >= 2) last = segments[segments.length - 2] + '.' + last;
+  return /(^|_|\.)image(_)?url$/.test(last)
+      || /(^|_|\.)logo(_)?url$/.test(last)
+      || /heroimage$/.test(last)
+      || /pinterest_image_url$/.test(last)
+      || /^image_url$/.test(last)
+      || /^imageurl$/.test(last);
+};
+// Function-style alias for the inline isImageFieldKey() call in renderField
+function isImageFieldKey(k) { return window.isImageFieldKey(k); }
+
+// Look up the active image job for a given (sectionId, fieldPath)
+window.getActiveImageJob = function(sectionId, fieldPath) {
+  if (!emailState.imageJobs) return null;
+  var jobs = Object.values(emailState.imageJobs);
+  for (var i = 0; i < jobs.length; i++) {
+    var j = jobs[i];
+    if (j.sectionId === sectionId && j.fieldPath === fieldPath && (j.status === 'pending' || j.status === 'running')) {
+      return j;
+    }
+  }
+  return null;
+};
+function getActiveImageJob(sectionId, fieldPath) { return window.getActiveImageJob(sectionId, fieldPath); }
+
+// Pick a sensible v2 slot from a section type + field path
+function pickDefaultSlot(sectionType, fieldPath) {
+  if (!sectionType) return 'hero';
+  // Inside a destination-grid card or two-column cell, use card slot
+  if (fieldPath && /cards\.\d+/.test(fieldPath)) return 'card';
+  if (fieldPath && /(^|\.)(left|right)\./.test(fieldPath)) return 'card-square';
+  switch (sectionType) {
+    case 'hero': return 'hero';
+    case 'hero-image': return 'hero';
+    case 'feature-story': return 'feature-story';
+    case 'destination-grid': return 'card';
+    case 'lead-story': return 'hero';
+    case 'trip-card': return 'banner';
+    case 'generated-image': return 'hero';
+    case 'two-column': return 'card-square';
+    default: return 'hero';
+  }
+}
+
+// Pick a sensible v2 sectionType from the email section type
+function pickDefaultV2SectionType(sectionType) {
+  switch (sectionType) {
+    case 'hero': return 'hero';
+    case 'hero-image': return 'hero';
+    case 'feature-story': return 'feature-card';
+    case 'destination-grid': return 'destination-spotlight';
+    case 'lead-story': return 'hero';
+    case 'trip-card': return 'other';
+    case 'generated-image': return 'product-mockup';
+    case 'two-column': return 'feature-card';
+    case 'pulse-stats': return 'data-card';
+    default: return 'other';
+  }
+}
+
+// Extract context from a section to prefill the modal. Handles nested
+// paths like left.imageUrl by reading sibling fields on the same nesting
+// level (left.headline, left.body).
+function extractSectionContext(section, fieldPath) {
+  var props = section.props || {};
+
+  // Walk down to the immediate parent of the field, then read siblings.
+  var pathParts = fieldPath.split('.');
+  pathParts.pop(); // drop the imageUrl segment
+  var parent = props;
+  for (var i = 0; i < pathParts.length; i++) {
+    if (parent && typeof parent === 'object') parent = parent[pathParts[i]];
+  }
+  if (!parent || typeof parent !== 'object') parent = props;
+
+  return {
+    headline: parent.headline || parent.title || parent.body_title || parent.name || props.headline || props.title || '',
+    subhead:  parent.subhead || parent.deck || parent.lede || parent.meta || props.subhead || props.deck || props.lede || '',
+    bodyText: parent.body || parent.excerpt || parent.text || props.body || props.excerpt || '',
+    cta:      (parent.cta && parent.cta.text) || parent.ctaText || (props.cta && props.cta.text) || props.ctaText || '',
+  };
+}
+
+// ── modal state ─────────────────────────────────────────────────────
+
+var imgModal = {
+  open: false,
+  sectionId: null,
+  fieldPath: null,
+  // Inputs the user can edit in the form
+  inputs: {
+    sectionType: 'other',
+    slot: 'hero',
+    headline: '',
+    subhead: '',
+    bodyText: '',
+    facts: '',     // multiline text, one fact per line
+    cta: '',
+  },
+  // Once submitted, the modal switches to progress state
+  jobId: null,
+  submitting: false,
+};
+
+// V2 sectionType options shown in the dropdown
+var V2_SECTION_TYPES = [
+  { value: 'hero',                  label: 'Hero (general)' },
+  { value: 'product-mockup',        label: 'Product mockup' },
+  { value: 'pricing-card',          label: 'Pricing card' },
+  { value: 'feature-card',          label: 'Feature card' },
+  { value: 'data-card',             label: 'Data / stats card' },
+  { value: 'comparison',            label: 'Comparison' },
+  { value: 'value-prop',            label: 'Value proposition' },
+  { value: 'destination-spotlight', label: 'Destination spotlight' },
+  { value: 'other',                 label: 'Other' },
+];
+
+// V2 slot options shown in the dropdown
+var V2_SLOTS = [
+  { value: 'hero',          label: 'Hero (1200 \u00d7 600)' },
+  { value: 'hero-square',   label: 'Hero square (1200 \u00d7 1200)' },
+  { value: 'hero-tall',     label: 'Hero tall (1200 \u00d7 800)' },
+  { value: 'feature-story', label: 'Feature story (1200 \u00d7 500)' },
+  { value: 'card',          label: 'Card (600 \u00d7 400)' },
+  { value: 'card-square',   label: 'Card square (600 \u00d7 600)' },
+  { value: 'thumbnail',     label: 'Thumbnail (400 \u00d7 400)' },
+  { value: 'banner',        label: 'Banner (1200 \u00d7 360)' },
+  { value: 'wide',          label: 'Wide (1600 \u00d7 600)' },
+];
+
+// ── open the modal ──────────────────────────────────────────────────
+
+window.__imageGenerateOpen = function(sectionId, fieldPath) {
+  var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+
+  // Prefill inputs from the section's existing copy
+  var ctx = extractSectionContext(section, fieldPath);
+  imgModal.open = true;
+  imgModal.sectionId = sectionId;
+  imgModal.fieldPath = fieldPath;
+  imgModal.jobId = null;
+  imgModal.submitting = false;
+  imgModal.inputs = {
+    sectionType: pickDefaultV2SectionType(section.type),
+    slot: pickDefaultSlot(section.type, fieldPath),
+    headline: ctx.headline,
+    subhead: ctx.subhead,
+    bodyText: ctx.bodyText,
+    facts: '',
+    cta: ctx.cta,
+  };
+  renderImageGenerateModal();
+};
+
+window.__imageGenerateClose = function() {
+  // If a job is running, closing the modal does NOT cancel it. The job
+  // continues and the URL will land in the field when ready.
+  imgModal.open = false;
+  var bd = document.getElementById('tg-img-gen-backdrop');
+  if (bd) bd.remove();
+};
+
+window.__imageGenerateUpdateInput = function(key, value) {
+  imgModal.inputs[key] = value;
+};
+
+// ── submit ──────────────────────────────────────────────────────────
+
+window.__imageGenerateSubmit = async function() {
+  if (!imgModal.sectionId || !imgModal.fieldPath) return;
+  if (imgModal.submitting) return;
+  if (!state.profile || !state.profile.id) { alert('No tenant context.'); return; }
+
+  // Parse facts: one per line, trimmed, non-empty
+  var factsArr = (imgModal.inputs.facts || '')
+    .split('\n')
+    .map(function(s) { return s.trim(); })
+    .filter(function(s) { return s.length > 0; });
+
+  // Register the job
+  var jobId = 'job-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  var job = {
+    jobId: jobId,
+    sectionId: imgModal.sectionId,
+    fieldPath: imgModal.fieldPath,
+    status: 'running',
+    startedAt: Date.now(),
+    elapsedSec: 0,
+    briefInputs: {
+      sectionType: imgModal.inputs.sectionType,
+      slot: imgModal.inputs.slot,
+      sectionContent: {
+        headline: imgModal.inputs.headline,
+        subhead: imgModal.inputs.subhead,
+        bodyText: imgModal.inputs.bodyText,
+        facts: factsArr,
+        cta: imgModal.inputs.cta,
+      },
+    },
+    result: null,
+    error: null,
+  };
+  emailState.imageJobs[jobId] = job;
+  imgModal.jobId = jobId;
+  imgModal.submitting = true;
+  startImageJobTicker();
+  renderImageGenerateModal();
+  // Also refresh the properties form so the field shows the Generating pill
+  refreshSectionFieldsInDOM(imgModal.sectionId);
+
+  try {
+    var r = await fetch('/api/image-generate-v2', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        sectionType: imgModal.inputs.sectionType,
+        sectionContent: job.briefInputs.sectionContent,
+        slot: imgModal.inputs.slot,
+        source: 'composer',
+      }),
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || ('HTTP ' + r.status));
+
+    // Apply the URL to the field
+    applyGeneratedUrlToField(job.sectionId, job.fieldPath, d.pngUrl, d);
+    job.status = 'done';
+    job.result = d;
+    showImageJobToast('Image ready for ' + summariseFieldPath(job.fieldPath));
+  } catch (e) {
+    job.status = 'error';
+    job.error = e && e.message ? e.message : String(e);
+  } finally {
+    imgModal.submitting = false;
+    // If the modal is still showing this job, re-render to show result/error.
+    if (imgModal.open && imgModal.jobId === jobId) renderImageGenerateModal();
+    // Always refresh the field on the underlying form
+    refreshSectionFieldsInDOM(job.sectionId);
+    // Clean up: drop the job after a short delay so the spinner can settle
+    setTimeout(function() {
+      if (emailState.imageJobs[jobId] && (emailState.imageJobs[jobId].status === 'done' || emailState.imageJobs[jobId].status === 'error')) {
+        delete emailState.imageJobs[jobId];
+        refreshSectionFieldsInDOM(job.sectionId);
+      }
+    }, 1500);
+  }
+};
+
+// Apply a generated image URL to the section's field path. Also stores
+// _briefSpec on the section if it's a generated-image section so the
+// user can regenerate later from the same inputs.
+function applyGeneratedUrlToField(sectionId, fieldPath, url, v2Response) {
+  var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+  if (!section.props) section.props = {};
+  setNestedValue(section.props, fieldPath, url);
+
+  // For generated-image sections, mirror width/height + stash _briefSpec
+  if (section.type === 'generated-image') {
+    if (v2Response && v2Response.width) section.props.width = String(v2Response.width);
+    if (v2Response && v2Response.height) section.props.height = String(v2Response.height);
+    var job = imgModal.jobId ? emailState.imageJobs[imgModal.jobId] : null;
+    if (job && job.briefInputs) {
+      section.props._briefSpec = {
+        sectionType: job.briefInputs.sectionType,
+        sectionContent: job.briefInputs.sectionContent,
+        slot: job.briefInputs.slot,
+      };
+    }
+  }
+  updateSectionSummaryInDOM(sectionId);
+  if (typeof window.__builderPreviewDebounced === 'function') {
+    window.__builderPreviewDebounced();
+  }
+}
+
+// Re-render the properties form for a section without rebuilding the
+// whole email builder DOM. Used when a job completes and the field needs
+// to flip from "Generating..." back to a normal input with the new URL.
+function refreshSectionFieldsInDOM(sectionId) {
+  if (emailState.selectedSectionId !== sectionId) return;
+  var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+  var formEl = document.getElementById('email-builder-prop-form');
+  if (!formEl) {
+    // Fallback: find by querying for the properties panel
+    formEl = document.querySelector('.email-builder-right .email-builder-prop-fields');
+  }
+  if (formEl) {
+    if (typeof renderPropertiesForm === 'function') {
+      // Replace the entire properties panel innerHTML
+      var rightPanel = document.querySelector('.email-builder-right');
+      if (rightPanel) {
+        // Re-render just the form area. The existing UI rebuilds inside
+        // renderPropertiesForm and is dropped into a fresh container.
+        var formMarkup = renderPropertiesForm(section);
+        // Find the inner form container — class email-builder-prop-fields
+        var fieldsContainer = rightPanel.querySelector('.email-builder-prop-fields');
+        if (fieldsContainer) {
+          // We render the whole properties form which includes header + fields.
+          // Replace the parent so the header stays consistent too.
+          var propParent = fieldsContainer.parentNode;
+          if (propParent) {
+            propParent.outerHTML = formMarkup;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Short label for a field path, used in toasts
+function summariseFieldPath(fp) {
+  if (!fp) return 'image';
+  var parts = fp.split('.');
+  if (parts.length === 1) return parts[0];
+  // cards.0.image_url -> 'card 1 image'
+  if (parts[0] === 'cards' && /^\d+$/.test(parts[1])) {
+    return 'card ' + (parseInt(parts[1], 10) + 1);
+  }
+  if (parts[0] === 'left') return 'left column';
+  if (parts[0] === 'right') return 'right column';
+  return parts[0];
+}
+
+// ── modal render ────────────────────────────────────────────────────
+
+function renderImageGenerateModal() {
+  var existing = document.getElementById('tg-img-gen-backdrop');
+  if (existing) existing.remove();
+  if (!imgModal.open) return;
+
+  var bd = document.createElement('div');
+  bd.id = 'tg-img-gen-backdrop';
+  bd.className = 'tg-img-gen-backdrop';
+  bd.setAttribute('role', 'dialog');
+  bd.setAttribute('aria-modal', 'true');
+  bd.setAttribute('aria-labelledby', 'tg-img-gen-title');
+  bd.addEventListener('click', function(e) { if (e.target === bd) window.__imageGenerateClose(); });
+
+  var modal = document.createElement('div');
+  modal.className = 'tg-img-gen-modal';
+  modal.setAttribute('tabindex', '-1');
+
+  var job = imgModal.jobId ? emailState.imageJobs[imgModal.jobId] : null;
+  var inProgress = job && (job.status === 'running' || job.status === 'pending');
+  var resultDone = job && job.status === 'done';
+  var resultError = job && job.status === 'error';
+
+  // Header
+  var header = '';
+  header += '<div class="tg-img-gen-header">';
+  header += '<h3 id="tg-img-gen-title" class="tg-img-gen-title">';
+  if (inProgress) header += 'Generating image\u2026';
+  else if (resultDone) header += 'Image ready';
+  else if (resultError) header += 'Generation failed';
+  else header += 'Generate image';
+  header += '</h3>';
+  header += '<button type="button" class="tg-img-gen-close" aria-label="Close" onclick="window.__imageGenerateClose()">';
+  header += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  header += '</button>';
+  header += '</div>';
+
+  var body = '<div class="tg-img-gen-body">';
+
+  if (inProgress) {
+    // Progress view
+    var elapsed = job ? Math.round((Date.now() - job.startedAt) / 1000) : 0;
+    var stage1Done = elapsed > 15;
+    var stage2Done = elapsed > 90;
+    body += '<p style="font-size:13px;color:var(--tg-text-secondary);margin:0 0 14px">Usually takes 90 to 120 seconds. You can close this and keep editing. The image will drop in when ready.</p>';
+    body += '<div class="tg-img-gen-progress">';
+    body += '<div class="tg-img-gen-step ' + (stage1Done ? 'is-done' : 'is-active') + '"><div class="tg-img-gen-step-icon"></div><span>Writing the brief</span><span class="tg-img-gen-elapsed">' + elapsed + 's</span></div>';
+    body += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-done' : (stage1Done ? 'is-active' : '')) + '"><div class="tg-img-gen-step-icon"></div><span>Rendering the design</span></div>';
+    body += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-active' : '') + '"><div class="tg-img-gen-step-icon"></div><span>Uploading</span></div>';
+    body += '</div>';
+  } else if (resultDone) {
+    body += '<div style="text-align:center"><img src="' + esc(job.result.pngUrl) + '" alt="Generated" style="max-width:100%;max-height:320px;border-radius:8px;border:1px solid var(--tg-border)"></div>';
+    body += '<p style="font-size:12px;color:var(--tg-text-tertiary);text-align:center;margin:8px 0 0">URL applied to ' + esc(summariseFieldPath(job.fieldPath)) + '. Total ' + Math.round((job.result.totalMs || 0) / 1000) + 's.</p>';
+  } else if (resultError) {
+    body += '<div class="tg-img-gen-error"><strong>Could not generate:</strong> ' + esc(job.error || 'Unknown error') + '</div>';
+    body += '<p style="font-size:13px;color:var(--tg-text-secondary);margin:0">Adjust the inputs below and try again, or close this modal and paste a URL manually.</p>';
+    body += renderImageGenerateForm();
+  } else {
+    // Initial form
+    body += renderImageGenerateForm();
+  }
+
+  body += '</div>';
+
+  // Footer
+  var footer = '<div class="tg-img-gen-footer">';
+  if (inProgress) {
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-ghost" onclick="window.__imageGenerateClose()">Close, keep generating</button>';
+  } else if (resultDone) {
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-primary" onclick="window.__imageGenerateClose()">Done</button>';
+  } else if (resultError) {
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-ghost" onclick="window.__imageGenerateClose()">Cancel</button>';
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-primary" onclick="window.__imageGenerateSubmit()">Try again</button>';
+  } else {
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-ghost" onclick="window.__imageGenerateClose()">Cancel</button>';
+    footer += '<button type="button" class="tg-img-gen-btn tg-img-gen-btn-primary" onclick="window.__imageGenerateSubmit()">Generate image</button>';
+  }
+  footer += '</div>';
+
+  modal.innerHTML = header + body + footer;
+  bd.appendChild(modal);
+  document.body.appendChild(bd);
+
+  // Focus the headline input on initial open for keyboard users
+  setTimeout(function() {
+    if (!inProgress && !resultDone && !resultError) {
+      var hl = document.getElementById('tg-img-gen-headline-input');
+      if (hl) hl.focus();
+    } else {
+      modal.focus();
+    }
+  }, 50);
+}
+
+function renderImageGenerateForm() {
+  var h = '';
+  var section = (emailState.builderSections || []).find(function(s) { return s.id === imgModal.sectionId; });
+  var ctxLabel = section ? (sectionMeta(section.type).label || section.type) : 'section';
+  var fpLabel = summariseFieldPath(imgModal.fieldPath);
+
+  h += '<div style="padding:10px 12px;background:var(--tg-bg-secondary);border-radius:6px;font-size:12px;color:var(--tg-text-secondary);margin-bottom:14px">';
+  h += '<strong style="color:var(--tg-text-primary)">Target:</strong> ' + esc(ctxLabel) + ' \u00b7 ' + esc(fpLabel);
+  h += '</div>';
+
+  // Section type + slot row
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
+  h += '<div class="tg-img-gen-field" style="margin:0">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-section-type">Section type</label>';
+  h += '<select id="tg-img-gen-section-type" class="tg-img-gen-select" onchange="window.__imageGenerateUpdateInput(\'sectionType\', this.value)">';
+  V2_SECTION_TYPES.forEach(function(opt) {
+    h += '<option value="' + opt.value + '"' + (imgModal.inputs.sectionType === opt.value ? ' selected' : '') + '>' + esc(opt.label) + '</option>';
+  });
+  h += '</select>';
+  h += '</div>';
+  h += '<div class="tg-img-gen-field" style="margin:0">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-slot">Slot size</label>';
+  h += '<select id="tg-img-gen-slot" class="tg-img-gen-select" onchange="window.__imageGenerateUpdateInput(\'slot\', this.value)">';
+  V2_SLOTS.forEach(function(opt) {
+    h += '<option value="' + opt.value + '"' + (imgModal.inputs.slot === opt.value ? ' selected' : '') + '>' + esc(opt.label) + '</option>';
+  });
+  h += '</select>';
+  h += '</div>';
+  h += '</div>';
+
+  // Headline
+  h += '<div class="tg-img-gen-field">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-headline-input">Headline</label>';
+  h += '<input id="tg-img-gen-headline-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.headline) + '" oninput="window.__imageGenerateUpdateInput(\'headline\', this.value)" placeholder="The main line that should appear in the image">';
+  h += '</div>';
+
+  // Subhead
+  h += '<div class="tg-img-gen-field">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-subhead-input">Subhead (optional)</label>';
+  h += '<input id="tg-img-gen-subhead-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.subhead) + '" oninput="window.__imageGenerateUpdateInput(\'subhead\', this.value)" placeholder="Supporting line">';
+  h += '</div>';
+
+  // Facts (the headline feature)
+  h += '<div class="tg-img-gen-field">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-facts-input">Facts to include (one per line)</label>';
+  h += '<textarea id="tg-img-gen-facts-input" class="tg-img-gen-textarea" rows="4" placeholder="Spark \u00a3159/mo &#10;Boost \u00a3229/mo, most popular&#10;Ignite \u00a3299/mo" oninput="window.__imageGenerateUpdateInput(\'facts\', this.value)">' + esc(imgModal.inputs.facts) + '</textarea>';
+  h += '<p class="tg-img-gen-help">These appear verbatim in the image. Leave blank for design-only visuals (lifestyle, abstract heroes).</p>';
+  h += '</div>';
+
+  // Body text
+  h += '<div class="tg-img-gen-field">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-body-input">Body text (optional)</label>';
+  h += '<textarea id="tg-img-gen-body-input" class="tg-img-gen-textarea" rows="2" placeholder="Context for the design, not text that appears in the image" oninput="window.__imageGenerateUpdateInput(\'bodyText\', this.value)">' + esc(imgModal.inputs.bodyText) + '</textarea>';
+  h += '</div>';
+
+  // CTA
+  h += '<div class="tg-img-gen-field">';
+  h += '<label class="tg-img-gen-label" for="tg-img-gen-cta-input">CTA label (optional)</label>';
+  h += '<input id="tg-img-gen-cta-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.cta) + '" oninput="window.__imageGenerateUpdateInput(\'cta\', this.value)" placeholder="See full pricing">';
+  h += '</div>';
+
+  return h;
+}
+
+// ── job ticker ──────────────────────────────────────────────────────
+// Updates elapsed seconds on every running job once per second so the
+// "Generating 12s" pill on the field and the progress stages in the
+// modal stay current. Stops itself when no jobs are running.
+
+var __imageJobTicker = null;
+function startImageJobTicker() {
+  if (__imageJobTicker) return;
+  __imageJobTicker = setInterval(function() {
+    var anyRunning = false;
+    Object.keys(emailState.imageJobs || {}).forEach(function(jobId) {
+      var j = emailState.imageJobs[jobId];
+      if (j && (j.status === 'running' || j.status === 'pending')) {
+        j.elapsedSec = Math.round((Date.now() - j.startedAt) / 1000);
+        anyRunning = true;
+        // Update the elapsed indicator on the field pill, cheaply
+        updateImageJobFieldPill(j);
+      }
+    });
+    // Update modal progress steps if open
+    if (imgModal.open && imgModal.jobId && emailState.imageJobs[imgModal.jobId]
+        && (emailState.imageJobs[imgModal.jobId].status === 'running' || emailState.imageJobs[imgModal.jobId].status === 'pending')) {
+      renderImageGenerateModal();
+    }
+    if (!anyRunning) {
+      clearInterval(__imageJobTicker);
+      __imageJobTicker = null;
+    }
+  }, 1000);
+}
+
+// Surgical DOM update for a running job's pill — avoids re-rendering the
+// whole properties form on every tick (which would steal focus).
+function updateImageJobFieldPill(job) {
+  // Match by section-id + path on the .email-builder-img-gen-btn-running.
+  // We re-find the button each tick because re-renders may have happened.
+  var btns = document.querySelectorAll('.email-builder-img-gen-btn-running');
+  for (var i = 0; i < btns.length; i++) {
+    var label = btns[i].querySelector('.email-builder-img-gen-label');
+    if (label) label.textContent = 'Generating ' + job.elapsedSec + 's';
+  }
+}
+
+// ── toast ───────────────────────────────────────────────────────────
+
+function showImageJobToast(message) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--tg-primary,#1B2B5B);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:1200;box-shadow:0 10px 25px -5px rgba(0,0,0,0.25);max-width:320px;opacity:0;transform:translateY(10px);transition:opacity 0.2s ease, transform 0.2s ease';
+  t.textContent = message;
+  document.body.appendChild(t);
+  requestAnimationFrame(function() {
+    t.style.opacity = '1';
+    t.style.transform = 'translateY(0)';
+  });
+  setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(10px)';
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 250);
+  }, 3200);
+}
+
+// ── ESC key + focus trap ────────────────────────────────────────────
+
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  if (imgModal.open) {
+    e.preventDefault();
+    window.__imageGenerateClose();
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// END STAGE C
+// ════════════════════════════════════════════════════════════════════
 
 
 })();

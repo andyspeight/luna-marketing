@@ -69,6 +69,7 @@
     "api/image-refine.js": { "maxDuration": 120 },
     "api/pexels-search.js": { "maxDuration": 30 },
     "api/image-lab-generate.js": { "maxDuration": 300 },
-    "api/image-lab-presets.js": { "maxDuration": 30 }
+    "api/image-lab-presets.js": { "maxDuration": 30 },
+    "api/image-lab-flux.js": { "maxDuration": 120 }
   }
 }

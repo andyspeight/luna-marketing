@@ -8580,10 +8580,29 @@ function renderAiDraftBody() {
   if (d.imagesNeeded && d.imagesNeeded.length > 0) {
     h += '<div style="margin-bottom:var(--space-4);padding:var(--space-3);background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:var(--radius-md)">';
     h += '<div style="font-size:var(--text-sm);font-weight:600;color:#4338ca;margin-bottom:6px">Images needed (' + d.imagesNeeded.length + ')</div>';
-    h += '<p style="margin:0 0 8px;font-size:11px;color:var(--tg-text-tertiary)">Image picker arrives in Session 3. For now, these slots are placeholders.</p>';
-    h += '<ul style="margin:0;padding-left:18px;font-size:var(--text-sm);color:var(--tg-text-secondary)">';
-    d.imagesNeeded.forEach(function(img) { h += '<li>Section ' + ((img.sectionIndex || 0) + 1) + ': ' + esc(img.suggestion || img.slot || '') + '</li>'; });
-    h += '</ul></div>';
+    h += '<p style="margin:0 0 10px;font-size:11px;color:var(--tg-text-tertiary)">Luna flagged these slots. Click Generate to create the image, or Edit the section to pick a stock photo.</p>';
+    h += '<div style="display:flex;flex-direction:column;gap:8px">';
+    d.imagesNeeded.forEach(function(img, imgIdx) {
+      var idx = (typeof img.sectionIndex === 'number') ? img.sectionIndex : 0;
+      var section = (d.sections || [])[idx];
+      var sectionLabel = section ? section.type : ('Section ' + (idx + 1));
+      var style = img.style || 'product-mockup';
+      var styleColor = (style === 'lifestyle') ? '#0891B2' : (style === 'abstract') ? '#7C3AED' : '#1B2B5B';
+      h += '<div style="padding:10px;background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:var(--radius-sm);display:flex;gap:10px;align-items:flex-start">';
+      h += '<div style="flex:1;min-width:0">';
+      h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+      h += '<span style="font-family:var(--tg-font-mono);font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">' + esc(sectionLabel) + '</span>';
+      h += '<span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:var(--radius-full);background:' + styleColor + '15;color:' + styleColor + ';text-transform:uppercase;letter-spacing:0.5px">' + esc(style) + '</span>';
+      h += '</div>';
+      h += '<div style="font-size:12px;color:var(--tg-text-secondary);line-height:1.4">' + esc(img.suggestion || '') + '</div>';
+      h += '</div>';
+      h += '<button onclick="window.__aiImagesNeededGenerate(' + idx + ')" class="btn btn-primary" style="flex-shrink:0;font-size:11px;padding:6px 12px;display:flex;align-items:center;gap:4px">';
+      h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>';
+      h += (style === 'lifestyle' ? 'Find stock' : 'Generate');
+      h += '</button>';
+      h += '</div>';
+    });
+    h += '</div></div>';
   }
 
   h += '<div style="margin-bottom:var(--space-4)">';
@@ -9135,6 +9154,51 @@ window.__aiToggleSection = function(idx) {
   var sec = aiCompose.draft.sections[idx];
   sec.__expanded = !sec.__expanded;
   renderAiComposeModal();
+};
+
+// Generate from the "Images needed" callout. Expands the relevant
+// section card so the in-section image slot UI shows progress, then
+// fires the right flow based on style:
+//   product-mockup / abstract → /api/image-generate-v2 (AI render)
+//   lifestyle                  → Pexels stock picker
+window.__aiImagesNeededGenerate = function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  // Make sure the section is expanded so the user sees the spinner/result
+  if (!section.__expanded) {
+    section.__expanded = true;
+    renderAiComposeModal();
+  }
+  // Scroll the expanded card into view
+  setTimeout(function() {
+    var card = document.querySelector('[data-section-idx="' + idx + '"]');
+    if (card && card.scrollIntoView) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 50);
+  // Fire the right flow. The existing __aiImageGenerate already routes
+  // lifestyle to the legacy v1 endpoint or Pexels per style toggle; here
+  // we explicitly send lifestyle straight to the Pexels picker because
+  // that matches the brief's intent for that style.
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  var style = brief ? brief.style : 'product-mockup';
+  setTimeout(function() {
+    if (style === 'lifestyle') {
+      if (typeof window.__aiImageOpenPexels === 'function') {
+        window.__aiImageOpenPexels(idx);
+        // Auto-fire the search with the suggestion as the query if Pexels picker is now open
+        setTimeout(function() {
+          if (typeof window.__aiPexelsSearch === 'function') {
+            window.__aiPexelsSearch(idx);
+          }
+        }, 100);
+      }
+    } else {
+      if (typeof window.__aiImageGenerate === 'function') {
+        window.__aiImageGenerate(idx);
+      }
+    }
+  }, 150);
 };
 
 window.__aiUpdateCta = function(idx, key, value) {

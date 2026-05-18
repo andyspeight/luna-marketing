@@ -8832,6 +8832,23 @@ window.__aiImageGenerate = async function(idx) {
   // Map dimensions string to v2 slot string.
   var v2Slot = mapDimensionsToV2Slot(dimensions);
 
+  // Build sectionContent with only non-empty fields. Same clean-input
+  // principle as the regular modal — empty strings confuse the pipeline.
+  var sectionContent = {};
+  var hl = (section.props.headline || section.props.title || section.props.body_title || '').trim();
+  var sh = (section.props.subhead || section.props.deck || section.props.lede || '').trim();
+  var bt = (section.props.body || section.props.excerpt || section.props.text || '').trim();
+  var ctaText = ((section.props.cta && section.props.cta.text) || section.props.ctaText || '').trim();
+  // The AI's suggestion is art direction, not product context. Put it in
+  // productContext but only if non-empty.
+  var pc = (briefText || '').trim();
+  if (hl) sectionContent.headline = hl;
+  if (sh) sectionContent.subhead = sh;
+  if (bt) sectionContent.bodyText = bt;
+  if (pc) sectionContent.productContext = pc;
+  if (briefFacts && briefFacts.length > 0) sectionContent.facts = briefFacts;
+  if (ctaText) sectionContent.cta = ctaText;
+
   imgState.loading = true;
   imgState.error = null;
   imgState.mode = 'generating';
@@ -8845,14 +8862,7 @@ window.__aiImageGenerate = async function(idx) {
       body: JSON.stringify({
         tenantId: state.profile.id,
         sectionType: v2SectionType,
-        sectionContent: {
-          headline: section.props.headline || section.props.title || section.props.body_title || '',
-          subhead: section.props.subhead || section.props.deck || section.props.lede || '',
-          bodyText: section.props.body || section.props.excerpt || section.props.text || '',
-          productContext: briefText,
-          facts: briefFacts,
-          cta: (section.props.cta && section.props.cta.text) || section.props.ctaText || '',
-        },
+        sectionContent: sectionContent,
         slot: v2Slot,
         source: 'composer'
       })
@@ -9553,6 +9563,21 @@ window.__imageGenerateSubmit = async function() {
     .map(function(s) { return s.trim(); })
     .filter(function(s) { return s.length > 0; });
 
+  // Build sectionContent with ONLY non-empty fields. The v2 pipeline
+  // gives best output when given clean inputs — empty strings in
+  // subhead/bodyText/cta confuse the brief generator into producing
+  // padding text that ends up baked into the image.
+  var sectionContent = {};
+  var hl = (imgModal.inputs.headline || '').trim();
+  var sh = (imgModal.inputs.subhead || '').trim();
+  var bt = (imgModal.inputs.bodyText || '').trim();
+  var cta = (imgModal.inputs.cta || '').trim();
+  if (hl) sectionContent.headline = hl;
+  if (sh) sectionContent.subhead = sh;
+  if (bt) sectionContent.bodyText = bt;
+  if (cta) sectionContent.cta = cta;
+  if (factsArr.length > 0) sectionContent.facts = factsArr;
+
   // Register the job
   var jobId = 'job-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
   var job = {
@@ -9565,13 +9590,7 @@ window.__imageGenerateSubmit = async function() {
     briefInputs: {
       sectionType: imgModal.inputs.sectionType,
       slot: imgModal.inputs.slot,
-      sectionContent: {
-        headline: imgModal.inputs.headline,
-        subhead: imgModal.inputs.subhead,
-        bodyText: imgModal.inputs.bodyText,
-        facts: factsArr,
-        cta: imgModal.inputs.cta,
-      },
+      sectionContent: sectionContent,
     },
     result: null,
     error: null,
@@ -9592,7 +9611,7 @@ window.__imageGenerateSubmit = async function() {
       body: JSON.stringify({
         tenantId: state.profile.id,
         sectionType: imgModal.inputs.sectionType,
-        sectionContent: job.briefInputs.sectionContent,
+        sectionContent: sectionContent,
         slot: imgModal.inputs.slot,
         source: 'composer',
       }),
@@ -9652,39 +9671,13 @@ function applyGeneratedUrlToField(sectionId, fieldPath, url, v2Response) {
   }
 }
 
-// Re-render the properties form for a section without rebuilding the
-// whole email builder DOM. Used when a job completes and the field needs
-// to flip from "Generating..." back to a normal input with the new URL.
+// Re-render the properties form for a section. The original Stage C
+// implementation tried to do surgical DOM updates here, which corrupted
+// the right panel and broke subsequent section selection. The simple
+// drawEmails() redraw is what every other state change does and it
+// works; properties panels don't typically scroll so we lose nothing.
 function refreshSectionFieldsInDOM(sectionId) {
-  if (emailState.selectedSectionId !== sectionId) return;
-  var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
-  if (!section) return;
-  var formEl = document.getElementById('email-builder-prop-form');
-  if (!formEl) {
-    // Fallback: find by querying for the properties panel
-    formEl = document.querySelector('.email-builder-right .email-builder-prop-fields');
-  }
-  if (formEl) {
-    if (typeof renderPropertiesForm === 'function') {
-      // Replace the entire properties panel innerHTML
-      var rightPanel = document.querySelector('.email-builder-right');
-      if (rightPanel) {
-        // Re-render just the form area. The existing UI rebuilds inside
-        // renderPropertiesForm and is dropped into a fresh container.
-        var formMarkup = renderPropertiesForm(section);
-        // Find the inner form container — class email-builder-prop-fields
-        var fieldsContainer = rightPanel.querySelector('.email-builder-prop-fields');
-        if (fieldsContainer) {
-          // We render the whole properties form which includes header + fields.
-          // Replace the parent so the header stays consistent too.
-          var propParent = fieldsContainer.parentNode;
-          if (propParent) {
-            propParent.outerHTML = formMarkup;
-          }
-        }
-      }
-    }
-  }
+  if (typeof drawEmails === 'function') drawEmails();
 }
 
 // Short label for a field path, used in toasts
@@ -9806,6 +9799,35 @@ function renderImageGenerateForm() {
   h += '<strong style="color:var(--tg-text-primary)">Target:</strong> ' + esc(ctxLabel) + ' \u00b7 ' + esc(fpLabel);
   h += '</div>';
 
+  // Brief-quality nudge. Thin briefs produce thin layouts that don't fill
+  // the slot canvas — a wide hero with only a headline becomes a tiny
+  // centred block on lots of white space. Count substantive inputs.
+  var inputCount = 0;
+  var hl = (imgModal.inputs.headline || '').trim();
+  var sh = (imgModal.inputs.subhead || '').trim();
+  var bt = (imgModal.inputs.bodyText || '').trim();
+  var factsArr = (imgModal.inputs.facts || '').split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length > 0;});
+  if (hl.length > 3) inputCount++;
+  if (sh.length > 3) inputCount++;
+  if (bt.length > 10) inputCount++;
+  if (factsArr.length >= 2) inputCount += 2;
+  else if (factsArr.length === 1) inputCount++;
+
+  // Slot-aware nudge: wide slots need richer briefs to fill the canvas
+  var slot = imgModal.inputs.slot;
+  var isWideSlot = (slot === 'hero' || slot === 'hero-tall' || slot === 'feature-story' || slot === 'banner' || slot === 'wide');
+
+  if (inputCount < 2 && isWideSlot) {
+    h += '<div style="padding:10px 12px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);border-radius:6px;font-size:12px;color:#92400E;margin-bottom:14px;line-height:1.5">';
+    h += '<strong>Thin brief, wide slot.</strong> ';
+    h += 'You\u2019ve picked a ' + esc(slot) + ' slot (wide layout) but only filled one field. The generator will produce a small centred block on a mostly-empty canvas. Add 2 or 3 facts, or fill in the subhead and body text, so the design has enough to fill the frame.';
+    h += '</div>';
+  } else if (inputCount === 0) {
+    h += '<div style="padding:10px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.30);border-radius:6px;font-size:12px;color:var(--tg-error,#EF4444);margin-bottom:14px;line-height:1.5">';
+    h += '<strong>Empty brief.</strong> Add at least a headline or one fact before generating.';
+    h += '</div>';
+  }
+
   // Section type + slot row
   h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">';
   h += '<div class="tg-img-gen-field" style="margin:0">';
@@ -9818,7 +9840,7 @@ function renderImageGenerateForm() {
   h += '</div>';
   h += '<div class="tg-img-gen-field" style="margin:0">';
   h += '<label class="tg-img-gen-label" for="tg-img-gen-slot">Slot size</label>';
-  h += '<select id="tg-img-gen-slot" class="tg-img-gen-select" onchange="window.__imageGenerateUpdateInput(\'slot\', this.value)">';
+  h += '<select id="tg-img-gen-slot" class="tg-img-gen-select" onchange="window.__imageGenerateUpdateInput(\'slot\', this.value);window.__imageGenerateRerenderForm()">';
   V2_SLOTS.forEach(function(opt) {
     h += '<option value="' + opt.value + '"' + (imgModal.inputs.slot === opt.value ? ' selected' : '') + '>' + esc(opt.label) + '</option>';
   });
@@ -9829,26 +9851,26 @@ function renderImageGenerateForm() {
   // Headline
   h += '<div class="tg-img-gen-field">';
   h += '<label class="tg-img-gen-label" for="tg-img-gen-headline-input">Headline</label>';
-  h += '<input id="tg-img-gen-headline-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.headline) + '" oninput="window.__imageGenerateUpdateInput(\'headline\', this.value)" placeholder="The main line that should appear in the image">';
+  h += '<input id="tg-img-gen-headline-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.headline) + '" oninput="window.__imageGenerateUpdateInput(\'headline\', this.value);window.__imageGenerateRerenderForm()" placeholder="The main line that should appear in the image">';
   h += '</div>';
 
   // Subhead
   h += '<div class="tg-img-gen-field">';
   h += '<label class="tg-img-gen-label" for="tg-img-gen-subhead-input">Subhead (optional)</label>';
-  h += '<input id="tg-img-gen-subhead-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.subhead) + '" oninput="window.__imageGenerateUpdateInput(\'subhead\', this.value)" placeholder="Supporting line">';
+  h += '<input id="tg-img-gen-subhead-input" type="text" class="tg-img-gen-input" value="' + esc(imgModal.inputs.subhead) + '" oninput="window.__imageGenerateUpdateInput(\'subhead\', this.value);window.__imageGenerateRerenderForm()" placeholder="Supporting line">';
   h += '</div>';
 
   // Facts (the headline feature)
   h += '<div class="tg-img-gen-field">';
   h += '<label class="tg-img-gen-label" for="tg-img-gen-facts-input">Facts to include (one per line)</label>';
-  h += '<textarea id="tg-img-gen-facts-input" class="tg-img-gen-textarea" rows="4" placeholder="Spark \u00a3159/mo &#10;Boost \u00a3229/mo, most popular&#10;Ignite \u00a3299/mo" oninput="window.__imageGenerateUpdateInput(\'facts\', this.value)">' + esc(imgModal.inputs.facts) + '</textarea>';
-  h += '<p class="tg-img-gen-help">These appear verbatim in the image. Leave blank for design-only visuals (lifestyle, abstract heroes).</p>';
+  h += '<textarea id="tg-img-gen-facts-input" class="tg-img-gen-textarea" rows="4" placeholder="Spark \u00a3159/mo &#10;Boost \u00a3229/mo, most popular&#10;Ignite \u00a3299/mo" oninput="window.__imageGenerateUpdateInput(\'facts\', this.value);window.__imageGenerateRerenderForm()">' + esc(imgModal.inputs.facts) + '</textarea>';
+  h += '<p class="tg-img-gen-help">These appear verbatim in the image. For wide slots, aim for 3+ facts so the design has enough to fill the canvas.</p>';
   h += '</div>';
 
   // Body text
   h += '<div class="tg-img-gen-field">';
   h += '<label class="tg-img-gen-label" for="tg-img-gen-body-input">Body text (optional)</label>';
-  h += '<textarea id="tg-img-gen-body-input" class="tg-img-gen-textarea" rows="2" placeholder="Context for the design, not text that appears in the image" oninput="window.__imageGenerateUpdateInput(\'bodyText\', this.value)">' + esc(imgModal.inputs.bodyText) + '</textarea>';
+  h += '<textarea id="tg-img-gen-body-input" class="tg-img-gen-textarea" rows="2" placeholder="Context for the design, not text that appears in the image" oninput="window.__imageGenerateUpdateInput(\'bodyText\', this.value);window.__imageGenerateRerenderForm()">' + esc(imgModal.inputs.bodyText) + '</textarea>';
   h += '</div>';
 
   // CTA
@@ -9858,6 +9880,68 @@ function renderImageGenerateForm() {
   h += '</div>';
 
   return h;
+}
+
+// The nudge banner is reactive — it appears/disappears as the user types.
+// But we can't rerender the whole modal on every keystroke (would steal
+// focus). Instead, debounce a tiny refresh of just the warning area.
+var __imgFormRerenderTimer = null;
+window.__imageGenerateRerenderForm = function() {
+  if (__imgFormRerenderTimer) clearTimeout(__imgFormRerenderTimer);
+  __imgFormRerenderTimer = setTimeout(function() {
+    // Just update the nudge banner area, not the whole form, so inputs
+    // keep focus and don't lose cursor position.
+    updateBriefNudgeBanner();
+  }, 400);
+};
+
+function updateBriefNudgeBanner() {
+  if (!imgModal.open || imgModal.submitting) return;
+  var modal = document.querySelector('.tg-img-gen-modal');
+  if (!modal) return;
+  var body = modal.querySelector('.tg-img-gen-body');
+  if (!body) return;
+
+  // Compute the same input count as the form renderer
+  var inputCount = 0;
+  var hl = (imgModal.inputs.headline || '').trim();
+  var sh = (imgModal.inputs.subhead || '').trim();
+  var bt = (imgModal.inputs.bodyText || '').trim();
+  var factsArr = (imgModal.inputs.facts || '').split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length > 0;});
+  if (hl.length > 3) inputCount++;
+  if (sh.length > 3) inputCount++;
+  if (bt.length > 10) inputCount++;
+  if (factsArr.length >= 2) inputCount += 2;
+  else if (factsArr.length === 1) inputCount++;
+  var slot = imgModal.inputs.slot;
+  var isWideSlot = (slot === 'hero' || slot === 'hero-tall' || slot === 'feature-story' || slot === 'banner' || slot === 'wide');
+
+  // Remove any existing nudge
+  var existing = body.querySelector('[data-stage-c-nudge]');
+  if (existing) existing.remove();
+
+  var newNudge = null;
+  if (inputCount < 2 && isWideSlot) {
+    newNudge = document.createElement('div');
+    newNudge.setAttribute('data-stage-c-nudge', '1');
+    newNudge.style.cssText = 'padding:10px 12px;background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.35);border-radius:6px;font-size:12px;color:#92400E;margin-bottom:14px;line-height:1.5';
+    newNudge.innerHTML = '<strong>Thin brief, wide slot.</strong> You\u2019ve picked a ' + esc(slot) + ' slot (wide layout) but only filled one field. The generator will produce a small centred block on a mostly-empty canvas. Add 2 or 3 facts, or fill in the subhead and body text, so the design has enough to fill the frame.';
+  } else if (inputCount === 0) {
+    newNudge = document.createElement('div');
+    newNudge.setAttribute('data-stage-c-nudge', '1');
+    newNudge.style.cssText = 'padding:10px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.30);border-radius:6px;font-size:12px;color:var(--tg-error,#EF4444);margin-bottom:14px;line-height:1.5';
+    newNudge.innerHTML = '<strong>Empty brief.</strong> Add at least a headline or one fact before generating.';
+  }
+
+  if (newNudge) {
+    // Insert just before the first .tg-img-gen-field or grid row
+    var firstField = body.querySelector('.tg-img-gen-field, [style*="grid-template-columns"]');
+    if (firstField) {
+      body.insertBefore(newNudge, firstField);
+    } else {
+      body.appendChild(newNudge);
+    }
+  }
 }
 
 // ── job ticker ──────────────────────────────────────────────────────
@@ -9907,18 +9991,20 @@ function updateImageJobFieldPill(job) {
 
 function showImageJobToast(message) {
   var t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--tg-primary,#1B2B5B);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:1200;box-shadow:0 10px 25px -5px rgba(0,0,0,0.25);max-width:320px;opacity:0;transform:translateY(10px);transition:opacity 0.2s ease, transform 0.2s ease';
-  t.textContent = message;
+  t.style.cssText = 'position:fixed;top:24px;right:24px;background:var(--tg-success,#10B981);color:#fff;padding:14px 20px 14px 18px;border-radius:10px;font-size:14px;font-weight:600;z-index:1200;box-shadow:0 20px 40px -10px rgba(16,185,129,0.45),0 4px 12px rgba(0,0,0,0.15);max-width:380px;opacity:0;transform:translateY(-16px);transition:opacity 0.25s ease, transform 0.25s ease;display:flex;align-items:center;gap:10px;font-family:var(--tg-font-body,inherit)';
+  t.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>' + esc(message) + '</span>';
   document.body.appendChild(t);
-  requestAnimationFrame(function() {
+  // Force a layout pass then animate. rAF was unreliable when the toast
+  // was created mid-callback chain — setTimeout 10ms is bulletproof.
+  setTimeout(function() {
     t.style.opacity = '1';
     t.style.transform = 'translateY(0)';
-  });
+  }, 10);
   setTimeout(function() {
     t.style.opacity = '0';
-    t.style.transform = 'translateY(10px)';
-    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 250);
-  }, 3200);
+    t.style.transform = 'translateY(-16px)';
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+  }, 4000);
 }
 
 // ── ESC key + focus trap ────────────────────────────────────────────

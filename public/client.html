@@ -8738,15 +8738,32 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
     h += '<div style="margin-bottom:8px;padding:6px 8px;background:var(--tg-bg-primary);border-radius:var(--radius-sm);font-size:11px;color:var(--tg-text-secondary);line-height:1.4"><strong>Brief:</strong> ' + esc(suggestion) + '</div>';
   }
 
-  // Loading state
+  // Loading state — matches the 3-stage tracker from the regular composer
   if (imgState.loading) {
-    h += '<div style="padding:12px;text-align:center;background:var(--tg-bg-primary);border-radius:var(--radius-sm)">';
-    h += '<div style="display:inline-flex;gap:6px;margin-bottom:6px">';
-    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
-    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.16s"></div>';
-    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
-    h += '</div>';
-    h += '<div style="font-size:11px;color:var(--tg-text-secondary)">' + (imgState.mode === 'pexels' ? 'Searching Pexels' : 'Generating image') + '&hellip;</div>';
+    var elapsedSec = imgState.startedAt ? Math.round((Date.now() - imgState.startedAt) / 1000) : 0;
+    var isPexels = imgState.mode === 'pexels' || imgState.mode === 'pexels-loading';
+    h += '<div style="padding:14px;background:var(--tg-bg-primary);border-radius:var(--radius-sm);margin-bottom:8px">';
+    if (isPexels) {
+      // Pexels is fast — just show the dots
+      h += '<div style="display:flex;align-items:center;gap:10px">';
+      h += '<div style="display:inline-flex;gap:6px">';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.16s"></div>';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
+      h += '</div>';
+      h += '<div style="font-size:12px;color:var(--tg-text-secondary)">Searching stock photos&hellip;</div>';
+      h += '</div>';
+    } else {
+      // AI generation — three-stage tracker like the regular composer
+      var stage1Done = elapsedSec > 15;
+      var stage2Done = elapsedSec > 90;
+      h += '<p style="font-size:12px;color:var(--tg-text-secondary);margin:0 0 12px">Usually 90 to 120 seconds. You can close this modal and keep editing — the image will drop in when ready.</p>';
+      h += '<div class="tg-img-gen-progress" style="display:flex;flex-direction:column;gap:8px">';
+      h += '<div class="tg-img-gen-step ' + (stage1Done ? 'is-done' : 'is-active') + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Writing the brief</span><span class="tg-img-gen-elapsed" style="font-size:11px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono)">' + elapsedSec + 's</span></div>';
+      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-done' : (stage1Done ? 'is-active' : '')) + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Rendering the design</span></div>';
+      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-active' : '') + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Uploading</span></div>';
+      h += '</div>';
+    }
     h += '</div>';
   } else if (imgState.error) {
     h += '<div style="padding:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);font-size:11px;color:var(--tg-error);margin-bottom:8px"><strong>Error:</strong> ' + esc(imgState.error) + '</div>';
@@ -8756,14 +8773,26 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
   if (!imgState.mode || imgState.mode === 'menu') {
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
     if (style === 'lifestyle') {
-      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Generate (AI fallback)</button>';
-      h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Search stock photos</button>';
+      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Generate AI again' : 'Generate (AI fallback)') + '</button>';
+      h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Pick a different stock photo' : 'Search stock photos') + '</button>';
     } else {
-      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Generate with AI</button>';
+      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Regenerate' : 'Generate with AI') + '</button>';
       h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Stock photo instead</button>';
     }
     h += '<input type="url" placeholder="Or paste an image URL" oninput="window.__aiImageSetUrl(' + idx + ', \'' + imageKey + '\', this.value)" value="' + esc(currentUrl || '') + '" style="flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;font-family:var(--tg-font-mono);box-sizing:border-box">';
     h += '</div>';
+
+    // Brief override — lets the user simplify the AI-suggested brief
+    // before regenerating. Stage B's brief generator packs everything
+    // it's given, so a busy multi-subject suggestion produces a busy
+    // image. Letting the user shorten the brief is the fastest fix.
+    if (imageBrief && style !== 'lifestyle') {
+      var overrideVal = (typeof imgState.briefOverride === 'string') ? imgState.briefOverride : (imageBrief.suggestion || '');
+      h += '<details style="margin-top:8px"' + (imgState.briefOverrideOpen ? ' open' : '') + ' ontoggle="window.__aiImageToggleBriefOverride(' + idx + ', this.open)">';
+      h += '<summary style="cursor:pointer;font-size:11px;color:var(--tg-text-secondary);user-select:none">Tweak the brief before regenerating</summary>';
+      h += '<textarea oninput="window.__aiImageSetBriefOverride(' + idx + ', this.value)" placeholder="Simplify or sharpen the brief. Single subject works best." style="width:100%;margin-top:6px;padding:8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;font-family:var(--tg-font-body);min-height:64px;box-sizing:border-box;resize:vertical">' + esc(overrideVal) + '</textarea>';
+      h += '</details>';
+    }
   }
 
   // Refinement input (only if we have an SVG to refine)
@@ -8826,6 +8855,52 @@ window.__aiImageSetUrl = function(idx, propKey, url) {
   schedulePreviewRefresh(800);
 };
 
+// Brief override — lets the user simplify or sharpen the AI's image
+// suggestion before regenerating. Stored on the section's __image state
+// so it persists for that section's slot across re-renders.
+window.__aiImageSetBriefOverride = function(idx, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  section.__image.briefOverride = value;
+  // Don't re-render — we're inside an input; let the user keep typing
+};
+
+window.__aiImageToggleBriefOverride = function(idx, isOpen) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  section.__image.briefOverrideOpen = !!isOpen;
+};
+
+// Ticker for AI compose image generation. Re-renders the modal once
+// per second so the elapsed counter and 3-stage tracker stay live. The
+// ticker stops itself once no section is still loading. Idempotent —
+// starts only if not already running.
+var __aiImageTickerHandle = null;
+function scheduleAiImageTickerIfNeeded() {
+  if (__aiImageTickerHandle) return;
+  __aiImageTickerHandle = setInterval(function() {
+    if (!aiCompose.draft || !aiCompose.draft.sections) {
+      clearInterval(__aiImageTickerHandle);
+      __aiImageTickerHandle = null;
+      return;
+    }
+    var anyLoading = aiCompose.draft.sections.some(function(s) {
+      return s.__image && s.__image.loading;
+    });
+    if (!anyLoading) {
+      clearInterval(__aiImageTickerHandle);
+      __aiImageTickerHandle = null;
+      return;
+    }
+    // Only re-render the AI compose modal if it's still open
+    if (aiCompose.open) {
+      renderAiComposeModal();
+    }
+  }, 1000);
+}
+
 window.__aiImageGenerate = async function(idx) {
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
   var section = aiCompose.draft.sections[idx];
@@ -8838,6 +8913,11 @@ window.__aiImageGenerate = async function(idx) {
   var style = brief ? brief.style : 'product-mockup';
   var dimensions = brief ? brief.dimensions : 'hero';
   var briefFacts = (brief && Array.isArray(brief.facts)) ? brief.facts : [];
+
+  // User-tweaked override wins. Set via "Tweak the brief before regenerating".
+  if (typeof imgState.briefOverride === 'string' && imgState.briefOverride.trim().length > 0) {
+    briefText = imgState.briefOverride.trim();
+  }
 
   if (!briefText) {
     // Fall back to constructing a brief from the section's headline/title
@@ -8878,7 +8958,9 @@ window.__aiImageGenerate = async function(idx) {
   imgState.loading = true;
   imgState.error = null;
   imgState.mode = 'generating';
+  imgState.startedAt = Date.now();
   renderAiComposeModal();
+  scheduleAiImageTickerIfNeeded();
 
   try {
     var r = await fetch('/api/image-generate-v2', {
@@ -8929,7 +9011,9 @@ async function __legacyImageGenerate(idx, briefText, style, dimensions) {
   imgState.loading = true;
   imgState.error = null;
   imgState.mode = 'generating';
+  imgState.startedAt = Date.now();
   renderAiComposeModal();
+  scheduleAiImageTickerIfNeeded();
 
   try {
     var r = await fetch('/api/image-generate', {

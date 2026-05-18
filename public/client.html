@@ -8754,14 +8754,17 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
       h += '<div style="font-size:12px;color:var(--tg-text-secondary)">Searching stock photos&hellip;</div>';
       h += '</div>';
     } else {
-      // AI generation — three-stage tracker like the regular composer
+      // AI generation — three-stage tracker like the regular composer.
+      // Unique IDs let the per-second ticker update the elapsed counter
+      // and stage classes WITHOUT re-rendering the whole modal (which
+      // was causing scroll-bouncing and preview flashing).
       var stage1Done = elapsedSec > 15;
       var stage2Done = elapsedSec > 90;
       h += '<p style="font-size:12px;color:var(--tg-text-secondary);margin:0 0 12px">Usually 90 to 120 seconds. You can close this modal and keep editing — the image will drop in when ready.</p>';
-      h += '<div class="tg-img-gen-progress" style="display:flex;flex-direction:column;gap:8px">';
-      h += '<div class="tg-img-gen-step ' + (stage1Done ? 'is-done' : 'is-active') + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Writing the brief</span><span class="tg-img-gen-elapsed" style="font-size:11px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono)">' + elapsedSec + 's</span></div>';
-      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-done' : (stage1Done ? 'is-active' : '')) + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Rendering the design</span></div>';
-      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-active' : '') + '" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Uploading</span></div>';
+      h += '<div class="tg-img-gen-progress" id="ai-img-progress-' + idx + '" style="display:flex;flex-direction:column;gap:8px">';
+      h += '<div class="tg-img-gen-step ' + (stage1Done ? 'is-done' : 'is-active') + '" data-stage="1" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Writing the brief</span><span class="tg-img-gen-elapsed" id="ai-img-elapsed-' + idx + '" style="font-size:11px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono)">' + elapsedSec + 's</span></div>';
+      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-done' : (stage1Done ? 'is-active' : '')) + '" data-stage="2" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Rendering the design</span></div>';
+      h += '<div class="tg-img-gen-step ' + (stage2Done ? 'is-active' : '') + '" data-stage="3" style="display:flex;align-items:center;gap:8px"><div class="tg-img-gen-step-icon"></div><span style="font-size:12px;flex:1">Uploading</span></div>';
       h += '</div>';
     }
     h += '</div>';
@@ -8873,30 +8876,54 @@ window.__aiImageToggleBriefOverride = function(idx, isOpen) {
   section.__image.briefOverrideOpen = !!isOpen;
 };
 
-// Ticker for AI compose image generation. Re-renders the modal once
-// per second so the elapsed counter and 3-stage tracker stay live. The
-// ticker stops itself once no section is still loading. Idempotent —
-// starts only if not already running.
+// Ticker for AI compose image generation. SURGICAL DOM UPDATE ONLY —
+// we do NOT re-render the whole modal here, because that caused scroll
+// bouncing and preview flashing. We update the elapsed counter and the
+// stage classes directly, by ID. Once no section is still loading, the
+// ticker stops itself. Idempotent — starts only if not already running.
 var __aiImageTickerHandle = null;
 function scheduleAiImageTickerIfNeeded() {
   if (__aiImageTickerHandle) return;
   __aiImageTickerHandle = setInterval(function() {
-    if (!aiCompose.draft || !aiCompose.draft.sections) {
+    if (!aiCompose.draft || !aiCompose.draft.sections || !aiCompose.open) {
       clearInterval(__aiImageTickerHandle);
       __aiImageTickerHandle = null;
       return;
     }
-    var anyLoading = aiCompose.draft.sections.some(function(s) {
-      return s.__image && s.__image.loading;
+    var anyLoading = false;
+    aiCompose.draft.sections.forEach(function(section, idx) {
+      if (!section.__image || !section.__image.loading) return;
+      anyLoading = true;
+      var startedAt = section.__image.startedAt;
+      if (!startedAt) return;
+      var elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+
+      // Update the elapsed counter text in place
+      var elapsedEl = document.getElementById('ai-img-elapsed-' + idx);
+      if (elapsedEl) elapsedEl.textContent = elapsedSec + 's';
+
+      // Update stage classes in place
+      var progressEl = document.getElementById('ai-img-progress-' + idx);
+      if (!progressEl) return;
+      var stage1Done = elapsedSec > 15;
+      var stage2Done = elapsedSec > 90;
+      var steps = progressEl.querySelectorAll('[data-stage]');
+      steps.forEach(function(stepEl) {
+        var stage = stepEl.getAttribute('data-stage');
+        stepEl.classList.remove('is-active', 'is-done');
+        if (stage === '1') {
+          stepEl.classList.add(stage1Done ? 'is-done' : 'is-active');
+        } else if (stage === '2') {
+          if (stage2Done) stepEl.classList.add('is-done');
+          else if (stage1Done) stepEl.classList.add('is-active');
+        } else if (stage === '3') {
+          if (stage2Done) stepEl.classList.add('is-active');
+        }
+      });
     });
     if (!anyLoading) {
       clearInterval(__aiImageTickerHandle);
       __aiImageTickerHandle = null;
-      return;
-    }
-    // Only re-render the AI compose modal if it's still open
-    if (aiCompose.open) {
-      renderAiComposeModal();
     }
   }, 1000);
 }

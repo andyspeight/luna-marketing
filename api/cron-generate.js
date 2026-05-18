@@ -512,6 +512,9 @@ async function processClient(record, events) {
 
     if (imageUrl) fields.fldNjzWAIj9eknEWS = imageUrl;
 
+    // Promoted Product (Promotion Engine cooldown tracking) — populated only if the engine returned a promotion
+    if (promotedProductId) fields.fldHBV7kTHHOQ1MfQ = [promotedProductId];
+
     if (isB2B) {
       fields.fldYHX5rR7f0Dgsnu = normaliseChannel(post.targetChannel);
       fields.fldZyrr9DTA6mQvxH = post.pillar || "Education";

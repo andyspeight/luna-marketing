@@ -1191,7 +1191,29 @@ async function generateHtml() {
         maxTokens: 16000
       })
     });
-    var d = await r.json();
+
+    // Parse response defensively. Vercel returns HTML error pages on
+    // timeout/504/etc which would otherwise blow up JSON.parse.
+    var rawText = await r.text();
+    var d = null;
+    try {
+      d = JSON.parse(rawText);
+    } catch (parseErr) {
+      var loadingEl = document.getElementById(loadingId);
+      if (loadingEl) loadingEl.remove();
+      var hint = '';
+      if (r.status === 504 || r.status === 502 || /timeout|gateway/i.test(rawText)) {
+        hint = ' (likely a function timeout — try a simpler brief or increase maxDuration)';
+      } else if (r.status === 413) {
+        hint = ' (payload too large)';
+      } else if (r.status === 401 || r.status === 403) {
+        hint = ' (auth issue — refresh the page and sign in again)';
+      }
+      addError('Server returned non-JSON response (HTTP ' + r.status + ')' + hint + '. First 200 chars: ' + rawText.slice(0, 200), userBrief);
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+      return;
+    }
 
     var loadingEl = document.getElementById(loadingId);
     if (loadingEl) loadingEl.remove();

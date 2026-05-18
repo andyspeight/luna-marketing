@@ -4127,6 +4127,22 @@ function injectDayBControls() {
     subtabsRow.style.alignItems = 'center';
     subtabsRow.appendChild(composeBtn);
   }
+
+  // Add Compose with AI button to the left of the regular Compose button
+  if (!document.querySelector('#emailComposeAiBtn')) {
+    var aiBtn = document.createElement('button');
+    aiBtn.id = 'emailComposeAiBtn';
+    aiBtn.style.cssText = 'margin-left:auto;margin-right:8px;display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:var(--radius-md);background:var(--tg-primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--tg-font-body);transition:background var(--duration-fast)';
+    aiBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></svg> Compose with AI';
+    aiBtn.onclick = function() { window.__emailComposeAiOpen(); };
+    aiBtn.onmouseenter = function() { this.style.background = 'var(--tg-primary-dark, #0A0F1F)'; };
+    aiBtn.onmouseleave = function() { this.style.background = 'var(--tg-primary)'; };
+    // Move existing compose button's auto-margin off since we now have two buttons
+    var existingBtn = document.querySelector('#emailComposeBtn');
+    if (existingBtn) existingBtn.style.marginLeft = '0';
+    // Insert AI button before the regular compose button
+    subtabsRow.insertBefore(aiBtn, document.querySelector('#emailComposeBtn'));
+  }
 }
 
 // ── COMPOSE FORM ──
@@ -7875,6 +7891,526 @@ async function ceDeleteProduct() {
     alert('Could not delete: ' + e.message);
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EMAIL AI COMPOSER — Session 2 build
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Compose-with-AI flow: brief → generating → draft preview with section cards
+// and refinement loop. Saves to Email Queue via existing email-compose API.
+//
+// Built 18 May 2026. Backend at /api/email-compose-ai and /api/email-compose-refine.
+
+var aiCompose = {
+  open: false,
+  state: 'brief',
+  intent: '',
+  archetype: 'marketing-newsletter',
+  audience: 'Client',
+  audienceSegment: '',
+  featureProductIds: [],
+  toneOverrides: '',
+  draft: null,
+  refinementHistory: [],
+  refinementPrompt: '',
+  refining: false,
+  saving: false,
+  generateError: null,
+  productsForPicker: null
+};
+
+window.__emailComposeAiOpen = function() {
+  aiCompose.open = true;
+  aiCompose.state = 'brief';
+  aiCompose.intent = '';
+  aiCompose.archetype = 'marketing-newsletter';
+  aiCompose.audience = 'Client';
+  aiCompose.audienceSegment = '';
+  aiCompose.featureProductIds = [];
+  aiCompose.toneOverrides = '';
+  aiCompose.draft = null;
+  aiCompose.refinementHistory = [];
+  aiCompose.refinementPrompt = '';
+  aiCompose.generateError = null;
+  renderAiComposeModal();
+  if (!aiCompose.productsForPicker) loadProductsForPicker();
+};
+
+window.__emailComposeAiClose = function() {
+  if (aiCompose.state === 'draft' && aiCompose.draft && !confirm('Discard this draft? All AI-generated content will be lost.')) {
+    return;
+  }
+  aiCompose.open = false;
+  var backdrop = document.getElementById('ai-compose-backdrop');
+  if (backdrop) backdrop.remove();
+};
+
+async function loadProductsForPicker() {
+  if (!state.profile || !state.profile.id) return;
+  try {
+    var r = await fetch('/api/content-engine-products?action=list&tenantId=' + encodeURIComponent(state.profile.id), { credentials: 'include' });
+    var d = await r.json();
+    if (d.ok && d.products) {
+      aiCompose.productsForPicker = d.products.filter(function(p) { return p.status === 'Active'; });
+      if (aiCompose.open && aiCompose.state === 'brief') renderAiComposeModal();
+    }
+  } catch (e) {
+    console.warn('Could not load products for picker:', e);
+  }
+}
+
+function renderAiComposeModal() {
+  var existing = document.getElementById('ai-compose-backdrop');
+  if (existing) existing.remove();
+  if (!aiCompose.open) return;
+
+  var html = '<div id="ai-compose-backdrop" style="position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:var(--space-4);overflow-y:auto" onclick="if(event.target===this)window.__emailComposeAiClose()">';
+  html += '<div id="ai-compose-modal" style="background:var(--tg-bg-primary);border-radius:var(--radius-xl);box-shadow:var(--shadow-xl);max-width:920px;width:100%;max-height:92vh;display:flex;flex-direction:column">';
+
+  var headerTitle, headerSubtitle;
+  if (aiCompose.state === 'brief') {
+    headerTitle = 'Compose with AI';
+    headerSubtitle = 'Tell me what this email is for &mdash; I&rsquo;ll draft it in your voice.';
+  } else if (aiCompose.state === 'generating') {
+    headerTitle = 'Drafting your email&hellip;';
+    headerSubtitle = 'Loading brand voice, checking the Product Library, structuring sections.';
+  } else {
+    headerTitle = 'Review your draft';
+    headerSubtitle = 'Refine with a prompt or edit any section directly.';
+  }
+
+  html += '<div style="padding:var(--space-5) var(--space-6);border-bottom:1px solid var(--tg-border);display:flex;align-items:center;justify-content:space-between">';
+  html += '<div>';
+  html += '<h2 style="margin:0;font-size:var(--text-xl);font-weight:700;color:var(--tg-text-primary)">' + headerTitle + '</h2>';
+  html += '<p style="margin:4px 0 0;font-size:var(--text-xs);color:var(--tg-text-tertiary)">' + headerSubtitle + '</p>';
+  html += '</div>';
+  html += '<button onclick="window.__emailComposeAiClose()" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:var(--radius-sm);color:var(--tg-text-tertiary)" aria-label="Close">';
+  html += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  html += '</button>';
+  html += '</div>';
+
+  html += '<div style="flex:1;overflow-y:auto;min-height:0">';
+  if (aiCompose.state === 'brief') html += renderAiBriefBody();
+  else if (aiCompose.state === 'generating') html += renderAiGeneratingBody();
+  else if (aiCompose.state === 'draft') html += renderAiDraftBody();
+  html += '</div>';
+
+  html += '<div style="padding:var(--space-4) var(--space-6);border-top:1px solid var(--tg-border);display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);background:var(--tg-bg-secondary)">';
+  if (aiCompose.state === 'brief') {
+    html += '<div></div>';
+    html += '<div style="display:flex;gap:var(--space-2)">';
+    html += '<button class="btn" onclick="window.__emailComposeAiClose()">Cancel</button>';
+    html += '<button class="btn btn-primary" id="ai-generate-btn" onclick="window.__emailComposeAiGenerate()">Generate draft</button>';
+    html += '</div>';
+  } else if (aiCompose.state === 'draft') {
+    html += '<button class="btn" onclick="window.__emailComposeAiBack()">&larr; Back to brief</button>';
+    html += '<div style="display:flex;gap:var(--space-2)">';
+    html += '<button class="btn" onclick="window.__emailComposeAiRegenerate()">Generate again</button>';
+    html += '<button class="btn btn-primary" id="ai-save-btn" onclick="window.__emailComposeAiSave()">Save as draft</button>';
+    html += '</div>';
+  } else {
+    html += '<div></div><div></div>';
+  }
+  html += '</div>';
+  html += '</div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  if (aiCompose.state === 'brief') {
+    var intent = document.getElementById('ai-intent');
+    if (intent) {
+      intent.addEventListener('input', function(e) { aiCompose.intent = e.target.value; });
+      intent.focus();
+    }
+    var archetype = document.getElementById('ai-archetype');
+    if (archetype) archetype.addEventListener('change', function(e) { aiCompose.archetype = e.target.value; });
+    var audience = document.getElementById('ai-audience');
+    if (audience) audience.addEventListener('change', function(e) { aiCompose.audience = e.target.value; });
+    var segment = document.getElementById('ai-segment');
+    if (segment) segment.addEventListener('input', function(e) { aiCompose.audienceSegment = e.target.value; });
+    var tone = document.getElementById('ai-tone');
+    if (tone) tone.addEventListener('input', function(e) { aiCompose.toneOverrides = e.target.value; });
+  } else if (aiCompose.state === 'draft') {
+    var refineInput = document.getElementById('ai-refine-input');
+    if (refineInput) {
+      refineInput.addEventListener('input', function(e) { aiCompose.refinementPrompt = e.target.value; });
+      refineInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          window.__emailComposeAiRefine();
+        }
+      });
+    }
+  }
+}
+
+function renderAiBriefBody() {
+  var h = '<div style="padding:var(--space-6)">';
+  h += '<div style="margin-bottom:var(--space-5)">';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">What is this email for? *</label>';
+  h += '<textarea id="ai-intent" rows="3" maxlength="2000" placeholder="e.g. Promote Luna Chat to Boost-tier clients. Lead with the demo CTA, mention the May spotlight." style="width:100%;padding:12px 14px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-base);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box;resize:vertical;line-height:1.5">' + esc(aiCompose.intent) + '</textarea>';
+  h += '<p style="margin:6px 0 0;font-size:11px;color:var(--tg-text-tertiary)">The more specific, the better. Mention the audience, the offer, the moment.</p>';
+  h += '</div>';
+
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-5)">';
+  h += '<div>';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Style</label>';
+  h += '<select id="ai-archetype" style="width:100%;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-base);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box">';
+  h += '<option value="marketing-newsletter"' + (aiCompose.archetype === 'marketing-newsletter' ? ' selected' : '') + '>Marketing Newsletter</option>';
+  h += '<option value="b2b-weekly"' + (aiCompose.archetype === 'b2b-weekly' ? ' selected' : '') + '>B2B Weekly</option>';
+  h += '<option value="product-launch"' + (aiCompose.archetype === 'product-launch' ? ' selected' : '') + '>Product Launch</option>';
+  h += '<option value="transactional"' + (aiCompose.archetype === 'transactional' ? ' selected' : '') + '>Transactional</option>';
+  h += '</select>';
+  h += '</div>';
+  h += '<div>';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Audience</label>';
+  h += '<select id="ai-audience" style="width:100%;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-base);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box">';
+  h += '<option value="Client"' + (aiCompose.audience === 'Client' ? ' selected' : '') + '>Existing clients</option>';
+  h += '<option value="Nurture"' + (aiCompose.audience === 'Nurture' ? ' selected' : '') + '>Nurture (warm leads)</option>';
+  h += '<option value="Cold"' + (aiCompose.audience === 'Cold' ? ' selected' : '') + '>Cold prospects</option>';
+  h += '<option value="Drip"' + (aiCompose.audience === 'Drip' ? ' selected' : '') + '>Drip sequence</option>';
+  h += '</select>';
+  h += '</div>';
+  h += '</div>';
+
+  h += '<div style="margin-bottom:var(--space-5)">';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Audience segment label (optional)</label>';
+  h += '<input id="ai-segment" type="text" maxlength="100" value="' + esc(aiCompose.audienceSegment) + '" placeholder="e.g. Boost-tier clients, Ignite trial sign-ups" style="width:100%;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-base);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box">';
+  h += '</div>';
+
+  h += '<div style="margin-bottom:var(--space-5)">';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Featured products (optional)</label>';
+  h += '<p style="margin:0 0 8px;font-size:11px;color:var(--tg-text-tertiary)">Pick specific products to feature. Leave empty and I&rsquo;ll choose based on the intent.</p>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  if (aiCompose.productsForPicker && aiCompose.productsForPicker.length > 0) {
+    aiCompose.productsForPicker.forEach(function(p) {
+      var picked = aiCompose.featureProductIds.indexOf(p.id) !== -1;
+      h += '<button type="button" onclick="window.__aiToggleProduct(\'' + p.id + '\')" style="padding:6px 12px;border-radius:var(--radius-full);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);transition:all var(--duration-fast);' + (picked ? 'background:var(--tg-primary);color:var(--tg-text-inverse);border:1px solid var(--tg-primary)' : 'background:var(--tg-bg-primary);color:var(--tg-text-secondary);border:1px solid var(--tg-border)') + '">' + esc(p.name) + '</button>';
+    });
+  } else {
+    h += '<div style="color:var(--tg-text-tertiary);font-size:12px;padding:6px 0">Loading products&hellip;</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+
+  h += '<details style="margin-bottom:var(--space-3)">';
+  h += '<summary style="cursor:pointer;font-size:var(--text-sm);font-weight:600;color:var(--tg-text-secondary);padding:6px 0">More options</summary>';
+  h += '<div style="margin-top:var(--space-3)">';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Tone overrides</label>';
+  h += '<textarea id="ai-tone" rows="2" maxlength="500" placeholder="e.g. More urgent than usual. Or: gentler, this is an apology email." style="width:100%;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-sm);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box;resize:vertical">' + esc(aiCompose.toneOverrides) + '</textarea>';
+  h += '</div>';
+  h += '</details>';
+
+  if (aiCompose.generateError) {
+    h += '<div style="margin-top:var(--space-3);padding:var(--space-3);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);color:var(--tg-error);font-size:var(--text-sm)">';
+    h += '<strong>Generation failed:</strong> ' + esc(aiCompose.generateError);
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+window.__aiToggleProduct = function(id) {
+  var idx = aiCompose.featureProductIds.indexOf(id);
+  if (idx === -1) aiCompose.featureProductIds.push(id);
+  else aiCompose.featureProductIds.splice(idx, 1);
+  renderAiComposeModal();
+};
+
+function renderAiGeneratingBody() {
+  var h = '<div style="padding:var(--space-10);text-align:center">';
+  h += '<div style="display:inline-flex;gap:8px;margin-bottom:var(--space-5)">';
+  h += '<div style="width:10px;height:10px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
+  h += '<div style="width:10px;height:10px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.16s"></div>';
+  h += '<div style="width:10px;height:10px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
+  h += '</div>';
+  h += '<style>@keyframes ai-pulse{0%,80%,100%{transform:scale(0.7);opacity:0.5}40%{transform:scale(1);opacity:1}}</style>';
+  h += '<div id="ai-generating-step" style="font-size:var(--text-base);color:var(--tg-text-secondary);font-weight:500;margin-bottom:var(--space-3)">Loading brand voice&hellip;</div>';
+  h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);max-width:400px;margin:0 auto;line-height:1.5">This usually takes 10-20 seconds. Reading the Product Library, checking recent sends, drafting subject lines, structuring sections.</div>';
+  h += '</div>';
+  setTimeout(function() { updateGenerationStep('Checking the Product Library&hellip;'); }, 2500);
+  setTimeout(function() { updateGenerationStep('Drafting the subject line&hellip;'); }, 6000);
+  setTimeout(function() { updateGenerationStep('Structuring the sections&hellip;'); }, 10000);
+  setTimeout(function() { updateGenerationStep('Almost there&hellip;'); }, 16000);
+  return h;
+}
+
+function updateGenerationStep(text) {
+  var el = document.getElementById('ai-generating-step');
+  if (el && aiCompose.state === 'generating') el.innerHTML = text;
+}
+
+function renderAiDraftBody() {
+  if (!aiCompose.draft) {
+    return '<div style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">No draft</div>';
+  }
+  var d = aiCompose.draft;
+  var h = '<div style="padding:var(--space-6)">';
+
+  h += '<div style="margin-bottom:var(--space-4);padding:var(--space-4);background:var(--tg-bg-secondary);border-radius:var(--radius-md);border:1px solid var(--tg-border)">';
+  h += '<div style="font-size:11px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Subject</div>';
+  h += '<div style="font-size:var(--text-base);font-weight:600;color:var(--tg-text-primary);margin-bottom:var(--space-3)" id="ai-subject-text">' + esc(d.subject || '(no subject)') + '</div>';
+  h += '<div style="font-size:11px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Preview text</div>';
+  h += '<div style="font-size:var(--text-sm);color:var(--tg-text-secondary)" id="ai-preview-text">' + esc(d.previewText || '(no preview)') + '</div>';
+  h += '</div>';
+
+  if (d.reasoning) {
+    h += '<div style="margin-bottom:var(--space-4);padding:var(--space-3);background:rgba(0,180,216,0.06);border-left:3px solid var(--tg-accent);border-radius:var(--radius-sm)">';
+    h += '<div style="font-size:11px;font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Why this structure</div>';
+    h += '<div style="font-size:var(--text-sm);color:var(--tg-text-secondary);line-height:1.5">' + esc(d.reasoning) + '</div>';
+    h += '</div>';
+  }
+
+  if (d.validationErrors && d.validationErrors.length > 0) {
+    h += '<div style="margin-bottom:var(--space-4);padding:var(--space-3);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md)">';
+    h += '<div style="font-size:var(--text-sm);font-weight:600;color:var(--tg-error);margin-bottom:6px">' + d.validationErrors.length + ' error' + (d.validationErrors.length === 1 ? '' : 's') + ' &mdash; must fix before saving</div>';
+    h += '<ul style="margin:0;padding-left:18px;font-size:var(--text-sm);color:var(--tg-error)">';
+    d.validationErrors.forEach(function(err) { h += '<li>' + esc(err) + '</li>'; });
+    h += '</ul></div>';
+  }
+
+  if (d.warnings && d.warnings.length > 0) {
+    h += '<div style="margin-bottom:var(--space-4);padding:var(--space-3);background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md)">';
+    h += '<div style="font-size:var(--text-sm);font-weight:600;color:#92400e;margin-bottom:6px">' + d.warnings.length + ' warning' + (d.warnings.length === 1 ? '' : 's') + ' &mdash; review before sending</div>';
+    h += '<ul style="margin:0;padding-left:18px;font-size:var(--text-sm);color:#92400e">';
+    d.warnings.forEach(function(w) { h += '<li>' + esc(w) + '</li>'; });
+    h += '</ul></div>';
+  }
+
+  if (d.imagesNeeded && d.imagesNeeded.length > 0) {
+    h += '<div style="margin-bottom:var(--space-4);padding:var(--space-3);background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:var(--radius-md)">';
+    h += '<div style="font-size:var(--text-sm);font-weight:600;color:#4338ca;margin-bottom:6px">Images needed (' + d.imagesNeeded.length + ')</div>';
+    h += '<p style="margin:0 0 8px;font-size:11px;color:var(--tg-text-tertiary)">Image picker arrives in Session 3. For now, these slots are placeholders.</p>';
+    h += '<ul style="margin:0;padding-left:18px;font-size:var(--text-sm);color:var(--tg-text-secondary)">';
+    d.imagesNeeded.forEach(function(img) { h += '<li>Section ' + ((img.sectionIndex || 0) + 1) + ': ' + esc(img.suggestion || img.slot || '') + '</li>'; });
+    h += '</ul></div>';
+  }
+
+  h += '<div style="margin-bottom:var(--space-4)">';
+  h += '<div style="font-size:11px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Sections (' + (d.sections || []).length + ')</div>';
+  (d.sections || []).forEach(function(section, idx) {
+    h += renderAiSectionCard(section, idx);
+  });
+  h += '</div>';
+
+  h += '<div style="margin-top:var(--space-5);padding-top:var(--space-4);border-top:1px solid var(--tg-border)">';
+  h += '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Refine with a prompt</label>';
+  h += '<div style="display:flex;gap:var(--space-2)">';
+  h += '<input id="ai-refine-input" type="text" maxlength="1000" placeholder="e.g. Make it shorter / Lead with the demo CTA / More urgent" value="' + esc(aiCompose.refinementPrompt) + '" style="flex:1;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-sm);font-family:var(--tg-font-body);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box"' + (aiCompose.refining ? ' disabled' : '') + '>';
+  h += '<button class="btn btn-primary" onclick="window.__emailComposeAiRefine()"' + (aiCompose.refining ? ' disabled' : '') + '>' + (aiCompose.refining ? 'Refining&hellip;' : 'Refine') + '</button>';
+  h += '</div>';
+  if (aiCompose.refinementHistory.length > 0) {
+    h += '<p style="margin:6px 0 0;font-size:11px;color:var(--tg-text-tertiary)">' + aiCompose.refinementHistory.length + ' refinement' + (aiCompose.refinementHistory.length === 1 ? '' : 's') + ' so far. Max 10 per draft.</p>';
+  }
+  h += '</div>';
+
+  h += '</div>';
+  return h;
+}
+
+function renderAiSectionCard(section, idx) {
+  if (!section || !section.type) return '';
+  var props = section.props || {};
+  var h = '<div class="ai-section-card" data-section-idx="' + idx + '" style="margin-bottom:8px;padding:var(--space-3);border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary);transition:all var(--duration-fast)">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px">';
+  h += '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">';
+  h += '<span style="background:var(--tg-bg-tertiary);color:var(--tg-text-secondary);padding:2px 8px;border-radius:var(--radius-full);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;font-family:var(--tg-font-mono);flex-shrink:0">' + esc(section.type) + '</span>';
+  var labelText = props.title || props.headline || props.body_title || props.quote || props.text || '';
+  if (labelText) {
+    h += '<span style="font-size:var(--text-sm);color:var(--tg-text-primary);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(String(labelText).slice(0, 60)) + (String(labelText).length > 60 ? '&hellip;' : '') + '</span>';
+  }
+  h += '</div>';
+  h += '<button onclick="window.__aiToggleSection(' + idx + ')" style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:4px 8px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer">' + (section.__expanded ? 'Collapse' : 'Edit') + '</button>';
+  h += '</div>';
+  if (section.__expanded) {
+    h += '<div style="padding-top:8px;border-top:1px solid var(--tg-border-light);margin-top:8px">';
+    h += renderAiSectionEditFields(section, idx);
+    h += '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+function renderAiSectionEditFields(section, idx) {
+  var props = section.props || {};
+  var h = '';
+  var textFields = ['eyebrow', 'kicker', 'headline', 'title', 'deck', 'lede', 'body_title', 'excerpt', 'text', 'quote'];
+  textFields.forEach(function(key) {
+    if (props[key] !== undefined && typeof props[key] === 'string') {
+      h += '<div style="margin-bottom:8px">';
+      h += '<label style="display:block;font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">' + key + '</label>';
+      var inputType = (key === 'excerpt' || key === 'deck' || key === 'lede' || key === 'text' || key === 'quote') ? 'textarea' : 'text';
+      if (inputType === 'textarea') {
+        h += '<textarea oninput="window.__aiUpdateProp(' + idx + ', \'' + key + '\', this.value)" rows="2" style="width:100%;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:var(--text-sm);font-family:var(--tg-font-body);box-sizing:border-box;resize:vertical">' + esc(props[key]) + '</textarea>';
+      } else {
+        h += '<input type="text" value="' + esc(props[key]) + '" oninput="window.__aiUpdateProp(' + idx + ', \'' + key + '\', this.value)" style="width:100%;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:var(--text-sm);font-family:var(--tg-font-body);box-sizing:border-box">';
+      }
+      h += '</div>';
+    }
+  });
+  if (props.cta && typeof props.cta === 'object') {
+    h += '<div style="margin-bottom:8px;padding:8px;background:var(--tg-bg-secondary);border-radius:var(--radius-sm)">';
+    h += '<div style="font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">CTA</div>';
+    h += '<input type="text" placeholder="Button text" value="' + esc(props.cta.text || '') + '" oninput="window.__aiUpdateCta(' + idx + ', \'text\', this.value)" style="width:100%;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:var(--text-sm);box-sizing:border-box;margin-bottom:4px">';
+    h += '<input type="url" placeholder="URL" value="' + esc(props.cta.url || '') + '" oninput="window.__aiUpdateCta(' + idx + ', \'url\', this.value)" style="width:100%;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:var(--text-sm);font-family:var(--tg-font-mono);box-sizing:border-box">';
+    h += '</div>';
+  }
+  return h;
+}
+
+window.__aiToggleSection = function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var sec = aiCompose.draft.sections[idx];
+  sec.__expanded = !sec.__expanded;
+  renderAiComposeModal();
+};
+
+window.__aiUpdateProp = function(idx, prop, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
+  aiCompose.draft.sections[idx].props[prop] = value;
+};
+
+window.__aiUpdateCta = function(idx, key, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
+  if (!aiCompose.draft.sections[idx].props.cta) aiCompose.draft.sections[idx].props.cta = {};
+  aiCompose.draft.sections[idx].props.cta[key] = value;
+};
+
+window.__emailComposeAiGenerate = async function() {
+  if (!aiCompose.intent || aiCompose.intent.trim().length === 0) {
+    aiCompose.generateError = 'Please describe what this email is for';
+    renderAiComposeModal();
+    return;
+  }
+  aiCompose.state = 'generating';
+  aiCompose.generateError = null;
+  renderAiComposeModal();
+
+  try {
+    var r = await fetch('/api/email-compose-ai', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        intent: aiCompose.intent,
+        archetype: aiCompose.archetype,
+        audience: aiCompose.audience,
+        audienceSegment: aiCompose.audienceSegment || undefined,
+        featureProductIds: aiCompose.featureProductIds.length > 0 ? aiCompose.featureProductIds : undefined,
+        toneOverrides: aiCompose.toneOverrides || undefined
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Generation failed');
+    aiCompose.draft = d.draft;
+    aiCompose.refinementHistory = [];
+    aiCompose.state = 'draft';
+    renderAiComposeModal();
+  } catch (e) {
+    aiCompose.state = 'brief';
+    aiCompose.generateError = e.message;
+    renderAiComposeModal();
+  }
+};
+
+window.__emailComposeAiBack = function() {
+  if (aiCompose.draft && !confirm('Go back to the brief? Your current draft will be lost.')) return;
+  aiCompose.state = 'brief';
+  aiCompose.draft = null;
+  aiCompose.refinementHistory = [];
+  renderAiComposeModal();
+};
+
+window.__emailComposeAiRegenerate = async function() {
+  if (!confirm('Generate a new draft from scratch? The current draft will be replaced.')) return;
+  await window.__emailComposeAiGenerate();
+};
+
+window.__emailComposeAiRefine = async function() {
+  if (!aiCompose.refinementPrompt || aiCompose.refinementPrompt.trim().length === 0) return;
+  if (aiCompose.refinementHistory.length >= 10) {
+    alert('You have reached 10 refinements. Start a new draft for a clearer brief.');
+    return;
+  }
+  aiCompose.refining = true;
+  renderAiComposeModal();
+  try {
+    var r = await fetch('/api/email-compose-refine', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        currentDraft: aiCompose.draft,
+        refinementPrompt: aiCompose.refinementPrompt,
+        refinementHistory: aiCompose.refinementHistory
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Refinement failed');
+    aiCompose.refinementHistory.push({
+      prompt: aiCompose.refinementPrompt,
+      result: aiCompose.draft
+    });
+    aiCompose.draft = d.draft;
+    aiCompose.refinementPrompt = '';
+    aiCompose.refining = false;
+    renderAiComposeModal();
+  } catch (e) {
+    aiCompose.refining = false;
+    alert('Refinement failed: ' + e.message);
+    renderAiComposeModal();
+  }
+};
+
+window.__emailComposeAiSave = async function() {
+  if (!aiCompose.draft) return;
+  if (aiCompose.draft.validationErrors && aiCompose.draft.validationErrors.length > 0) {
+    alert('Please fix the validation errors before saving.');
+    return;
+  }
+  aiCompose.saving = true;
+  var btn = document.getElementById('ai-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  try {
+    var cleanSections = (aiCompose.draft.sections || []).map(function(s) {
+      var copy = { type: s.type, props: {} };
+      Object.keys(s.props || {}).forEach(function(k) {
+        if (k.indexOf('__') !== 0) copy.props[k] = s.props[k];
+      });
+      return copy;
+    });
+    var r = await fetch('/api/email-compose', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        subject: aiCompose.draft.subject,
+        previewText: aiCompose.draft.previewText,
+        sectionsJson: JSON.stringify(cleanSections),
+        audience: aiCompose.audience,
+        status: 'Draft',
+        source: 'ai-composer'
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || 'Save failed');
+    aiCompose.open = false;
+    var backdrop = document.getElementById('ai-compose-backdrop');
+    if (backdrop) backdrop.remove();
+    if (typeof loadEmails === 'function') loadEmails();
+  } catch (e) {
+    aiCompose.saving = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Save as draft'; }
+    alert('Could not save: ' + e.message);
+  }
+};
 
 
 })();

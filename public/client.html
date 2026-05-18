@@ -8327,8 +8327,18 @@ async function loadProductsForPicker() {
 }
 
 function renderAiComposeModal() {
+  // Preserve scroll position across rebuilds. The modal scroll container
+  // is the flex:1 overflow-y:auto div; when we destroy and recreate the
+  // backdrop, scroll resets to 0 unless we restore it. This was the cause
+  // of "Generate button does nothing" — every click triggered re-renders
+  // that yanked the user back to the top of the modal.
+  var savedScroll = 0;
   var existing = document.getElementById('ai-compose-backdrop');
-  if (existing) existing.remove();
+  if (existing) {
+    var oldScrollEl = existing.querySelector('[data-ai-modal-scroll]');
+    if (oldScrollEl) savedScroll = oldScrollEl.scrollTop;
+    existing.remove();
+  }
   if (!aiCompose.open) return;
 
   var html = '<div id="ai-compose-backdrop" style="position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:var(--space-4);overflow-y:auto" onclick="if(event.target===this)window.__emailComposeAiClose()">';
@@ -8356,7 +8366,7 @@ function renderAiComposeModal() {
   html += '</button>';
   html += '</div>';
 
-  html += '<div style="flex:1;overflow-y:auto;min-height:0">';
+  html += '<div data-ai-modal-scroll style="flex:1;overflow-y:auto;min-height:0">';
   if (aiCompose.state === 'brief') html += renderAiBriefBody();
   else if (aiCompose.state === 'generating') html += renderAiGeneratingBody();
   else if (aiCompose.state === 'draft') html += renderAiDraftBody();
@@ -8383,6 +8393,15 @@ function renderAiComposeModal() {
 
   document.body.insertAdjacentHTML('beforeend', html);
 
+  // Restore scroll position after rebuild — prevents the modal from
+  // jumping to the top on every re-render, which made Generate appear
+  // unresponsive (button click triggered re-render → scroll to top →
+  // user thought nothing happened).
+  if (savedScroll > 0) {
+    var newScrollEl = document.querySelector('#ai-compose-backdrop [data-ai-modal-scroll]');
+    if (newScrollEl) newScrollEl.scrollTop = savedScroll;
+  }
+
   if (aiCompose.state === 'brief') {
     var intent = document.getElementById('ai-intent');
     if (intent) {
@@ -8408,10 +8427,13 @@ function renderAiComposeModal() {
         }
       });
     }
-    // Populate the preview iframe if HTML is ready
+    // Populate the preview iframe if HTML is ready.
+    // Only set srcdoc if it actually changed — setting it every render
+    // makes the preview flash on every redraw.
     var iframe = document.getElementById('ai-preview-iframe');
-    if (iframe && aiCompose.previewHtml) {
+    if (iframe && aiCompose.previewHtml && iframe.getAttribute('data-current-html-hash') !== String(aiCompose.previewHtml.length)) {
       iframe.srcdoc = aiCompose.previewHtml;
+      iframe.setAttribute('data-current-html-hash', String(aiCompose.previewHtml.length));
     }
   }
 }
@@ -9275,41 +9297,34 @@ window.__aiToggleSection = function(idx) {
 window.__aiImagesNeededGenerate = function(idx) {
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
   var section = aiCompose.draft.sections[idx];
-  // Make sure the section is expanded so the user sees the spinner/result
+  // Make sure the section is expanded so the user sees the spinner/result.
+  // Scroll position is preserved by the modal renderer, so we don't need
+  // to do a separate scrollIntoView — the user clicked from somewhere in
+  // the modal, so they're already in roughly the right place.
   if (!section.__expanded) {
     section.__expanded = true;
     renderAiComposeModal();
   }
-  // Scroll the expanded card into view
-  setTimeout(function() {
-    var card = document.querySelector('[data-section-idx="' + idx + '"]');
-    if (card && card.scrollIntoView) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 50);
   // Fire the right flow. The existing __aiImageGenerate already routes
   // lifestyle to the legacy v1 endpoint or Pexels per style toggle; here
   // we explicitly send lifestyle straight to the Pexels picker because
   // that matches the brief's intent for that style.
   var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
   var style = brief ? brief.style : 'product-mockup';
-  setTimeout(function() {
-    if (style === 'lifestyle') {
-      if (typeof window.__aiImageOpenPexels === 'function') {
-        window.__aiImageOpenPexels(idx);
-        // Auto-fire the search with the suggestion as the query if Pexels picker is now open
-        setTimeout(function() {
-          if (typeof window.__aiPexelsSearch === 'function') {
-            window.__aiPexelsSearch(idx);
-          }
-        }, 100);
-      }
-    } else {
-      if (typeof window.__aiImageGenerate === 'function') {
-        window.__aiImageGenerate(idx);
-      }
+  if (style === 'lifestyle') {
+    if (typeof window.__aiImageOpenPexels === 'function') {
+      window.__aiImageOpenPexels(idx);
+      setTimeout(function() {
+        if (typeof window.__aiPexelsSearch === 'function') {
+          window.__aiPexelsSearch(idx);
+        }
+      }, 100);
     }
-  }, 150);
+  } else {
+    if (typeof window.__aiImageGenerate === 'function') {
+      window.__aiImageGenerate(idx);
+    }
+  }
 };
 
 window.__aiUpdateCta = function(idx, key, value) {

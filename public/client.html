@@ -1006,9 +1006,12 @@ select.email-builder-input { cursor: pointer; }
 }
 
 /* Section list */
+/* Section list — always visible, scrolls internally if many sections */
 .email-builder-section-list {
-  flex: 1; overflow-y: auto;
+  flex: 1 1 auto;
+  overflow-y: auto;
   padding: 8px;
+  min-height: 120px;
 }
 .email-builder-empty {
   padding: 24px 16px;
@@ -1067,11 +1070,15 @@ select.email-builder-input { cursor: pointer; }
 .email-builder-section-row:hover .email-builder-section-delete { opacity: 1; }
 .email-builder-section-delete:hover { background: rgba(239,68,68,0.1); color: var(--tg-error); }
 
-/* Add section panel */
+/* Add section panel — capped at 45% of the left column so the
+   section list above it always remains visible. Scrolls internally
+   when there are many section types (48+). */
 .email-builder-add-section {
   border-top: 1px solid var(--tg-border);
   padding: 8px 12px 12px;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  max-height: 45%;
+  overflow-y: auto;
   background: var(--tg-bg-secondary);
 }
 .email-builder-add-section .email-builder-panel-header {

@@ -432,6 +432,28 @@ Your output should look like it came from a senior design studio. Not wireframes
 
 Reference quality: Linear product launch graphics, Stripe documentation illustrations, Vercel changelog imagery, Apple keynote graphics, magazine editorial design.
 
+TYPOGRAPHY IS GUARANTEED TO RENDER
+
+The rendering pipeline converts all SVG text to vector paths before rasterising. This means:
+- Typography is rendered with pixel-perfect fidelity, every time
+- Use as much beautiful typography as the design calls for, you don't have to be conservative
+- All weights and sizes work
+- You CAN and SHOULD lean heavily on typography hierarchy
+
+FONT STACKS (use exactly these strings)
+
+For sans-serif (body, UI, captions, labels):
+  font-family="Inter, sans-serif"
+  Weights available: 400 (Regular), 500 (Medium), 600 (SemiBold), 700 (Bold)
+
+For serif (display headlines, place names, premium feel):
+  font-family="Source Serif, serif"
+  One weight: 400 (use font-weight="400" or omit)
+
+For monospace (sources, metadata, technical IDs, timestamps):
+  font-family="JetBrains Mono, monospace"
+  One weight: 400 (use font-weight="400" or omit)
+
 WHAT MAKES A GREAT SVG (do all of these)
 
 1. Real, specific content
@@ -442,11 +464,12 @@ WHAT MAKES A GREAT SVG (do all of these)
    - Specific dates, times, prices, percentages
 
 2. Typography hierarchy with multiple weights and styles
-   - Serif font for major headlines (use Georgia or 'Source Serif Pro' as fallback)
-   - Sans-serif (Inter) for body text and UI
-   - Monospace (SF Mono, ui-monospace) for technical details, sources, IDs
+   - Serif for major headlines (Source Serif, font-weight 400, large size 40-72px)
+   - Sans-serif for body text and UI (Inter, weights 400/500/600/700)
+   - Monospace for technical details, sources, IDs (JetBrains Mono, font-weight 400)
    - Multiple sizes: large display, medium headline, body, eyebrow caption
-   - Use font-weight 700 for emphasis, 600 for headlines, 400 for body
+   - Use font-weight 700 for emphasis, 600 for headlines, 500 for medium emphasis, 400 for body
+   - Eyebrow labels in uppercase, small size (10-12px), letter-spaced
 
 3. Real data visualisations when appropriate
    - Bar charts with actual values and axis labels
@@ -494,21 +517,21 @@ TECHNICAL RULES
 2. Use width and height attributes matching the brief's canvas size.
 3. Use viewBox matching the canvas size.
 4. NO <script> tags. NO <foreignObject>. NO external URLs in href.
-5. Text uses font-family with specific stack: "Inter, -apple-system, system-ui, sans-serif" for sans; "Georgia, 'Source Serif Pro', serif" for serif; "ui-monospace, 'SF Mono', Menlo, monospace" for monospace.
+5. Use the three font stacks listed above (Inter / Source Serif / JetBrains Mono). Other font names will fall back to sans-serif.
 6. Use proper SVG primitives. Use <g> groups generously.
 7. Use <filter> with feGaussianBlur for shadows. Use multiple shadow layers for cards.
-8. NO em dashes or en dashes anywhere in text content.
-9. Generate substantial SVG. A simple mockup is at least 1500 lines. A rich data visualisation can be 3000+.
+8. NO em dashes or en dashes anywhere in text content. Use commas or full stops.
+9. Generate substantial SVG. A rich illustration is at least 1500 lines. A complex data visualisation can be 3000+.
 
 ANTI-PATTERNS (never do these)
 
 - Empty rectangles where content should be
-- Rows of dots representing text (use REAL text)
+- Rows of dots representing text (use REAL text — typography renders perfectly)
 - Single-colour flat backgrounds with nothing else
 - Three identical cards with no differentiation
 - Generic "device frames" with empty interior
 - No typography hierarchy (everything one size)
-- One font only across the whole image
+- One font only across the whole image (mix Inter + Source Serif + JetBrains Mono purposefully)
 - Missing the brand colours
 
 Now read the brief carefully and produce the SVG. Take your time. Make it count.`;
@@ -730,11 +753,17 @@ function renderResults() {
     var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';
     var planTokens = d.usage && d.usage.plan ? (d.usage.plan.input_tokens + d.usage.plan.output_tokens) : 0;
 
+    var textInfo = d.textConversionInfo;
+    var textNote = textInfo ? ' · ' + textInfo.count + ' text→path' : '';
+    if (textInfo && textInfo.errors && textInfo.errors.length > 0) {
+      textNote += ' (' + textInfo.errors.length + ' warnings)';
+    }
+
     h += '<div class="result-card">';
     h += '<div class="result-header">';
     h += '<div class="left">';
     h += '<span class="timestamp">' + ts + '</span>';
-    h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ' + (d.svgSize || 0) + ' chars · in ' + inputTokens + ' / out ' + outputTokens + (planTokens ? ' + plan ' + planTokens : '') + '</span>';
+    h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ' + (d.svgSize || 0) + ' chars · in ' + inputTokens + ' / out ' + outputTokens + (planTokens ? ' + plan ' + planTokens : '') + textNote + '</span>';
     if (r.hadReasoning) h += '<span class="stats" style="color:var(--tg-accent)">REASONED</span>';
     h += '</div>';
     h += '<div class="actions">';

@@ -120,11 +120,19 @@ module.exports = async function handler(req, res) {
       const idx = presets.findIndex(p => p.name === body.name);
       const entry = {
         name: body.name,
+        pipeline: body.pipeline || "svg",
         systemPrompt: body.systemPrompt,
         defaultBrief: body.defaultBrief || "",
         defaultWidth: body.defaultWidth || 1200,
         defaultHeight: body.defaultHeight || 800,
         useReasoning: body.useReasoning === true,
+        // HTML-pipeline extras
+        deviceScale: body.deviceScale || 2,
+        // FLUX-pipeline extras
+        aspectRatio: body.aspectRatio || null,
+        safetyTolerance: body.safetyTolerance || null,
+        fluxRaw: body.fluxRaw === true,
+        fluxRawPrompt: body.fluxRawPrompt === true,
         notes: body.notes || "",
         createdAt: idx === -1 ? new Date().toISOString() : presets[idx].createdAt,
         updatedAt: new Date().toISOString()

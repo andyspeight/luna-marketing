@@ -422,20 +422,32 @@
     <div id="svg-controls">
     <div class="section">
       <div class="section-title">
-        <span>System prompt</span>
-        <button onclick="loadDefault()">Load default</button>
+        <span>Renderer prompt</span>
+        <button onclick="togglePrompt('systemPrompt')" id="systemPromptToggle">Edit prompt</button>
       </div>
-      <textarea id="systemPrompt" class="prompt" placeholder="Paste or write the full system prompt here…"></textarea>
+      <p style="font-size:11px;color:var(--tg-text-tertiary);margin:0 0 4px 0;line-height:1.5">
+        The locked-in instruction that teaches Claude how to write SVG. Rarely edit this.
+      </p>
+      <div id="systemPromptWrap" style="display:none;margin-top:8px">
+        <textarea id="systemPrompt" class="prompt" placeholder="Paste or write the full system prompt here…"></textarea>
+        <button onclick="loadDefault()" style="margin-top:6px">Reset to default</button>
+      </div>
     </div>
     </div>
 
     <div id="html-controls" style="display:none">
       <div class="section">
         <div class="section-title">
-          <span>HTML system prompt</span>
-          <button onclick="loadHtmlDefault()">Load default</button>
+          <span>Renderer prompt</span>
+          <button onclick="togglePrompt('htmlSystemPrompt')" id="htmlSystemPromptToggle">Edit prompt</button>
         </div>
-        <textarea id="htmlSystemPrompt" class="prompt" placeholder="System prompt that tells Claude how to write HTML/CSS…"></textarea>
+        <p style="font-size:11px;color:var(--tg-text-tertiary);margin:0 0 4px 0;line-height:1.5">
+          The locked-in instruction that teaches Claude how to write production-quality Travelgenix HTML. Rarely edit this.
+        </p>
+        <div id="htmlSystemPromptWrap" style="display:none;margin-top:8px">
+          <textarea id="htmlSystemPrompt" class="prompt" placeholder="System prompt that tells Claude how to write HTML/CSS…"></textarea>
+          <button onclick="loadHtmlDefault()" style="margin-top:6px">Reset to default</button>
+        </div>
       </div>
     </div>
 
@@ -487,7 +499,13 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Brief</div>
+      <div class="section-title">
+        <span>Brief</span>
+        <span style="font-weight:400;color:var(--tg-text-tertiary);font-size:10px">Pick from library or write your own</span>
+      </div>
+      <select id="briefLibrary" onchange="onBriefLibraryChange()" style="margin-bottom:8px">
+        <option value="">— Choose a brief from the library —</option>
+      </select>
       <textarea id="userBrief" class="brief" placeholder="e.g. Luna Chat widget on a travel website, showing a holiday search result inside the chat window."></textarea>
     </div>
 
@@ -799,8 +817,44 @@ ANTI-PATTERNS
 
 Now read the brief carefully. Make it count.`;
 
-// Seed both prompt textareas
-var SANTORINI_BRIEF = 'Santorini destination spotlight card for the Travelgenix website. Show: place name in italic serif type, a tagline subtitle, four destination tag pills, a live weather card with glassmorphic translucent surface (temperature, condition, wind, humidity, UV index, source attribution), a 12-month climate chart with seasonal colours on the bars, BEST badges on the shoulder-season months (May and September), a rainfall strip below the chart with monthly values, a Luna AI recommendation card on the right (sparkle icon, eyebrow, italic serif headline "Late May to early June", body copy, three data bars showing match scores, confidence line), a footer with italic serif CTA copy and two buttons (outlined "View itineraries", teal primary "Build my trip with Luna →"), and a thin monospace bottom strip with breadcrumbs and ref ID. Navy header (#1B2B5B) with subtle orange radial glow. Beige page background (#FBFAF6).';
+// ─────────────────────────────────────────────────────────────────────
+// DEFAULT BRIEF LIBRARY (for the Claude → HTML → Chrome pipeline)
+// ─────────────────────────────────────────────────────────────────────
+// Each brief is a complete, structured description for one image.
+// In production, the email composer will generate these automatically
+// via a small Claude call that takes section content (headline, subhead,
+// product context) and outputs a brief in this style.
+// For lab testing, these four cover the main image categories we'll need.
+
+var DEFAULT_BRIEFS = [
+  {
+    id: 'santorini',
+    label: 'Santorini destination spotlight',
+    category: 'destination',
+    text: `Santorini destination spotlight card for the Travelgenix website. Show: place name in italic serif type, a tagline subtitle, four destination tag pills, a live weather card with glassmorphic translucent surface (temperature, condition, wind, humidity, UV index, source attribution), a 12-month climate chart with seasonal colours on the bars, BEST badges on the shoulder-season months (May and September), a rainfall strip below the chart with monthly values, a Luna AI recommendation card on the right (sparkle icon, eyebrow, italic serif headline "Late May to early June", body copy, three data bars showing match scores, confidence line), a footer with italic serif CTA copy and two buttons (outlined "View itineraries", teal primary "Build my trip with Luna →"), and a thin monospace bottom strip with breadcrumbs and ref ID. Navy header (#1B2B5B) with subtle orange radial glow. Beige page background (#FBFAF6).`
+  },
+  {
+    id: 'luna-chat-mockup',
+    label: 'Luna Chat product mockup',
+    category: 'product',
+    text: `Luna Chat product mockup for the Travelgenix marketing site. Show a stylised browser window frame (rounded corners, traffic-light dots, address bar showing "majestictours.co.uk") containing a travel agency homepage in the background. The website shows a hero banner with a stylised destination photograph placeholder, "Greek Island Escapes" headline, a search bar, and three destination cards just visible behind the chat widget. Floating in the bottom-right corner over the website is the Luna Chat widget, fully expanded. The widget is a navy chat window roughly 380px wide with rounded corners and a subtle drop shadow. The chat window contains: a header with the Luna sparkle icon, "Luna · Online" label, and a minimise button; a conversation showing three messages. First a customer asks "I want a 10-day trip to Greece in May for two adults, budget around £3,000pp". Then Luna replies with a brief intro: "Perfect timing for Greece. May brings warm seas and quieter resorts. Here is what fits your budget:". Then an inline recommendation card appears inside the chat showing "Santorini & Crete · 10 nights · From £2,847pp" with three small detail rows (4★ hotels, flights LGW, May 12 to 22), and a "View 12 itineraries" button in teal. Finally a typing indicator dot ellipsis showing Luna is still working. Below the conversation an input field with placeholder "Ask Luna anything..." and a teal send button. Around the browser frame, a soft navy gradient background with subtle radial light from the top-right. Editorial product-launch quality. Think Linear screenshot reveals or Stripe documentation hero imagery.`
+  },
+  {
+    id: 'pricing-comparison',
+    label: 'Pricing comparison (3 tiers)',
+    category: 'commercial',
+    text: `Travelgenix pricing comparison card showing the three plan tiers side-by-side. Three columns of equal width on a clean off-white background. From left to right: SPARK (£159/month, setup £2,995), BOOST (£229/month, setup £2,995), IGNITE (£299/month, setup £3,995). The middle column (BOOST) is visually elevated. Navy background instead of white, white text, slightly larger feel, with a teal "MOST POPULAR" pill anchored to its top edge. Each column has: an eyebrow label (STARTER, RECOMMENDED, PREMIUM) in letter-spaced caps, the plan name as a bold sans-serif headline, a one-line description in body text, the price treatment with large numbers and "/month" in smaller text below, setup fee in monospace under that, a thin divider, then a feature list of 4 to 5 items with teal tick icons. Each plan ends with a primary CTA button. Spark says "Start with Spark" (dark outlined), Boost says "Choose Boost" (teal solid, the strongest button), Ignite says "Talk to us" (dark outlined). Above the columns, a centred toggle showing "Monthly · Annual save 20%" with Monthly selected. Below the columns, a thin footer strip with three trust signals: "30-day money back · No setup if you switch · UK based support" with small icons. Subtle drop shadows on the cards. Premium SaaS pricing page aesthetic. Linear or Vercel quality.`
+  },
+  {
+    id: 'feature-grid',
+    label: 'Why Travelgenix (6 feature grid)',
+    category: 'value-prop',
+    text: `A "Why Travelgenix" feature grid for the homepage hero. Headline at the top centred. Eyebrow "WHY TRAVELGENIX" in letter-spaced teal caps, then a serif italic display headline "Built by travel people, for travel people." with a one-line subhead in body grey. Below that, a 3-column by 2-row grid of six feature tiles, each tile a white card with subtle border, generous padding, and unique colour-coded micro-illustration. The six tiles, in order: (1) "800+ airlines, ready to book" with a small flight-path SVG illustration in teal, three curves connecting two dots; (2) "3 million accommodations" with a stylised building cluster icon in coral; (3) "100+ widgets, one suite" with a 3x3 grid icon in purple; (4) "AI that knows travel" with a sparkle-inside-globe icon in amber; (5) "UK-based humans, when you need them" with a chat-bubble icon in green; (6) "Set up in 14 days, not 14 weeks" with a clock icon in navy. Each tile has the icon top-left, the feature headline in 18px semibold below it, and a two-line supporting description in body grey. Subtle hover-state suggestion (slight elevation shadow) on one tile to imply interactivity. Below the grid, a single line of social proof in italic serif: "Trusted by 300+ travel businesses across 6 countries" with five gold star icons. Clean editorial layout. Think Stripe product pages or Notion marketing site.`
+  }
+];
+
+// Backwards compatibility — the old SANTORINI_BRIEF reference still works
+var SANTORINI_BRIEF = DEFAULT_BRIEFS[0].text;
 
 document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
 document.getElementById('htmlSystemPrompt').value = HTML_DEFAULT_PROMPT;
@@ -814,6 +868,75 @@ function loadDefault() {
 function loadHtmlDefault() {
   if (!confirm('Replace current HTML prompt with the default?')) return;
   document.getElementById('htmlSystemPrompt').value = HTML_DEFAULT_PROMPT;
+}
+
+function togglePrompt(promptId) {
+  var wrap = document.getElementById(promptId + 'Wrap');
+  var toggleBtn = document.getElementById(promptId + 'Toggle');
+  if (!wrap || !toggleBtn) return;
+  var isHidden = wrap.style.display === 'none' || wrap.style.display === '';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  toggleBtn.textContent = isHidden ? 'Hide' : 'Edit prompt';
+}
+
+// ─── BRIEF LIBRARY ───────────────────────────────────────────────
+// Populates the brief dropdown with the four DEFAULT_BRIEFS plus any
+// user-saved presets that have a defaultBrief. Selecting an entry
+// drops it into the brief textarea — does NOT touch the system prompt.
+function populateBriefLibrary() {
+  var sel = document.getElementById('briefLibrary');
+  if (!sel) return;
+
+  // Reset
+  sel.innerHTML = '<option value="">— Choose a brief from the library —</option>';
+
+  // Group 1: defaults
+  var defaultGroup = document.createElement('optgroup');
+  defaultGroup.label = '📌 Built-in briefs';
+  DEFAULT_BRIEFS.forEach(function(b) {
+    var opt = document.createElement('option');
+    opt.value = 'default:' + b.id;
+    opt.textContent = b.label;
+    defaultGroup.appendChild(opt);
+  });
+  sel.appendChild(defaultGroup);
+
+  // Group 2: user presets with a brief attached
+  var presetsWithBriefs = (typeof presets !== 'undefined' && Array.isArray(presets))
+    ? presets.filter(function(p) { return p.defaultBrief && p.defaultBrief.length > 20; })
+    : [];
+  if (presetsWithBriefs.length) {
+    var savedGroup = document.createElement('optgroup');
+    savedGroup.label = 'Saved presets';
+    presetsWithBriefs.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = 'preset:' + p.name;
+      opt.textContent = p.name + (p.pipeline ? ' (' + p.pipeline + ')' : '');
+      savedGroup.appendChild(opt);
+    });
+    sel.appendChild(savedGroup);
+  }
+}
+
+function onBriefLibraryChange() {
+  var sel = document.getElementById('briefLibrary');
+  if (!sel || !sel.value) return;
+  var value = sel.value;
+  var briefText = null;
+  if (value.indexOf('default:') === 0) {
+    var id = value.slice(8);
+    var brief = DEFAULT_BRIEFS.find(function(b) { return b.id === id; });
+    if (brief) briefText = brief.text;
+  } else if (value.indexOf('preset:') === 0) {
+    var name = value.slice(7);
+    var preset = presets.find(function(p) { return p.name === name; });
+    if (preset && preset.defaultBrief) briefText = preset.defaultBrief;
+  }
+  if (briefText) {
+    document.getElementById('userBrief').value = briefText;
+  }
+  // Reset selector back to placeholder so the same option can be picked again
+  sel.value = '';
 }
 
 // ─── PIPELINE SWITCH ─────────────────────────────────────────────
@@ -887,6 +1010,7 @@ async function checkAuth() {
     var d = await r.json();
     presets = d.presets || [];
     renderPresets();
+    populateBriefLibrary();
     return true;
   } catch (e) {
     document.getElementById('auth-status').textContent = 'AUTH CHECK FAILED';
@@ -902,6 +1026,7 @@ async function loadPresets() {
     if (d.ok) {
       presets = d.presets || [];
       renderPresets();
+      populateBriefLibrary();
     }
   } catch (e) {
     console.warn('Load presets failed:', e);
@@ -999,6 +1124,7 @@ async function savePreset() {
     if (!r.ok || !d.ok) throw new Error(d.error || 'Save failed');
     presets = (await (await fetch('/api/image-lab-presets', { credentials: 'include' })).json()).presets || [];
     renderPresets();
+    populateBriefLibrary();
     toast('Saved: ' + name);
   } catch (e) {
     alert('Could not save: ' + e.message);
@@ -1016,6 +1142,7 @@ async function deletePreset(name) {
     if (!r.ok || !d.ok) throw new Error(d.error || 'Delete failed');
     presets = presets.filter(function(p) { return p.name !== name; });
     renderPresets();
+    populateBriefLibrary();
     toast('Deleted: ' + name);
   } catch (e) {
     alert('Could not delete: ' + e.message);
@@ -1405,6 +1532,7 @@ function toast(msg) {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
+populateBriefLibrary();
 onPipelineChange();
 checkAuth();
 </script>

@@ -128,6 +128,7 @@ module.exports = async function handler(req, res) {
         useReasoning: body.useReasoning === true,
         // HTML-pipeline extras
         deviceScale: body.deviceScale || 2,
+        model: body.model || null,
         // FLUX-pipeline extras
         aspectRatio: body.aspectRatio || null,
         safetyTolerance: body.safetyTolerance || null,

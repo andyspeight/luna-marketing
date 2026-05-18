@@ -328,11 +328,19 @@
   }
   .toggle-link:hover { color: var(--tg-accent-dark); }
 
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  @media (max-width: 600px) {
+    .pipeline-grid { grid-template-columns: 1fr; }
+  }
   .pipeline-card {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
+    gap: 6px;
+    padding: 9px 10px;
     border: 1px solid var(--tg-border);
     border-radius: var(--radius-md);
     cursor: pointer;
@@ -386,12 +394,19 @@
 
     <div class="section">
       <div class="section-title">Pipeline</div>
-      <div class="row">
+      <div class="pipeline-grid">
         <label class="pipeline-card" id="pipeline-svg-label">
-          <input type="radio" name="pipeline" value="svg" checked onchange="onPipelineChange()">
+          <input type="radio" name="pipeline" value="svg" onchange="onPipelineChange()">
           <div class="pipeline-card-body">
             <strong>Claude SVG</strong>
-            <span>Data cards, mockups, charts</span>
+            <span>Hand-coded vector</span>
+          </div>
+        </label>
+        <label class="pipeline-card" id="pipeline-html-label">
+          <input type="radio" name="pipeline" value="html" checked onchange="onPipelineChange()">
+          <div class="pipeline-card-body">
+            <strong>Claude HTML + Chrome</strong>
+            <span>Data cards, mockups, magazine-quality</span>
           </div>
         </label>
         <label class="pipeline-card" id="pipeline-flux-label">
@@ -412,6 +427,16 @@
       </div>
       <textarea id="systemPrompt" class="prompt" placeholder="Paste or write the full system prompt here…"></textarea>
     </div>
+    </div>
+
+    <div id="html-controls" style="display:none">
+      <div class="section">
+        <div class="section-title">
+          <span>HTML system prompt</span>
+          <button onclick="loadHtmlDefault()">Load default</button>
+        </div>
+        <textarea id="htmlSystemPrompt" class="prompt" placeholder="System prompt that tells Claude how to write HTML/CSS…"></textarea>
+      </div>
     </div>
 
     <div id="flux-controls" style="display:none">
@@ -485,6 +510,30 @@
         <input type="checkbox" id="useReasoning">
         <label for="useReasoning">Two-step: design plan, then SVG (slower, often better)</label>
       </div>
+    </div>
+
+    <div id="html-dimensions" class="section" style="display:none">
+      <div class="row-3">
+        <div>
+          <label class="field-label">Width (px)</label>
+          <input type="number" id="htmlWidth" value="1200" min="400" max="2400">
+        </div>
+        <div>
+          <label class="field-label">Height (px)</label>
+          <input type="number" id="htmlHeight" value="800" min="200" max="2400">
+        </div>
+        <div>
+          <label class="field-label">Device scale</label>
+          <select id="htmlDeviceScale">
+            <option value="1">1x (standard)</option>
+            <option value="2" selected>2x (retina)</option>
+            <option value="3">3x (ultra)</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--tg-text-tertiary);margin:8px 0 0 0;line-height:1.5">
+        Width and height are the logical design size. Output PNG is multiplied by device scale (e.g. 1200×800 at 2x = 2400×1600 PNG).
+      </p>
     </div>
 
     <div class="section">
@@ -635,12 +684,136 @@ ANTI-PATTERNS (never do these)
 
 Now read the brief carefully and produce the SVG. Take your time. Make it count.`;
 
+// ─────────────────────────────────────────────────────────────────────
+// DEFAULT HTML/CSS SYSTEM PROMPT (for the Claude → HTML → Chrome pipeline)
+// ─────────────────────────────────────────────────────────────────────
+var HTML_DEFAULT_PROMPT = `You are a senior visual designer producing magazine-quality marketing imagery for Travelgenix. You write a complete HTML document with inline CSS, which is then rendered in real Google Chrome at retina resolution. The output is a single PNG image used in marketing emails, blog posts, and product pages.
+
+QUALITY BAR
+
+Reference: Linear product launch graphics, Stripe documentation illustrations, Vercel changelog imagery, Apple keynote graphics, Bloomberg / FT data cards, magazine editorial design. The output should look like a senior design studio made it. Not wireframes. Not generic templates. Content-rich, polished, intentional.
+
+OUTPUT FORMAT
+
+You write ONE complete HTML document. No markdown fences. No preamble. No explanation. Start with <!DOCTYPE html>, end with </html>. All CSS inline in a <style> tag in the <head>. Load Google Fonts via a <link> tag.
+
+DESIGN SIZE
+
+The brief specifies a canvas width and height in logical pixels (typically 1200×800). Your design fills that exact size — make the outer container width:1200px and let internal content sit comfortably inside, with proper internal padding.
+
+Do not set body padding (it'll show through transparent corners on screenshots). Set the body background to the SAME colour as the card's outermost background, so any bleed is invisible. Example: if your card has a beige background, body { background: #FBFAF6; }.
+
+FONT STACK (load via Google Fonts)
+
+In the <head>, include:
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+Use these fonts:
+- Inter (sans) for UI, body, captions, labels — weights 400, 500, 600, 700
+- Source Serif 4 (serif) for major headlines, place names — weights 400, 500, 600, 700; italic is supported
+- JetBrains Mono (monospace) for technical metadata, timestamps, source attributions, IDs — weight 400
+
+WHAT MAKES A GREAT IMAGE
+
+1. Real, specific content
+   - Real place names ("Santorini" not "Destination")
+   - Real-looking numbers ("£229/month" not "£XXX")
+   - Real metadata ("247 reviews", "10-yr averages", "Last analysed: 3h ago")
+   - Specific dates, times, prices, percentages
+   - Local detail when relevant (Greek transliteration, regional wind names, etc)
+
+2. Typography hierarchy
+   - Serif for major headlines — large (40-72px), often italic for sophistication
+   - Sans for body and UI (Inter, weights 400-700)
+   - Monospace for technical details (small, 10-11px, letter-spaced)
+   - Eyebrows in uppercase, small, letter-spaced (e.g. font-size:11px; letter-spacing:0.12em; text-transform:uppercase)
+
+3. Real data visualisations using CSS
+   - Bar charts: use grid-template-columns:repeat(N,1fr) and set bar heights as percentages
+   - Progress bars: a track div with a fill div, both as rounded rectangles
+   - Sentiment strips: small height divs with semantic colours
+   - Status badges with semantic colour (green positive, amber neutral, red negative)
+
+4. Editorial polish (this is what separates "good" from "magazine-quality")
+   - Source attributions in monospace ("open-meteo.com · Live", "Powered by Luna AI")
+   - Status pills with subtle borders and tinted backgrounds
+   - Multi-layer drop shadows for cards (e.g. box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08))
+   - Subtle radial-gradient glows on dark backgrounds for warmth
+   - backdrop-filter:blur() for glassmorphic surfaces over coloured backgrounds (works perfectly in Chrome)
+   - linear-gradient() and radial-gradient() everywhere bars and surfaces need depth
+   - Border-radius generously — cards 12-18px, pills 999px
+
+5. Composition
+   - Grid layouts (display:grid with grid-template-columns) for structured zones
+   - Asymmetric layouts where appropriate
+   - Cards within cards (outer card containing chart + AI panel)
+   - Generous internal padding — at least 24px inside major cards, 32-48px in headers
+
+BRAND TOKENS (use as CSS variables in :root)
+
+--tg-navy: #1B2B5B
+--tg-navy-dark: #0A0F1F
+--tg-navy-light: #2A3F7A
+--tg-teal: #00B4D8
+--tg-teal-light: #48CAE4
+--tg-teal-dark: #0096B7
+--tg-text-primary: #0F172A
+--tg-text-secondary: #475569
+--tg-text-tertiary: #94A3B8
+--tg-bg-primary: #FFFFFF
+--tg-bg-secondary: #F8FAFC
+--tg-bg-tertiary: #F1F5F9
+--tg-border: #E2E8F0
+--tg-success: #10B981
+--tg-warning: #F59E0B
+--tg-error: #EF4444
+
+Seasonal palette for bar charts (so spring/summer/autumn/winter read intuitively):
+- Spring: #84CC16
+- Summer: #F59E0B
+- Autumn: #DC2626
+- Winter: #3B82F6
+
+TECHNICAL RULES
+
+1. Output ONE complete HTML document. No markdown fences.
+2. All CSS inline in a <style> tag in the <head>.
+3. NO <script> tags. The renderer rejects them.
+4. NO external URLs except fonts.googleapis.com (allowed) and inline SVG icons.
+5. SVG icons OK inline (for sparkle marks, arrows, sun shapes, etc).
+6. Set body background to match outer card colour to avoid corner bleed.
+7. NO em dashes or en dashes anywhere in text content. Use commas, full stops, or middle-dots (·).
+8. UK English spelling (colour, favourite, etc).
+
+ANTI-PATTERNS
+
+- Generic "Lorem ipsum" or placeholder bars instead of real content
+- Single-colour flat backgrounds with nothing else
+- Three identical cards with no differentiation
+- No typography hierarchy (everything one size or one font)
+- Solid white throughout (no depth, no atmosphere)
+- Missing the brand colours
+- Forgetting source attributions or metadata that real editorial cards always have
+
+Now read the brief carefully. Make it count.`;
+
+// Seed both prompt textareas
+var SANTORINI_BRIEF = 'Santorini destination spotlight card for the Travelgenix website. Show: place name in italic serif type, a tagline subtitle, four destination tag pills, a live weather card with glassmorphic translucent surface (temperature, condition, wind, humidity, UV index, source attribution), a 12-month climate chart with seasonal colours on the bars, BEST badges on the shoulder-season months (May and September), a rainfall strip below the chart with monthly values, a Luna AI recommendation card on the right (sparkle icon, eyebrow, italic serif headline "Late May to early June", body copy, three data bars showing match scores, confidence line), a footer with italic serif CTA copy and two buttons (outlined "View itineraries", teal primary "Build my trip with Luna →"), and a thin monospace bottom strip with breadcrumbs and ref ID. Navy header (#1B2B5B) with subtle orange radial glow. Beige page background (#FBFAF6).';
+
 document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
-document.getElementById('userBrief').value = 'Santorini destination spotlight card. Show: place name in serif type, live weather (temperature, conditions, wind), a 12-month climate bar chart with rainfall strip below, an AI "best time to visit" recommendation card, and a footer CTA. Use Travelgenix navy as the header. Editorial magazine quality.';
+document.getElementById('htmlSystemPrompt').value = HTML_DEFAULT_PROMPT;
+document.getElementById('userBrief').value = SANTORINI_BRIEF;
 
 function loadDefault() {
-  if (!confirm('Replace current prompt with the default?')) return;
+  if (!confirm('Replace current SVG prompt with the default?')) return;
   document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
+}
+
+function loadHtmlDefault() {
+  if (!confirm('Replace current HTML prompt with the default?')) return;
+  document.getElementById('htmlSystemPrompt').value = HTML_DEFAULT_PROMPT;
 }
 
 // ─── PIPELINE SWITCH ─────────────────────────────────────────────
@@ -653,21 +826,41 @@ function onPipelineChange() {
   var pipeline = getPipeline();
   var svgControls = document.getElementById('svg-controls');
   var svgDimensions = document.getElementById('svg-dimensions');
+  var htmlControls = document.getElementById('html-controls');
+  var htmlDimensions = document.getElementById('html-dimensions');
   var fluxControls = document.getElementById('flux-controls');
 
+  // Hide all
+  svgControls.style.display = 'none';
+  svgDimensions.style.display = 'none';
+  htmlControls.style.display = 'none';
+  htmlDimensions.style.display = 'none';
+  fluxControls.style.display = 'none';
+
+  // Show the right one
   if (pipeline === 'flux') {
-    svgControls.style.display = 'none';
-    svgDimensions.style.display = 'none';
     fluxControls.style.display = '';
-    // Suggest a FLUX-style brief
+    // Suggest a FLUX-style brief if the brief is still a Santorini SVG/HTML one
     var brief = document.getElementById('userBrief').value;
-    if (brief && brief.indexOf('Santorini destination spotlight') === 0) {
+    if (brief && (brief.indexOf('Santorini destination spotlight') === 0 || brief.indexOf('Santorini destination card') === 0)) {
       document.getElementById('userBrief').value = 'Greek island village at golden hour. Whitewashed cubic buildings cascading down volcanic cliffs, blue domed church silhouetted against the caldera. Aegean sea below. Soft warm light, long shadows.';
     }
+  } else if (pipeline === 'html') {
+    htmlControls.style.display = '';
+    htmlDimensions.style.display = '';
+    // Suggest an HTML-style brief if the brief is a FLUX one
+    var brief2 = document.getElementById('userBrief').value;
+    if (brief2 && brief2.indexOf('Greek island village at golden hour') === 0) {
+      document.getElementById('userBrief').value = SANTORINI_BRIEF;
+    }
   } else {
+    // svg
     svgControls.style.display = '';
     svgDimensions.style.display = '';
-    fluxControls.style.display = 'none';
+    var brief3 = document.getElementById('userBrief').value;
+    if (brief3 && brief3.indexOf('Greek island village at golden hour') === 0) {
+      document.getElementById('userBrief').value = SANTORINI_BRIEF;
+    }
   }
 }
 
@@ -734,28 +927,73 @@ function renderPresets() {
 function applyPreset(name) {
   var p = presets.find(function(p) { return p.name === name; });
   if (!p) return;
-  document.getElementById('systemPrompt').value = p.systemPrompt;
-  if (p.defaultBrief) document.getElementById('userBrief').value = p.defaultBrief;
-  if (p.defaultWidth) document.getElementById('width').value = p.defaultWidth;
-  if (p.defaultHeight) document.getElementById('height').value = p.defaultHeight;
-  document.getElementById('useReasoning').checked = !!p.useReasoning;
+
+  // Pipeline-aware apply
+  var pipeline = p.pipeline || 'svg';
+  if (pipeline === 'html') {
+    var htmlRadio = document.querySelector('input[name="pipeline"][value="html"]');
+    if (htmlRadio) { htmlRadio.checked = true; onPipelineChange(); }
+    document.getElementById('htmlSystemPrompt').value = p.systemPrompt;
+    if (p.defaultBrief) document.getElementById('userBrief').value = p.defaultBrief;
+    if (p.defaultWidth) document.getElementById('htmlWidth').value = p.defaultWidth;
+    if (p.defaultHeight) document.getElementById('htmlHeight').value = p.defaultHeight;
+    if (p.deviceScale) document.getElementById('htmlDeviceScale').value = p.deviceScale;
+  } else if (pipeline === 'flux') {
+    var fluxRadio = document.querySelector('input[name="pipeline"][value="flux"]');
+    if (fluxRadio) { fluxRadio.checked = true; onPipelineChange(); }
+    if (p.defaultBrief) document.getElementById('userBrief').value = p.defaultBrief;
+    if (p.aspectRatio) document.getElementById('fluxAspectRatio').value = p.aspectRatio;
+    if (p.safetyTolerance) document.getElementById('fluxSafety').value = p.safetyTolerance;
+    if (p.fluxRaw !== undefined) document.getElementById('fluxRaw').checked = !!p.fluxRaw;
+    if (p.fluxRawPrompt !== undefined) document.getElementById('fluxRawPrompt').checked = !!p.fluxRawPrompt;
+  } else {
+    // svg (legacy presets default here)
+    var svgRadio = document.querySelector('input[name="pipeline"][value="svg"]');
+    if (svgRadio) { svgRadio.checked = true; onPipelineChange(); }
+    document.getElementById('systemPrompt').value = p.systemPrompt;
+    if (p.defaultBrief) document.getElementById('userBrief').value = p.defaultBrief;
+    if (p.defaultWidth) document.getElementById('width').value = p.defaultWidth;
+    if (p.defaultHeight) document.getElementById('height').value = p.defaultHeight;
+    document.getElementById('useReasoning').checked = !!p.useReasoning;
+  }
+
   toast('Applied preset: ' + p.name);
 }
 
 async function savePreset() {
   var name = prompt('Name this preset:');
   if (!name) return;
-  var systemPrompt = document.getElementById('systemPrompt').value;
-  var defaultBrief = document.getElementById('userBrief').value;
-  var defaultWidth = parseInt(document.getElementById('width').value, 10);
-  var defaultHeight = parseInt(document.getElementById('height').value, 10);
-  var useReasoning = document.getElementById('useReasoning').checked;
+  var pipeline = getPipeline();
+
+  var payload = { name: name, pipeline: pipeline };
+
+  if (pipeline === 'html') {
+    payload.systemPrompt = document.getElementById('htmlSystemPrompt').value;
+    payload.defaultBrief = document.getElementById('userBrief').value;
+    payload.defaultWidth = parseInt(document.getElementById('htmlWidth').value, 10);
+    payload.defaultHeight = parseInt(document.getElementById('htmlHeight').value, 10);
+    payload.deviceScale = parseInt(document.getElementById('htmlDeviceScale').value, 10);
+  } else if (pipeline === 'flux') {
+    payload.systemPrompt = 'FLUX:' + Date.now(); // sentinel — FLUX has no system prompt but the backend requires one for the schema
+    payload.defaultBrief = document.getElementById('userBrief').value;
+    payload.aspectRatio = document.getElementById('fluxAspectRatio').value;
+    payload.safetyTolerance = parseInt(document.getElementById('fluxSafety').value, 10);
+    payload.fluxRaw = document.getElementById('fluxRaw').checked;
+    payload.fluxRawPrompt = document.getElementById('fluxRawPrompt').checked;
+  } else {
+    payload.systemPrompt = document.getElementById('systemPrompt').value;
+    payload.defaultBrief = document.getElementById('userBrief').value;
+    payload.defaultWidth = parseInt(document.getElementById('width').value, 10);
+    payload.defaultHeight = parseInt(document.getElementById('height').value, 10);
+    payload.useReasoning = document.getElementById('useReasoning').checked;
+  }
+
   try {
     var r = await fetch('/api/image-lab-presets', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, systemPrompt: systemPrompt, defaultBrief: defaultBrief, defaultWidth: defaultWidth, defaultHeight: defaultHeight, useReasoning: useReasoning })
+      body: JSON.stringify(payload)
     });
     var d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.error || 'Save failed');
@@ -787,10 +1025,65 @@ async function deletePreset(name) {
 // ─── GENERATE ────────────────────────────────────────────────────
 async function generate() {
   var pipeline = getPipeline();
-  if (pipeline === 'flux') {
-    return generateFlux();
-  }
+  if (pipeline === 'flux') return generateFlux();
+  if (pipeline === 'html') return generateHtml();
   return generateSvg();
+}
+
+async function generateHtml() {
+  var systemPrompt = document.getElementById('htmlSystemPrompt').value;
+  var userBrief = document.getElementById('userBrief').value;
+  var viewportWidth = parseInt(document.getElementById('htmlWidth').value, 10) || 1200;
+  var viewportHeight = parseInt(document.getElementById('htmlHeight').value, 10) || 800;
+  var deviceScale = parseInt(document.getElementById('htmlDeviceScale').value, 10) || 2;
+
+  if (!systemPrompt.trim()) { alert('HTML system prompt is required'); return; }
+  if (!userBrief.trim()) { alert('Brief is required'); return; }
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  var loadingId = 'loading-' + Date.now();
+  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating HTML + rendering in Chrome (~30-60s)…</span></div>';
+  var resultsEl = document.getElementById('results');
+  if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
+  resultsEl.insertAdjacentHTML('afterbegin', loadingHtml);
+
+  try {
+    var r = await fetch('/api/image-lab-html', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemPrompt: systemPrompt,
+        userBrief: userBrief,
+        viewportWidth: viewportWidth,
+        viewportHeight: viewportHeight,
+        deviceScale: deviceScale,
+        maxTokens: 16000
+      })
+    });
+    var d = await r.json();
+
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    if (!r.ok) {
+      addError(d.error || ('HTTP ' + r.status), userBrief);
+    } else if (!d.ok) {
+      addError(d.error || 'Generation failed', userBrief, d);
+    } else {
+      addResult(d, userBrief, viewportWidth, viewportHeight, false, 'html');
+    }
+  } catch (e) {
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+    addError(e.message, userBrief);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate';
 }
 
 async function generateSvg() {
@@ -946,6 +1239,8 @@ function renderResults() {
     var d = r.data;
     var ts = new Date(r.ts).toLocaleTimeString();
     var isFlux = r.pipeline === 'flux';
+    var isHtml = r.pipeline === 'html';
+    var isSvg = !isFlux && !isHtml;
 
     h += '<div class="result-card">';
     h += '<div class="result-header">';
@@ -955,6 +1250,12 @@ function renderResults() {
     if (isFlux) {
       h += '<span class="stats" style="color:var(--tg-accent);font-weight:600">FLUX 1.1 PRO ULTRA</span>';
       h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ratio ' + (d.aspectRatio || '?') + '</span>';
+    } else if (isHtml) {
+      h += '<span class="stats" style="color:var(--tg-accent);font-weight:600">HTML + CHROME</span>';
+      var claudeS = d.claudeMs ? (d.claudeMs / 1000).toFixed(1) + 's claude' : '';
+      var hctiS = d.hctiMs ? (d.hctiMs / 1000).toFixed(1) + 's chrome' : '';
+      var deviceLabel = d.deviceScale ? d.deviceScale + 'x' : '';
+      h += '<span class="stats">' + d.viewportWidth + '×' + d.viewportHeight + ' @' + deviceLabel + ' = ' + d.width + '×' + d.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's (' + claudeS + ' + ' + hctiS + ') · ' + (d.htmlSize || 0) + ' chars html</span>';
     } else {
       var inputTokens = d.usage && d.usage.svg ? d.usage.svg.input_tokens : '?';
       var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';
@@ -973,6 +1274,10 @@ function renderResults() {
     if (isFlux) {
       if (d.finalPrompt) h += '<button class="btn" onclick="toggleFluxPrompt(' + idx + ')">Final prompt</button>';
       h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
+    } else if (isHtml) {
+      h += '<button class="btn" onclick="toggleHtml(' + idx + ')">HTML source</button>';
+      h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
+      h += '<button class="btn" onclick="downloadHtml(' + idx + ')">HTML</button>';
     } else {
       h += '<button class="btn" onclick="toggleSvg(' + idx + ')">SVG source</button>';
       h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
@@ -991,17 +1296,23 @@ function renderResults() {
     if (isFlux && d.predictionId) {
       h += '<div style="margin-top:8px;font-size:11px;color:var(--tg-text-tertiary);font-family:ui-monospace,SF Mono,Menlo,monospace">prediction: ' + escHtml(d.predictionId) + '</div>';
     }
+    if (isHtml && d.hctiId) {
+      h += '<div style="margin-top:8px;font-size:11px;color:var(--tg-text-tertiary);font-family:ui-monospace,SF Mono,Menlo,monospace">hcti: ' + escHtml(d.hctiId) + '</div>';
+    }
     h += '</div>';
     h += '</div>';
 
     if (isFlux && d.finalPrompt) {
       h += '<pre class="plan-text" id="flux-prompt-' + idx + '" style="display:none">' + escHtml(d.finalPrompt) + '</pre>';
     }
-    if (!isFlux && d.planText) {
+    if (isSvg && d.planText) {
       h += '<pre class="plan-text" id="plan-' + idx + '" style="display:none">' + escHtml(d.planText) + '</pre>';
     }
-    if (!isFlux && d.svg) {
+    if (isSvg && d.svg) {
       h += '<pre class="svg-source" id="svg-' + idx + '" style="display:none">' + escHtml(d.svg) + '</pre>';
+    }
+    if (isHtml && d.html) {
+      h += '<pre class="svg-source" id="html-' + idx + '" style="display:none">' + escHtml(d.html) + '</pre>';
     }
     h += '</div>';
   });
@@ -1009,6 +1320,25 @@ function renderResults() {
     h = '<div class="empty-state"><h3>No results yet</h3><p>Configure the prompt and brief on the left, then click Generate.</p></div>';
   }
   resultsEl.innerHTML = h;
+}
+
+function toggleHtml(idx) {
+  var el = document.getElementById('html-' + idx);
+  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function downloadHtml(idx) {
+  var d = results[idx] && results[idx].data;
+  if (!d || !d.html) return;
+  var blob = new Blob([d.html], { type: 'text/html' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'image-lab-' + Date.now() + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function toggleFluxPrompt(idx) {
@@ -1075,6 +1405,7 @@ function toast(msg) {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
+onPipelineChange();
 checkAuth();
 </script>
 

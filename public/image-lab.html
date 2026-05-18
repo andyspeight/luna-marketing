@@ -693,7 +693,16 @@ function addResult(d, brief, w, h, hadReasoning) {
 
 function addError(msg, brief, fullData) {
   var resultsEl = document.getElementById('results');
-  var card = '<div class="error-card"><strong>Generation failed</strong><br>' + escHtml(msg) + '<br><br><em style="font-size:11px">Brief: ' + escHtml(brief) + '</em>';
+  // Normalise the message to a string — sometimes it arrives as an object
+  var msgStr;
+  if (typeof msg === 'string') {
+    msgStr = msg;
+  } else if (msg && typeof msg === 'object') {
+    msgStr = msg.error || msg.message || JSON.stringify(msg);
+  } else {
+    msgStr = String(msg);
+  }
+  var card = '<div class="error-card"><strong>Generation failed</strong><br>' + escHtml(msgStr) + '<br><br><em style="font-size:11px">Brief: ' + escHtml(brief) + '</em>';
   if (fullData && fullData.svg) {
     card += '<br><br><button class="toggle-link" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'">Show SVG that failed to rasterise</button>';
     card += '<pre class="svg-source" style="display:none;margin-top:8px">' + escHtml(fullData.svg.slice(0, 5000)) + '</pre>';
@@ -701,6 +710,10 @@ function addError(msg, brief, fullData) {
   if (fullData && fullData.rawTextSnippet) {
     card += '<br><br><button class="toggle-link" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'">Show raw response</button>';
     card += '<pre class="svg-source" style="display:none;margin-top:8px">' + escHtml(fullData.rawTextSnippet) + '</pre>';
+  }
+  if (fullData && fullData.planText) {
+    card += '<br><br><button class="toggle-link" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'block\'?\'none\':\'block\'">Show design plan</button>';
+    card += '<pre class="plan-text" style="display:none;margin-top:8px">' + escHtml(fullData.planText) + '</pre>';
   }
   card += '</div>';
   if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';

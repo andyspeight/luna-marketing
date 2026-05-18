@@ -23,6 +23,9 @@
 //
 // Author: Travelgenix
 // Date:   18 May 2026
+//
+// NOTE: Vercel function timeout is set via vercel.json at the project root,
+// not via export config. See vercel.json for the maxDuration setting.
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { put } = require("@vercel/blob");

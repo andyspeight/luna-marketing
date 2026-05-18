@@ -8273,6 +8273,27 @@ function renderAiSectionCard(section, idx) {
 function renderAiSectionEditFields(section, idx) {
   var props = section.props || {};
   var h = '';
+
+  // ── IMAGE SLOT (if section has image_url prop or it's expected) ──
+  var imageKeys = ['image_url', 'imageUrl', 'logoUrl', 'logo_url', 'heroImage'];
+  var imageKey = null;
+  imageKeys.forEach(function(k) {
+    if (props[k] !== undefined) imageKey = k;
+  });
+
+  // Also check imagesNeeded for this section to know if there's a slot expected
+  var imageBrief = null;
+  if (aiCompose.draft && Array.isArray(aiCompose.draft.imagesNeeded)) {
+    aiCompose.draft.imagesNeeded.forEach(function(img) {
+      if (img.sectionIndex === idx) imageBrief = img;
+    });
+  }
+
+  if (imageKey !== null || imageBrief) {
+    if (!imageKey) imageKey = 'image_url';
+    h += renderImageSlot(section, idx, imageKey, props[imageKey], imageBrief);
+  }
+
   var textFields = ['eyebrow', 'kicker', 'headline', 'title', 'deck', 'lede', 'body_title', 'excerpt', 'text', 'quote'];
   textFields.forEach(function(key) {
     if (props[key] !== undefined && typeof props[key] === 'string') {
@@ -8296,6 +8317,336 @@ function renderAiSectionEditFields(section, idx) {
   }
   return h;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// IMAGE SLOT — generate, refine, Pexels picker
+// ─────────────────────────────────────────────────────────────────────
+
+function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
+  // Per-image state is tracked in section.__image
+  if (!section.__image) section.__image = { mode: null, pexelsQuery: '', pexelsResults: null, refinementPrompt: '', currentSvg: null, loading: false, error: null };
+  var imgState = section.__image;
+
+  var style = imageBrief ? imageBrief.style : 'product-mockup';
+  var dimensions = imageBrief ? imageBrief.dimensions : 'hero';
+  var suggestion = imageBrief ? imageBrief.suggestion : '';
+
+  var h = '<div style="margin-bottom:12px;padding:10px;background:var(--tg-bg-secondary);border-radius:var(--radius-md);border:1px solid var(--tg-border)">';
+
+  // Header
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+  h += '<div style="font-size:10px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Image (' + esc(dimensions) + ', ' + esc(style) + ')</div>';
+  h += '<div style="display:flex;gap:4px">';
+  // Style toggle (product-mockup / abstract / lifestyle)
+  ['product-mockup', 'abstract', 'lifestyle'].forEach(function(s) {
+    var active = (imageBrief && imageBrief.style === s) || (!imageBrief && style === s);
+    h += '<button type="button" onclick="window.__aiImageSetStyle(' + idx + ', \'' + s + '\')" style="padding:2px 8px;border-radius:var(--radius-full);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--tg-font-body);' + (active ? 'background:var(--tg-primary);color:var(--tg-text-inverse);border:1px solid var(--tg-primary)' : 'background:var(--tg-bg-primary);color:var(--tg-text-secondary);border:1px solid var(--tg-border)') + '">' + s + '</button>';
+  });
+  h += '</div>';
+  h += '</div>';
+
+  // Show current image if URL set
+  if (currentUrl && typeof currentUrl === 'string' && currentUrl.length > 0) {
+    h += '<div style="margin-bottom:8px">';
+    h += '<img src="' + esc(currentUrl) + '" style="width:100%;max-width:300px;height:auto;border-radius:var(--radius-sm);border:1px solid var(--tg-border);display:block;background:#fff" alt="Section image"/>';
+    h += '<div style="font-size:10px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono);margin-top:4px;word-break:break-all;overflow:hidden;text-overflow:ellipsis;max-height:32px">' + esc(currentUrl) + '</div>';
+    h += '</div>';
+  }
+
+  // Brief suggestion display
+  if (suggestion) {
+    h += '<div style="margin-bottom:8px;padding:6px 8px;background:var(--tg-bg-primary);border-radius:var(--radius-sm);font-size:11px;color:var(--tg-text-secondary);line-height:1.4"><strong>Brief:</strong> ' + esc(suggestion) + '</div>';
+  }
+
+  // Loading state
+  if (imgState.loading) {
+    h += '<div style="padding:12px;text-align:center;background:var(--tg-bg-primary);border-radius:var(--radius-sm)">';
+    h += '<div style="display:inline-flex;gap:6px;margin-bottom:6px">';
+    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
+    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.16s"></div>';
+    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
+    h += '</div>';
+    h += '<div style="font-size:11px;color:var(--tg-text-secondary)">' + (imgState.mode === 'pexels' ? 'Searching Pexels' : 'Generating image') + '&hellip;</div>';
+    h += '</div>';
+  } else if (imgState.error) {
+    h += '<div style="padding:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);font-size:11px;color:var(--tg-error);margin-bottom:8px"><strong>Error:</strong> ' + esc(imgState.error) + '</div>';
+  }
+
+  // Mode buttons (only shown if no current URL or mode not active)
+  if (!imgState.mode || imgState.mode === 'menu') {
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    if (style === 'lifestyle') {
+      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Generate (AI fallback)</button>';
+      h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Search stock photos</button>';
+    } else {
+      h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Generate with AI</button>';
+      h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Stock photo instead</button>';
+    }
+    h += '<input type="url" placeholder="Or paste an image URL" oninput="window.__aiImageSetUrl(' + idx + ', \'' + imageKey + '\', this.value)" value="' + esc(currentUrl || '') + '" style="flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;font-family:var(--tg-font-mono);box-sizing:border-box">';
+    h += '</div>';
+  }
+
+  // Refinement input (only if we have an SVG to refine)
+  if (imgState.currentSvg && !imgState.loading) {
+    h += '<div style="margin-top:8px;display:flex;gap:6px">';
+    h += '<input type="text" id="ai-image-refine-' + idx + '" placeholder="Refine: \'make it darker\' / \'remove the cursor\'" value="' + esc(imgState.refinementPrompt) + '" oninput="window.__aiImageSetRefinementPrompt(' + idx + ', this.value)" style="flex:1;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;box-sizing:border-box">';
+    h += '<button type="button" onclick="window.__aiImageRefine(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Refine</button>';
+    h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Regenerate</button>';
+    h += '</div>';
+  }
+
+  // Pexels search UI (when mode === 'pexels')
+  if (imgState.mode === 'pexels') {
+    h += '<div style="margin-top:8px;padding:8px;background:var(--tg-bg-primary);border-radius:var(--radius-sm)">';
+    h += '<div style="display:flex;gap:6px;margin-bottom:8px">';
+    h += '<input type="text" id="ai-pexels-query-' + idx + '" placeholder="Search stock photos: \'greek islands sunset\'" value="' + esc(imgState.pexelsQuery) + '" oninput="window.__aiPexelsSetQuery(' + idx + ', this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.__aiPexelsSearch(' + idx + ')}" style="flex:1;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;box-sizing:border-box">';
+    h += '<button type="button" onclick="window.__aiPexelsSearch(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">Search</button>';
+    h += '<button type="button" onclick="window.__aiImageCloseMode(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Cancel</button>';
+    h += '</div>';
+    if (imgState.pexelsResults && imgState.pexelsResults.length > 0) {
+      h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;max-height:300px;overflow-y:auto">';
+      imgState.pexelsResults.forEach(function(p, pIdx) {
+        h += '<div style="position:relative;cursor:pointer;border-radius:var(--radius-sm);overflow:hidden;border:2px solid transparent;transition:border-color var(--duration-fast)" onclick="window.__aiPexelsPick(' + idx + ', ' + pIdx + ')" onmouseenter="this.style.borderColor=\'var(--tg-accent)\'" onmouseleave="this.style.borderColor=\'transparent\'">';
+        h += '<img src="' + esc(p.thumbnailUrl) + '" style="width:100%;height:80px;object-fit:cover;display:block" alt="' + esc(p.alt) + '"/>';
+        h += '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;font-size:9px;padding:2px 4px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">' + esc(p.photographer) + '</div>';
+        h += '</div>';
+      });
+      h += '</div>';
+    } else if (imgState.pexelsResults && imgState.pexelsResults.length === 0) {
+      h += '<div style="text-align:center;padding:12px;color:var(--tg-text-tertiary);font-size:11px">No results. Try different keywords.</div>';
+    }
+    h += '</div>';
+  }
+
+  h += '</div>';
+  return h;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// IMAGE SLOT — window handlers
+// ─────────────────────────────────────────────────────────────────────
+
+window.__aiImageSetStyle = function(idx, newStyle) {
+  if (!aiCompose.draft || !aiCompose.draft.imagesNeeded) {
+    aiCompose.draft.imagesNeeded = [];
+  }
+  var brief = aiCompose.draft.imagesNeeded.find(function(b) { return b.sectionIndex === idx; });
+  if (brief) {
+    brief.style = newStyle;
+  } else {
+    aiCompose.draft.imagesNeeded.push({ sectionIndex: idx, slot: 'image_url', style: newStyle, dimensions: 'hero', suggestion: '' });
+  }
+  renderAiComposeModal();
+};
+
+window.__aiImageSetUrl = function(idx, propKey, url) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
+  aiCompose.draft.sections[idx].props[propKey] = url;
+  schedulePreviewRefresh(800);
+};
+
+window.__aiImageGenerate = async function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  var imgState = section.__image;
+
+  // Find the brief
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  var briefText = brief ? brief.suggestion : '';
+  var style = brief ? brief.style : 'product-mockup';
+  var dimensions = brief ? brief.dimensions : 'hero';
+
+  if (!briefText) {
+    // Fall back to constructing a brief from the section's headline/title
+    briefText = section.props.headline || section.props.title || section.props.body_title || 'On-brand visual for this section';
+  }
+
+  imgState.loading = true;
+  imgState.error = null;
+  imgState.mode = 'generating';
+  renderAiComposeModal();
+
+  try {
+    var r = await fetch('/api/image-generate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        brief: briefText,
+        style: style,
+        slot: dimensions
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Generation failed');
+
+    // Find the right image key on this section
+    var imageKey = 'image_url';
+    if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
+    if (section.props.heroImage !== undefined) imageKey = 'heroImage';
+
+    section.props[imageKey] = d.pngUrl;
+    imgState.currentSvg = d.svg;
+    imgState.loading = false;
+    imgState.mode = null;
+    imgState.error = null;
+    renderAiComposeModal();
+    schedulePreviewRefresh(200);
+  } catch (e) {
+    imgState.loading = false;
+    imgState.error = e.message;
+    renderAiComposeModal();
+  }
+};
+
+window.__aiImageRefine = async function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image || !section.__image.currentSvg) return;
+  var imgState = section.__image;
+  if (!imgState.refinementPrompt || imgState.refinementPrompt.trim().length === 0) return;
+
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  var style = brief ? brief.style : 'product-mockup';
+  var dimensions = brief ? brief.dimensions : 'hero';
+
+  imgState.loading = true;
+  imgState.error = null;
+  renderAiComposeModal();
+
+  try {
+    var r = await fetch('/api/image-refine', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        existingSvg: imgState.currentSvg,
+        refinementPrompt: imgState.refinementPrompt,
+        style: style,
+        slot: dimensions
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Refinement failed');
+
+    var imageKey = 'image_url';
+    if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
+    if (section.props.heroImage !== undefined) imageKey = 'heroImage';
+
+    section.props[imageKey] = d.pngUrl;
+    imgState.currentSvg = d.svg;
+    imgState.refinementPrompt = '';
+    imgState.loading = false;
+    imgState.error = null;
+    renderAiComposeModal();
+    schedulePreviewRefresh(200);
+  } catch (e) {
+    imgState.loading = false;
+    imgState.error = e.message;
+    renderAiComposeModal();
+  }
+};
+
+window.__aiImageSetRefinementPrompt = function(idx, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].__image) aiCompose.draft.sections[idx].__image = {};
+  aiCompose.draft.sections[idx].__image.refinementPrompt = value;
+};
+
+window.__aiImageOpenPexels = function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].__image) aiCompose.draft.sections[idx].__image = {};
+  aiCompose.draft.sections[idx].__image.mode = 'pexels';
+  // Default search from the brief
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  if (brief && brief.suggestion && !aiCompose.draft.sections[idx].__image.pexelsQuery) {
+    // Extract just the key nouns — first 40 chars of suggestion
+    aiCompose.draft.sections[idx].__image.pexelsQuery = brief.suggestion.split(/[.,]/)[0].slice(0, 40);
+  }
+  renderAiComposeModal();
+};
+
+window.__aiImageCloseMode = function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].__image) return;
+  aiCompose.draft.sections[idx].__image.mode = null;
+  renderAiComposeModal();
+};
+
+window.__aiPexelsSetQuery = function(idx, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].__image) aiCompose.draft.sections[idx].__image = {};
+  aiCompose.draft.sections[idx].__image.pexelsQuery = value;
+};
+
+window.__aiPexelsSearch = async function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  var imgState = section.__image;
+  if (!imgState.pexelsQuery || imgState.pexelsQuery.trim().length === 0) return;
+
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  var dimensions = brief ? brief.dimensions : 'hero';
+
+  imgState.loading = true;
+  imgState.error = null;
+  renderAiComposeModal();
+
+  try {
+    var r = await fetch('/api/pexels-search', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        query: imgState.pexelsQuery,
+        slot: dimensions,
+        perPage: 12
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Pexels search failed');
+
+    imgState.pexelsResults = d.photos || [];
+    imgState.loading = false;
+    renderAiComposeModal();
+  } catch (e) {
+    imgState.loading = false;
+    imgState.error = e.message;
+    renderAiComposeModal();
+  }
+};
+
+window.__aiPexelsPick = function(idx, pIdx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image || !section.__image.pexelsResults) return;
+  var photo = section.__image.pexelsResults[pIdx];
+  if (!photo) return;
+
+  var imageKey = 'image_url';
+  if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
+  if (section.props.heroImage !== undefined) imageKey = 'heroImage';
+
+  section.props[imageKey] = photo.url;
+  // Track Pexels attribution
+  if (!aiCompose.draft.__pexelsAttributions) aiCompose.draft.__pexelsAttributions = [];
+  aiCompose.draft.__pexelsAttributions.push({
+    sectionIndex: idx,
+    photographer: photo.photographer,
+    photographerUrl: photo.photographerUrl,
+    pexelsPageUrl: photo.pexelsPageUrl
+  });
+  section.__image.mode = null;
+  section.__image.currentSvg = null; // not an SVG, so refinement N/A
+  renderAiComposeModal();
+  schedulePreviewRefresh(200);
+};
 
 window.__aiToggleSection = function(idx) {
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;

@@ -9997,22 +9997,29 @@ function updateImageJobFieldPill(job) {
 // ── toast ───────────────────────────────────────────────────────────
 
 function showImageJobToast(message) {
+  // Diagnostic: log every time the toast fires. Easy to disable later.
+  if (window.console && console.log) console.log('[stage-c] toast:', message);
   var t = document.createElement('div');
-  t.style.cssText = 'position:fixed;top:24px;right:24px;background:var(--tg-success,#10B981);color:#fff;padding:14px 20px 14px 18px;border-radius:10px;font-size:14px;font-weight:600;z-index:1200;box-shadow:0 20px 40px -10px rgba(16,185,129,0.45),0 4px 12px rgba(0,0,0,0.15);max-width:380px;opacity:0;transform:translateY(-16px);transition:opacity 0.25s ease, transform 0.25s ease;display:flex;align-items:center;gap:10px;font-family:var(--tg-font-body,inherit)';
+  // Match the existing app's toast convention: bottom-centre, z-index 9999.
+  // This is where all other toasts in the app appear (see showEvtToast etc).
+  // The top-right placement of the previous version was being missed by users
+  // because nothing else in the app uses that location.
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#059669;color:#fff;padding:14px 22px 14px 18px;border-radius:10px;font-size:14px;font-weight:600;z-index:9999;box-shadow:0 12px 32px rgba(5,150,105,0.35),0 4px 12px rgba(0,0,0,0.12);max-width:420px;opacity:0;transition:opacity 0.25s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);display:flex;align-items:center;gap:10px;font-family:var(--tg-font-body,inherit)';
   t.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>' + esc(message) + '</span>';
   document.body.appendChild(t);
-  // Force a layout pass then animate. rAF was unreliable when the toast
-  // was created mid-callback chain — setTimeout 10ms is bulletproof.
+  // Tiny delay lets the browser commit the initial style before the transition fires
   setTimeout(function() {
     t.style.opacity = '1';
-    t.style.transform = 'translateY(0)';
+    t.style.transform = 'translateX(-50%) translateY(0)';
   }, 10);
   setTimeout(function() {
     t.style.opacity = '0';
-    t.style.transform = 'translateY(-16px)';
-    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
-  }, 4000);
+    t.style.transform = 'translateX(-50%) translateY(20px)';
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 350);
+  }, 5000);
 }
+// Exposed on window so it can be tested from DevTools Console.
+window.__stageCTestToast = showImageJobToast;
 
 // ── ESC key + focus trap ────────────────────────────────────────────
 

@@ -549,8 +549,17 @@
           </select>
         </div>
       </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label class="field-label">Model</label>
+          <select id="htmlModel">
+            <option value="sonnet" selected>Sonnet 4.6 (fast, recommended)</option>
+            <option value="opus">Opus 4.7 (slower, sometimes better)</option>
+          </select>
+        </div>
+      </div>
       <p style="font-size:11px;color:var(--tg-text-tertiary);margin:8px 0 0 0;line-height:1.5">
-        Width and height are the logical design size. Output PNG is multiplied by device scale (e.g. 1200×800 at 2x = 2400×1600 PNG).
+        Width and height are the logical design size. Output PNG is multiplied by device scale (e.g. 1200×800 at 2x = 2400×1600 PNG). Sonnet is roughly 3-4x faster than Opus for HTML generation and usually matches Opus's quality for this kind of work.
       </p>
     </div>
 
@@ -1063,6 +1072,7 @@ function applyPreset(name) {
     if (p.defaultWidth) document.getElementById('htmlWidth').value = p.defaultWidth;
     if (p.defaultHeight) document.getElementById('htmlHeight').value = p.defaultHeight;
     if (p.deviceScale) document.getElementById('htmlDeviceScale').value = p.deviceScale;
+    if (p.model) document.getElementById('htmlModel').value = p.model;
   } else if (pipeline === 'flux') {
     var fluxRadio = document.querySelector('input[name="pipeline"][value="flux"]');
     if (fluxRadio) { fluxRadio.checked = true; onPipelineChange(); }
@@ -1098,6 +1108,7 @@ async function savePreset() {
     payload.defaultWidth = parseInt(document.getElementById('htmlWidth').value, 10);
     payload.defaultHeight = parseInt(document.getElementById('htmlHeight').value, 10);
     payload.deviceScale = parseInt(document.getElementById('htmlDeviceScale').value, 10);
+    payload.model = document.getElementById('htmlModel').value || 'sonnet';
   } else if (pipeline === 'flux') {
     payload.systemPrompt = 'FLUX:' + Date.now(); // sentinel — FLUX has no system prompt but the backend requires one for the schema
     payload.defaultBrief = document.getElementById('userBrief').value;
@@ -1163,6 +1174,7 @@ async function generateHtml() {
   var viewportWidth = parseInt(document.getElementById('htmlWidth').value, 10) || 1200;
   var viewportHeight = parseInt(document.getElementById('htmlHeight').value, 10) || 800;
   var deviceScale = parseInt(document.getElementById('htmlDeviceScale').value, 10) || 2;
+  var model = document.getElementById('htmlModel').value || 'sonnet';
 
   if (!systemPrompt.trim()) { alert('HTML system prompt is required'); return; }
   if (!userBrief.trim()) { alert('Brief is required'); return; }
@@ -1172,7 +1184,8 @@ async function generateHtml() {
   btn.textContent = 'Generating…';
 
   var loadingId = 'loading-' + Date.now();
-  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating HTML + rendering in Chrome (~30-60s)…</span></div>';
+  var modelLabel = model === 'opus' ? 'Opus 4.7' : 'Sonnet 4.6';
+  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating HTML with ' + modelLabel + ' + rendering in Chrome…</span></div>';
   var resultsEl = document.getElementById('results');
   if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
   resultsEl.insertAdjacentHTML('afterbegin', loadingHtml);
@@ -1188,6 +1201,7 @@ async function generateHtml() {
         viewportWidth: viewportWidth,
         viewportHeight: viewportHeight,
         deviceScale: deviceScale,
+        model: model,
         maxTokens: 16000
       })
     });
@@ -1404,7 +1418,8 @@ function renderResults() {
       var claudeS = d.claudeMs ? (d.claudeMs / 1000).toFixed(1) + 's claude' : '';
       var hctiS = d.hctiMs ? (d.hctiMs / 1000).toFixed(1) + 's chrome' : '';
       var deviceLabel = d.deviceScale ? d.deviceScale + 'x' : '';
-      h += '<span class="stats">' + d.viewportWidth + '×' + d.viewportHeight + ' @' + deviceLabel + ' = ' + d.width + '×' + d.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's (' + claudeS + ' + ' + hctiS + ') · ' + (d.htmlSize || 0) + ' chars html</span>';
+      var modelTag = d.model ? ' · ' + (d.model === 'opus' ? 'OPUS' : 'SONNET') : '';
+      h += '<span class="stats">' + d.viewportWidth + '×' + d.viewportHeight + ' @' + deviceLabel + ' = ' + d.width + '×' + d.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's (' + claudeS + ' + ' + hctiS + ')' + modelTag + ' · ' + (d.htmlSize || 0) + ' chars html</span>';
     } else {
       var inputTokens = d.usage && d.usage.svg ? d.usage.svg.input_tokens : '?';
       var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';

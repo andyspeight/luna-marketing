@@ -328,6 +328,35 @@
   }
   .toggle-link:hover { color: var(--tg-accent-dark); }
 
+  .pipeline-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--tg-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    background: var(--tg-bg-primary);
+    transition: all 150ms;
+  }
+  .pipeline-card:hover { border-color: var(--tg-accent-light); }
+  .pipeline-card:has(input:checked) {
+    border-color: var(--tg-accent);
+    background: rgba(0, 180, 216, 0.04);
+    box-shadow: 0 0 0 2px rgba(0, 180, 216, 0.15);
+  }
+  .pipeline-card input { margin-top: 2px; }
+  .pipeline-card-body { display: flex; flex-direction: column; gap: 2px; }
+  .pipeline-card-body strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--tg-text-primary);
+  }
+  .pipeline-card-body span {
+    font-size: 11px;
+    color: var(--tg-text-tertiary);
+  }
+
   .toast {
     position: fixed;
     bottom: 20px;
@@ -354,6 +383,28 @@
 
   <!-- LEFT PANEL: editor -->
   <div class="panel-left">
+
+    <div class="section">
+      <div class="section-title">Pipeline</div>
+      <div class="row">
+        <label class="pipeline-card" id="pipeline-svg-label">
+          <input type="radio" name="pipeline" value="svg" checked onchange="onPipelineChange()">
+          <div class="pipeline-card-body">
+            <strong>Claude SVG</strong>
+            <span>Data cards, mockups, charts</span>
+          </div>
+        </label>
+        <label class="pipeline-card" id="pipeline-flux-label">
+          <input type="radio" name="pipeline" value="flux" onchange="onPipelineChange()">
+          <div class="pipeline-card-body">
+            <strong>FLUX 1.1 Pro Ultra</strong>
+            <span>Photography, lifestyle</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div id="svg-controls">
     <div class="section">
       <div class="section-title">
         <span>System prompt</span>
@@ -361,13 +412,61 @@
       </div>
       <textarea id="systemPrompt" class="prompt" placeholder="Paste or write the full system prompt here…"></textarea>
     </div>
+    </div>
+
+    <div id="flux-controls" style="display:none">
+      <div class="section">
+        <div class="section-title">FLUX controls</div>
+        <div class="row">
+          <div>
+            <label class="field-label">Aspect ratio</label>
+            <select id="fluxAspectRatio">
+              <option value="16:9" selected>16:9 (hero)</option>
+              <option value="1:1">1:1 (square)</option>
+              <option value="4:3">4:3 (card)</option>
+              <option value="3:2">3:2</option>
+              <option value="5:4">5:4</option>
+              <option value="4:5">4:5</option>
+              <option value="3:4">3:4 (portrait)</option>
+              <option value="2:3">2:3</option>
+              <option value="9:16">9:16 (story)</option>
+              <option value="9:21">9:21</option>
+              <option value="21:9">21:9 (feature)</option>
+              <option value="3:1">3:1 (banner)</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Safety tolerance</label>
+            <select id="fluxSafety">
+              <option value="1">1 (strictest)</option>
+              <option value="2" selected>2 (default)</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6 (most permissive)</option>
+            </select>
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="fluxRaw">
+          <label for="fluxRaw">Raw mode (less stylised, more photographic)</label>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="fluxRawPrompt">
+          <label for="fluxRawPrompt">Raw prompt (skip enrichment, use brief verbatim)</label>
+        </div>
+        <p style="font-size:11px;color:var(--tg-text-tertiary);margin:8px 0 0 0;line-height:1.5">
+          By default we enrich your brief with editorial travel photography style cues. Tick "Raw prompt" to send your brief exactly as written.
+        </p>
+      </div>
+    </div>
 
     <div class="section">
       <div class="section-title">Brief</div>
       <textarea id="userBrief" class="brief" placeholder="e.g. Luna Chat widget on a travel website, showing a holiday search result inside the chat window."></textarea>
     </div>
 
-    <div class="section">
+    <div id="svg-dimensions" class="section">
       <div class="row-3">
         <div>
           <label class="field-label">Width (px)</label>
@@ -544,6 +643,34 @@ function loadDefault() {
   document.getElementById('systemPrompt').value = DEFAULT_PROMPT;
 }
 
+// ─── PIPELINE SWITCH ─────────────────────────────────────────────
+function getPipeline() {
+  var el = document.querySelector('input[name="pipeline"]:checked');
+  return el ? el.value : 'svg';
+}
+
+function onPipelineChange() {
+  var pipeline = getPipeline();
+  var svgControls = document.getElementById('svg-controls');
+  var svgDimensions = document.getElementById('svg-dimensions');
+  var fluxControls = document.getElementById('flux-controls');
+
+  if (pipeline === 'flux') {
+    svgControls.style.display = 'none';
+    svgDimensions.style.display = 'none';
+    fluxControls.style.display = '';
+    // Suggest a FLUX-style brief
+    var brief = document.getElementById('userBrief').value;
+    if (brief && brief.indexOf('Santorini destination spotlight') === 0) {
+      document.getElementById('userBrief').value = 'Greek island village at golden hour. Whitewashed cubic buildings cascading down volcanic cliffs, blue domed church silhouetted against the caldera. Aegean sea below. Soft warm light, long shadows.';
+    }
+  } else {
+    svgControls.style.display = '';
+    svgDimensions.style.display = '';
+    fluxControls.style.display = 'none';
+  }
+}
+
 // ─── AUTH CHECK ──────────────────────────────────────────────────
 async function checkAuth() {
   try {
@@ -659,6 +786,14 @@ async function deletePreset(name) {
 
 // ─── GENERATE ────────────────────────────────────────────────────
 async function generate() {
+  var pipeline = getPipeline();
+  if (pipeline === 'flux') {
+    return generateFlux();
+  }
+  return generateSvg();
+}
+
+async function generateSvg() {
   var systemPrompt = document.getElementById('systemPrompt').value;
   var userBrief = document.getElementById('userBrief').value;
   var width = parseInt(document.getElementById('width').value, 10) || 1200;
@@ -673,9 +808,8 @@ async function generate() {
   btn.disabled = true;
   btn.textContent = 'Generating…';
 
-  // Insert loading card
   var loadingId = 'loading-' + Date.now();
-  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating (' + (useReasoning ? '~30-60s with reasoning' : '~15-30s') + ')…</span></div>';
+  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating SVG (' + (useReasoning ? '~30-60s with reasoning' : '~15-30s') + ')…</span></div>';
   var resultsEl = document.getElementById('results');
   if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
   resultsEl.insertAdjacentHTML('afterbegin', loadingHtml);
@@ -697,7 +831,7 @@ async function generate() {
     } else if (!d.ok) {
       addError(d.error || 'Generation failed', userBrief, d);
     } else {
-      addResult(d, userBrief, width, height, useReasoning);
+      addResult(d, userBrief, width, height, useReasoning, 'svg');
     }
   } catch (e) {
     var loadingEl = document.getElementById(loadingId);
@@ -709,8 +843,70 @@ async function generate() {
   btn.textContent = 'Generate';
 }
 
-function addResult(d, brief, w, h, hadReasoning) {
-  results.unshift({ data: d, brief: brief, width: w, height: h, hadReasoning: hadReasoning, ts: Date.now() });
+async function generateFlux() {
+  var brief = document.getElementById('userBrief').value;
+  var aspectRatio = document.getElementById('fluxAspectRatio').value;
+  var safetyTolerance = parseInt(document.getElementById('fluxSafety').value, 10) || 2;
+  var raw = document.getElementById('fluxRaw').checked;
+  var rawPrompt = document.getElementById('fluxRawPrompt').checked;
+
+  if (!brief.trim()) { alert('Brief is required'); return; }
+
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  var loadingId = 'loading-' + Date.now();
+  var loadingHtml = '<div class="loading" id="' + loadingId + '"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span>Generating with FLUX 1.1 Pro Ultra (~15-25s)…</span></div>';
+  var resultsEl = document.getElementById('results');
+  if (resultsEl.querySelector('.empty-state')) resultsEl.innerHTML = '';
+  resultsEl.insertAdjacentHTML('afterbegin', loadingHtml);
+
+  try {
+    var r = await fetch('/api/image-lab-flux', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brief: brief,
+        aspectRatio: aspectRatio,
+        safetyTolerance: safetyTolerance,
+        raw: raw,
+        rawPrompt: rawPrompt
+      })
+    });
+    var d = await r.json();
+
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    if (!r.ok || !d.ok) {
+      addError(d.error || ('HTTP ' + r.status), brief, d);
+    } else {
+      // Adapt FLUX result shape to fit the existing renderer
+      addResult({
+        pngUrl: d.pngUrl,
+        originalUrl: d.originalUrl,
+        elapsedMs: d.elapsedMs,
+        finalPrompt: d.finalPrompt,
+        predictionId: d.predictionId,
+        aspectRatio: d.aspectRatio,
+        // FLUX has no SVG, no tokens — leave as undefined
+        svgSize: 0
+      }, brief, d.width, d.height, false, 'flux');
+    }
+  } catch (e) {
+    var loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+    addError(e.message, brief);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate';
+}
+
+function addResult(d, brief, w, h, hadReasoning, pipeline) {
+  results.unshift({ data: d, brief: brief, width: w, height: h, hadReasoning: hadReasoning, ts: Date.now(), pipeline: pipeline || 'svg' });
   renderResults();
 }
 
@@ -749,48 +945,75 @@ function renderResults() {
   results.forEach(function(r, idx) {
     var d = r.data;
     var ts = new Date(r.ts).toLocaleTimeString();
-    var inputTokens = d.usage && d.usage.svg ? d.usage.svg.input_tokens : '?';
-    var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';
-    var planTokens = d.usage && d.usage.plan ? (d.usage.plan.input_tokens + d.usage.plan.output_tokens) : 0;
-
-    var textInfo = d.textConversionInfo;
-    var textNote = textInfo ? ' · ' + textInfo.count + ' text→path' : '';
-    if (textInfo && textInfo.errors && textInfo.errors.length > 0) {
-      textNote += ' (' + textInfo.errors.length + ' warnings)';
-    }
+    var isFlux = r.pipeline === 'flux';
 
     h += '<div class="result-card">';
     h += '<div class="result-header">';
     h += '<div class="left">';
     h += '<span class="timestamp">' + ts + '</span>';
-    h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ' + (d.svgSize || 0) + ' chars · in ' + inputTokens + ' / out ' + outputTokens + (planTokens ? ' + plan ' + planTokens : '') + textNote + '</span>';
-    if (r.hadReasoning) h += '<span class="stats" style="color:var(--tg-accent)">REASONED</span>';
+
+    if (isFlux) {
+      h += '<span class="stats" style="color:var(--tg-accent);font-weight:600">FLUX 1.1 PRO ULTRA</span>';
+      h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ratio ' + (d.aspectRatio || '?') + '</span>';
+    } else {
+      var inputTokens = d.usage && d.usage.svg ? d.usage.svg.input_tokens : '?';
+      var outputTokens = d.usage && d.usage.svg ? d.usage.svg.output_tokens : '?';
+      var planTokens = d.usage && d.usage.plan ? (d.usage.plan.input_tokens + d.usage.plan.output_tokens) : 0;
+      var textInfo = d.textConversionInfo;
+      var textNote = textInfo ? ' · ' + textInfo.count + ' text→path' : '';
+      if (textInfo && textInfo.errors && textInfo.errors.length > 0) {
+        textNote += ' (' + textInfo.errors.length + ' warnings)';
+      }
+      h += '<span class="stats">' + r.width + '×' + r.height + ' · ' + (d.elapsedMs / 1000).toFixed(1) + 's · ' + (d.svgSize || 0) + ' chars · in ' + inputTokens + ' / out ' + outputTokens + (planTokens ? ' + plan ' + planTokens : '') + textNote + '</span>';
+      if (r.hadReasoning) h += '<span class="stats" style="color:var(--tg-accent)">REASONED</span>';
+    }
     h += '</div>';
+
     h += '<div class="actions">';
-    h += '<button class="btn" onclick="toggleSvg(' + idx + ')">SVG source</button>';
-    h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
-    h += '<button class="btn" onclick="downloadSvg(' + idx + ')">SVG</button>';
-    if (d.planText) h += '<button class="btn" onclick="togglePlan(' + idx + ')">Plan</button>';
+    if (isFlux) {
+      if (d.finalPrompt) h += '<button class="btn" onclick="toggleFluxPrompt(' + idx + ')">Final prompt</button>';
+      h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
+    } else {
+      h += '<button class="btn" onclick="toggleSvg(' + idx + ')">SVG source</button>';
+      h += '<button class="btn" onclick="downloadPng(\'' + d.pngUrl + '\')">PNG</button>';
+      h += '<button class="btn" onclick="downloadSvg(' + idx + ')">SVG</button>';
+      if (d.planText) h += '<button class="btn" onclick="togglePlan(' + idx + ')">Plan</button>';
+    }
     h += '</div>';
     h += '</div>';
+
     h += '<div class="result-body">';
     h += '<div class="image-wrap">';
     h += '<img src="' + d.pngUrl + '" alt="Generated image">';
     h += '</div>';
     h += '<div class="result-meta">';
     h += '<div class="result-brief"><span class="key">Brief:</span> ' + escHtml(r.brief) + '</div>';
+    if (isFlux && d.predictionId) {
+      h += '<div style="margin-top:8px;font-size:11px;color:var(--tg-text-tertiary);font-family:ui-monospace,SF Mono,Menlo,monospace">prediction: ' + escHtml(d.predictionId) + '</div>';
+    }
     h += '</div>';
     h += '</div>';
-    if (d.planText) {
+
+    if (isFlux && d.finalPrompt) {
+      h += '<pre class="plan-text" id="flux-prompt-' + idx + '" style="display:none">' + escHtml(d.finalPrompt) + '</pre>';
+    }
+    if (!isFlux && d.planText) {
       h += '<pre class="plan-text" id="plan-' + idx + '" style="display:none">' + escHtml(d.planText) + '</pre>';
     }
-    h += '<pre class="svg-source" id="svg-' + idx + '" style="display:none">' + escHtml(d.svg) + '</pre>';
+    if (!isFlux && d.svg) {
+      h += '<pre class="svg-source" id="svg-' + idx + '" style="display:none">' + escHtml(d.svg) + '</pre>';
+    }
     h += '</div>';
   });
   if (h === '') {
     h = '<div class="empty-state"><h3>No results yet</h3><p>Configure the prompt and brief on the left, then click Generate.</p></div>';
   }
   resultsEl.innerHTML = h;
+}
+
+function toggleFluxPrompt(idx) {
+  var el = document.getElementById('flux-prompt-' + idx);
+  if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 
 function toggleSvg(idx) {

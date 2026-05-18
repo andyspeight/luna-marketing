@@ -7917,7 +7917,12 @@ var aiCompose = {
   refining: false,
   saving: false,
   generateError: null,
-  productsForPicker: null
+  productsForPicker: null,
+  // Preview state
+  previewHtml: null,
+  previewLoading: false,
+  previewError: null,
+  previewDebounceTimer: null
 };
 
 window.__emailComposeAiOpen = function() {
@@ -8042,6 +8047,11 @@ function renderAiComposeModal() {
         }
       });
     }
+    // Populate the preview iframe if HTML is ready
+    var iframe = document.getElementById('ai-preview-iframe');
+    if (iframe && aiCompose.previewHtml) {
+      iframe.srcdoc = aiCompose.previewHtml;
+    }
   }
 }
 
@@ -8149,6 +8159,33 @@ function renderAiDraftBody() {
   var d = aiCompose.draft;
   var h = '<div style="padding:var(--space-6)">';
 
+  // ── PREVIEW IFRAME ──
+  h += '<div style="margin-bottom:var(--space-5)">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+  h += '<div style="font-size:11px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">Live preview</div>';
+  if (aiCompose.previewLoading) {
+    h += '<div style="font-size:11px;color:var(--tg-text-tertiary);display:flex;align-items:center;gap:6px">';
+    h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
+    h += '<span>Rendering&hellip;</span>';
+    h += '</div>';
+  } else {
+    h += '<button onclick="window.__aiRefreshPreview()" style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:4px 10px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer">Refresh preview</button>';
+  }
+  h += '</div>';
+
+  if (aiCompose.previewError) {
+    h += '<div style="padding:var(--space-3);background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);color:var(--tg-error);font-size:var(--text-sm)">Preview failed: ' + esc(aiCompose.previewError) + '</div>';
+  } else if (aiCompose.previewHtml) {
+    // iframe with srcdoc — keeps email CSS scoped, no leakage into the portal
+    h += '<div style="border:1px solid var(--tg-border);border-radius:var(--radius-md);overflow:hidden;background:#f1f5f9;padding:16px 8px;display:flex;justify-content:center">';
+    h += '<iframe id="ai-preview-iframe" sandbox="allow-same-origin" style="width:600px;max-width:100%;height:520px;border:none;background:#fff;border-radius:6px;box-shadow:0 4px 12px rgba(15,23,42,0.08);display:block"></iframe>';
+    h += '</div>';
+  } else {
+    h += '<div style="padding:var(--space-6);background:var(--tg-bg-secondary);border:1px dashed var(--tg-border);border-radius:var(--radius-md);text-align:center;color:var(--tg-text-tertiary);font-size:var(--text-sm)">Loading preview&hellip;</div>';
+  }
+  h += '</div>';
+
+  // ── SUBJECT/PREVIEW TEXT CARD ──
   h += '<div style="margin-bottom:var(--space-4);padding:var(--space-4);background:var(--tg-bg-secondary);border-radius:var(--radius-md);border:1px solid var(--tg-border)">';
   h += '<div style="font-size:11px;font-weight:600;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Subject</div>';
   h += '<div style="font-size:var(--text-base);font-weight:600;color:var(--tg-text-primary);margin-bottom:var(--space-3)" id="ai-subject-text">' + esc(d.subject || '(no subject)') + '</div>';
@@ -8267,18 +8304,88 @@ window.__aiToggleSection = function(idx) {
   renderAiComposeModal();
 };
 
-window.__aiUpdateProp = function(idx, prop, value) {
-  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
-  if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
-  aiCompose.draft.sections[idx].props[prop] = value;
-};
-
 window.__aiUpdateCta = function(idx, key, value) {
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
   if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
   if (!aiCompose.draft.sections[idx].props.cta) aiCompose.draft.sections[idx].props.cta = {};
   aiCompose.draft.sections[idx].props.cta[key] = value;
+  // Debounced preview refresh after section edits
+  schedulePreviewRefresh(800);
 };
+
+// Override the prop updater to also schedule preview refresh
+window.__aiUpdateProp = function(idx, prop, value) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  if (!aiCompose.draft.sections[idx].props) aiCompose.draft.sections[idx].props = {};
+  aiCompose.draft.sections[idx].props[prop] = value;
+  schedulePreviewRefresh(800);
+};
+
+function schedulePreviewRefresh(delay) {
+  if (aiCompose.previewDebounceTimer) clearTimeout(aiCompose.previewDebounceTimer);
+  aiCompose.previewDebounceTimer = setTimeout(function() {
+    window.__aiRefreshPreview();
+  }, delay || 600);
+}
+
+window.__aiRefreshPreview = async function() {
+  if (!aiCompose.draft || !aiCompose.draft.sections) return;
+  if (aiCompose.previewLoading) return;
+
+  aiCompose.previewLoading = true;
+  aiCompose.previewError = null;
+  // Update the loading indicator in place (don't re-render whole modal — keeps focus)
+  updatePreviewLoadingUI(true);
+
+  try {
+    var r = await fetch('/api/email-preview-render', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id,
+        sections: aiCompose.draft.sections,
+        subject: aiCompose.draft.subject,
+        previewText: aiCompose.draft.previewText
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'Render failed');
+    aiCompose.previewHtml = d.html;
+    aiCompose.previewError = null;
+  } catch (e) {
+    aiCompose.previewError = e.message;
+    aiCompose.previewHtml = null;
+  }
+
+  aiCompose.previewLoading = false;
+  updatePreviewIframe();
+  updatePreviewLoadingUI(false);
+};
+
+function updatePreviewLoadingUI(loading) {
+  // Best-effort UI update without full re-render so we don't lose focus on inputs
+  var rightHeader = document.querySelector('#ai-compose-modal [id^="ai-preview-iframe"]');
+  // The loading indicator is the small element near "Live preview" — easier to just
+  // trigger a partial re-render if state moved
+}
+
+function updatePreviewIframe() {
+  var iframe = document.getElementById('ai-preview-iframe');
+  if (!iframe) {
+    // The iframe isn't in the DOM yet because preview was empty — re-render the modal
+    renderAiComposeModal();
+    // After re-render, find it and populate
+    setTimeout(function() {
+      var iframe2 = document.getElementById('ai-preview-iframe');
+      if (iframe2 && aiCompose.previewHtml) iframe2.srcdoc = aiCompose.previewHtml;
+    }, 50);
+    return;
+  }
+  if (aiCompose.previewHtml) {
+    iframe.srcdoc = aiCompose.previewHtml;
+  }
+}
 
 window.__emailComposeAiGenerate = async function() {
   if (!aiCompose.intent || aiCompose.intent.trim().length === 0) {
@@ -8310,7 +8417,11 @@ window.__emailComposeAiGenerate = async function() {
     aiCompose.draft = d.draft;
     aiCompose.refinementHistory = [];
     aiCompose.state = 'draft';
+    aiCompose.previewHtml = null;
+    aiCompose.previewError = null;
     renderAiComposeModal();
+    // Kick off the first preview render right away
+    window.__aiRefreshPreview();
   } catch (e) {
     aiCompose.state = 'brief';
     aiCompose.generateError = e.message;
@@ -8360,7 +8471,10 @@ window.__emailComposeAiRefine = async function() {
     aiCompose.draft = d.draft;
     aiCompose.refinementPrompt = '';
     aiCompose.refining = false;
+    aiCompose.previewHtml = null;
     renderAiComposeModal();
+    // Re-render the preview with the new draft
+    window.__aiRefreshPreview();
   } catch (e) {
     aiCompose.refining = false;
     alert('Refinement failed: ' + e.message);

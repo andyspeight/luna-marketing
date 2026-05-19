@@ -5687,9 +5687,13 @@ function renderField(section, basePath, field, depth) {
         h += '<span class="email-builder-img-gen-label">Generating' + (activeJob.elapsedSec ? ' ' + activeJob.elapsedSec + 's' : '') + '</span>';
         h += '</button>';
       } else {
-        h += '<button type="button" class="email-builder-img-gen-btn" onclick="window.__imageGenerateOpen(\'' + sidAttr + '\',\'' + pathAttr + '\')" title="Generate with AI">';
+        h += '<button type="button" class="email-builder-img-gen-btn" onclick="window.__imageGenerateOpen(\'' + sidAttr + '\',\'' + pathAttr + '\')" title="Generate a mockup with AI (slower, high quality)">';
         h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>';
         h += '<span class="email-builder-img-gen-label">Generate</span>';
+        h += '</button>';
+        h += '<button type="button" class="email-builder-img-gen-btn" onclick="window.__photoGenerateOpen(\'' + sidAttr + '\',\'' + pathAttr + '\')" title="Generate a photo with Reactive (faster, photographic)">';
+        h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M7 5l1.5-2h7L17 5"/></svg>';
+        h += '<span class="email-builder-img-gen-label">Photo</span>';
         h += '</button>';
       }
       h += '</div>';
@@ -8630,10 +8634,16 @@ function renderAiDraftBody() {
       h += '</div>';
       h += '<div style="font-size:12px;color:var(--tg-text-secondary);line-height:1.4">' + esc(img.suggestion || '') + '</div>';
       h += '</div>';
-      h += '<button onclick="window.__aiImagesNeededGenerate(' + idx + ')" class="btn btn-primary" style="flex-shrink:0;font-size:11px;padding:6px 12px;display:flex;align-items:center;gap:4px">';
+      h += '<div style="display:flex;gap:4px;flex-shrink:0">';
+      h += '<button onclick="window.__aiImagesNeededGenerate(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 12px;display:flex;align-items:center;gap:4px">';
       h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>';
       h += (style === 'lifestyle' ? 'Find stock' : 'Generate');
       h += '</button>';
+      h += '<button onclick="window.__aiImagePhotoGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px;display:flex;align-items:center;gap:4px" title="Photoreal generation via Replicate (faster, photographic)">';
+      h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M7 5l1.5-2h7L17 5"/></svg>';
+      h += 'Photo';
+      h += '</button>';
+      h += '</div>';
       h += '</div>';
     });
     h += '</div></div>';
@@ -8776,6 +8786,7 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
   if (imgState.loading) {
     var elapsedSec = imgState.startedAt ? Math.round((Date.now() - imgState.startedAt) / 1000) : 0;
     var isPexels = imgState.mode === 'pexels' || imgState.mode === 'pexels-loading';
+    var isPhoto = imgState.mode === 'generating-photo';
     h += '<div style="padding:14px;background:var(--tg-bg-primary);border-radius:var(--radius-sm);margin-bottom:8px">';
     if (isPexels) {
       // Pexels is fast — just show the dots
@@ -8786,6 +8797,16 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
       h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
       h += '</div>';
       h += '<div style="font-size:12px;color:var(--tg-text-secondary)">Searching stock photos&hellip;</div>';
+      h += '</div>';
+    } else if (isPhoto) {
+      // Reactive / Replicate — single tracker, much faster than HTML render
+      h += '<div style="display:flex;align-items:center;gap:10px">';
+      h += '<div style="display:inline-flex;gap:6px">';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both"></div>';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.16s"></div>';
+      h += '<div style="width:8px;height:8px;background:var(--tg-accent);border-radius:50%;animation:ai-pulse 1.4s infinite ease-in-out both;animation-delay:0.32s"></div>';
+      h += '</div>';
+      h += '<div style="font-size:12px;color:var(--tg-text-secondary)">Generating photo&hellip; <span style="font-family:var(--tg-font-mono);color:var(--tg-text-tertiary)">' + elapsedSec + 's</span></div>';
       h += '</div>';
     } else {
       // AI generation — three-stage tracker like the regular composer.
@@ -8811,9 +8832,11 @@ function renderImageSlot(section, idx, imageKey, currentUrl, imageBrief) {
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
     if (style === 'lifestyle') {
       h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Generate AI again' : 'Generate (AI fallback)') + '</button>';
+      h += '<button type="button" onclick="window.__aiImagePhotoGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px" title="Photoreal generation via Replicate">' + (currentUrl ? 'Photo again' : 'Photo') + '</button>';
       h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Pick a different stock photo' : 'Search stock photos') + '</button>';
     } else {
       h += '<button type="button" onclick="window.__aiImageGenerate(' + idx + ')" class="btn btn-primary" style="font-size:11px;padding:6px 10px">' + (currentUrl ? 'Regenerate' : 'Generate with AI') + '</button>';
+      h += '<button type="button" onclick="window.__aiImagePhotoGenerate(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px" title="Photoreal generation via Replicate">' + (currentUrl ? 'Photo' : 'Photo') + '</button>';
       h += '<button type="button" onclick="window.__aiImageOpenPexels(' + idx + ')" class="btn" style="font-size:11px;padding:6px 10px">Stock photo instead</button>';
     }
     h += '<input type="url" placeholder="Or paste an image URL" oninput="window.__aiImageSetUrl(' + idx + ', \'' + imageKey + '\', this.value)" value="' + esc(currentUrl || '') + '" style="flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-sm);font-size:11px;font-family:var(--tg-font-mono);box-sizing:border-box">';
@@ -9108,6 +9131,280 @@ async function __legacyImageGenerate(idx, briefText, style, dimensions) {
     imgState.error = e.message;
     renderAiComposeModal();
   }
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// REACTIVE (Replicate) image generation — Phase 1 additive
+// ───────────────────────────────────────────────────────────────────────
+// The Stage B HTML-render pipeline is excellent for product mockups and
+// data-driven cards, but slow (90-120s) and not photoreal. For lifestyle
+// imagery — destination shots, hero photos, anything that wants to look
+// like a real photograph — we call Replicate via /api/replicate-generate
+// (the same endpoint the image lab uses). The endpoint takes a prompt
+// and an aspect ratio string, returns a URL in 5-30 seconds.
+//
+// This function lives alongside the existing __aiImageGenerate (HTML
+// render) rather than replacing it. The user picks via the new "Photo"
+// button in the picker UI.
+
+// Map the existing v2 pixel-slot system to Replicate's aspect-ratio
+// string format. Returns one of '1:1', '2:1', '3:2', '4:3', '16:9',
+// '3:1', '3:4', '4:5', '9:16' — whichever closest matches the slot.
+function aspectRatioForSlot(slot) {
+  switch (slot) {
+    case 'hero':           return '2:1';   // 1200x600
+    case 'hero-square':    return '1:1';
+    case 'hero-tall':      return '3:4';
+    case 'feature-story':  return '3:2';
+    case 'card':           return '3:2';
+    case 'card-square':    return '1:1';
+    case 'thumbnail':      return '1:1';
+    case 'banner':         return '3:1';
+    case 'wide':           return '16:9';
+    default:               return '3:2';
+  }
+}
+
+// Generate a photoreal image via Replicate. Mirrors the shape of
+// __aiImageGenerate but calls /api/replicate-generate instead of the
+// Stage B pipeline. Response uses { url } not { pngUrl }, and there is
+// no { ok: true } field — we rely on r.ok (HTTP 200).
+window.__aiImagePhotoGenerate = async function(idx) {
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  var section = aiCompose.draft.sections[idx];
+  if (!section.__image) section.__image = {};
+  var imgState = section.__image;
+
+  // Build the prompt. Use the user's override if set, else Luna's brief,
+  // else a fallback from the section's own headline.
+  var brief = (aiCompose.draft.imagesNeeded || []).find(function(b) { return b.sectionIndex === idx; });
+  var briefText = brief ? brief.suggestion : '';
+  var dimensions = brief ? brief.dimensions : 'hero';
+  if (typeof imgState.briefOverride === 'string' && imgState.briefOverride.trim().length > 0) {
+    briefText = imgState.briefOverride.trim();
+  }
+  if (!briefText) {
+    briefText = section.props.headline || section.props.title || section.props.body_title || 'A clean editorial photograph for this section';
+  }
+
+  var v2Slot = mapDimensionsToV2Slot(dimensions);
+  var aspectRatio = aspectRatioForSlot(v2Slot);
+
+  imgState.loading = true;
+  imgState.error = null;
+  imgState.mode = 'generating-photo';
+  imgState.startedAt = Date.now();
+  renderAiComposeModal();
+  scheduleAiImageTickerIfNeeded();
+
+  try {
+    var r = await fetch('/api/replicate-generate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: briefText,
+        category: 'photoreal',
+        aspectRatio: aspectRatio
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.url) {
+      throw new Error((d && (d.error || d.details && d.details.join(', '))) || ('Generation failed (HTTP ' + r.status + ')'));
+    }
+
+    var imageKey = 'image_url';
+    if (section.props.imageUrl !== undefined) imageKey = 'imageUrl';
+    if (section.props.heroImage !== undefined) imageKey = 'heroImage';
+
+    section.props[imageKey] = d.url;
+    imgState.currentSvg = null;
+    imgState.v2Result = null;
+    imgState.reactiveResult = d;
+    imgState.loading = false;
+    imgState.mode = null;
+    imgState.error = null;
+    renderAiComposeModal();
+    schedulePreviewRefresh(200);
+  } catch (e) {
+    imgState.loading = false;
+    imgState.error = e.message;
+    renderAiComposeModal();
+  }
+};
+
+// ───────────────────────────────────────────────────────────────────────
+// REACTIVE photo generator for the regular property panel
+// ───────────────────────────────────────────────────────────────────────
+// The AI compose flow calls __aiImagePhotoGenerate(idx) where idx is the
+// section's index in aiCompose.draft.sections. That function uses Luna's
+// pre-built brief.
+//
+// The regular property panel doesn't have a pre-built brief. The user is
+// editing a section directly — they may have a headline or body text
+// already, or the section might be empty. So this entry point opens a
+// small inline prompt modal where they type what they want to see and
+// pick an aspect ratio, then we fire the same /api/replicate-generate
+// call.
+
+var photoModal = {
+  open: false,
+  sectionId: null,
+  fieldPath: null,
+  prompt: '',
+  aspectRatio: '2:1',
+  submitting: false,
+  error: null
+};
+
+window.__photoGenerateOpen = function(sectionId, fieldPath) {
+  var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
+  if (!section) return;
+
+  // Prefill prompt from the section's existing copy. Headline + body
+  // together give the model the most useful context.
+  var prefill = [];
+  var hl = section.props.headline || section.props.title || section.props.body_title || '';
+  var sh = section.props.subhead || section.props.deck || section.props.lede || '';
+  if (hl) prefill.push(hl);
+  if (sh) prefill.push(sh);
+  var promptDefault = prefill.join('. ').trim() || 'A clean editorial photograph for this section';
+
+  // Derive default aspect ratio from the field path. Hero images tend
+  // to be wide (2:1), card-style slots tend to be square or 3:2.
+  var ratioDefault = '2:1';
+  if (/heroImage|hero_image|^image_url$|^imageUrl$/i.test(fieldPath)) {
+    ratioDefault = '2:1';
+  } else if (/banner/i.test(fieldPath)) {
+    ratioDefault = '3:1';
+  } else if (/thumbnail|square/i.test(fieldPath)) {
+    ratioDefault = '1:1';
+  } else {
+    ratioDefault = '3:2';
+  }
+
+  photoModal.open = true;
+  photoModal.sectionId = sectionId;
+  photoModal.fieldPath = fieldPath;
+  photoModal.prompt = promptDefault;
+  photoModal.aspectRatio = ratioDefault;
+  photoModal.submitting = false;
+  photoModal.error = null;
+  renderPhotoModal();
+};
+
+window.__photoGenerateClose = function() {
+  photoModal.open = false;
+  photoModal.submitting = false;
+  renderPhotoModal();
+};
+
+window.__photoGenerateSetPrompt = function(value) {
+  photoModal.prompt = value;
+};
+
+window.__photoGenerateSetAspect = function(value) {
+  photoModal.aspectRatio = value;
+};
+
+window.__photoGenerateSubmit = async function() {
+  if (photoModal.submitting) return;
+  var prompt = (photoModal.prompt || '').trim();
+  if (!prompt) {
+    photoModal.error = 'Add a prompt before generating.';
+    renderPhotoModal();
+    return;
+  }
+  photoModal.submitting = true;
+  photoModal.error = null;
+  renderPhotoModal();
+
+  try {
+    var r = await fetch('/api/replicate-generate', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: prompt,
+        category: 'photoreal',
+        aspectRatio: photoModal.aspectRatio
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.url) {
+      throw new Error((d && (d.error || (d.details && d.details.join(', ')))) || ('Generation failed (HTTP ' + r.status + ')'));
+    }
+    // Write the URL into the builder field via the normal update path.
+    if (typeof window.__builderUpdateField === 'function') {
+      window.__builderUpdateField(photoModal.sectionId, photoModal.fieldPath, d.url);
+    }
+    photoModal.open = false;
+    photoModal.submitting = false;
+    renderPhotoModal();
+  } catch (e) {
+    photoModal.submitting = false;
+    photoModal.error = e.message;
+    renderPhotoModal();
+  }
+};
+
+// Render or remove the photo-modal DOM element. Created lazily on first
+// open. The modal sits in #photo-gen-modal-host at the end of <body>.
+function renderPhotoModal() {
+  var host = document.getElementById('photo-gen-modal-host');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'photo-gen-modal-host';
+    document.body.appendChild(host);
+  }
+  if (!photoModal.open) {
+    host.innerHTML = '';
+    return;
+  }
+
+  var ratios = ['1:1', '4:3', '3:2', '2:1', '3:1', '4:5', '3:4', '9:16', '16:9'];
+  var ratioOptions = ratios.map(function(r) {
+    return '<option value="' + r + '"' + (r === photoModal.aspectRatio ? ' selected' : '') + '>' + r + '</option>';
+  }).join('');
+
+  var html = '';
+  html += '<div class="tg-img-gen-backdrop" style="position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)window.__photoGenerateClose()">';
+  html += '<div style="background:#fff;border-radius:12px;max-width:520px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.3);overflow:hidden">';
+
+  // Header
+  html += '<div style="padding:18px 20px;border-bottom:1px solid var(--tg-border);display:flex;align-items:center;justify-content:space-between">';
+  html += '<div>';
+  html += '<div style="font-size:15px;font-weight:600;color:var(--tg-text-primary)">Generate photo</div>';
+  html += '<div style="font-size:12px;color:var(--tg-text-tertiary);margin-top:2px">Photoreal generation via Reactive. Usually 10 to 30 seconds.</div>';
+  html += '</div>';
+  html += '<button type="button" onclick="window.__photoGenerateClose()" style="background:none;border:0;font-size:20px;color:var(--tg-text-tertiary);cursor:pointer;padding:4px 8px;line-height:1" aria-label="Close">&times;</button>';
+  html += '</div>';
+
+  // Body
+  html += '<div style="padding:18px 20px">';
+  html += '<label style="display:block;font-size:11px;font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Prompt</label>';
+  html += '<textarea oninput="window.__photoGenerateSetPrompt(this.value)" placeholder="Describe what you want to see. Specific, sensory detail works best." style="width:100%;padding:10px;border:1px solid var(--tg-border);border-radius:6px;font-size:13px;font-family:var(--tg-font-body);min-height:96px;box-sizing:border-box;resize:vertical">' + (photoModal.prompt || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea>';
+  html += '<label style="display:block;font-size:11px;font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-top:14px;margin-bottom:6px">Aspect ratio</label>';
+  html += '<select onchange="window.__photoGenerateSetAspect(this.value)" style="padding:8px;border:1px solid var(--tg-border);border-radius:6px;font-size:13px;font-family:var(--tg-font-body);background:#fff">' + ratioOptions + '</select>';
+  if (photoModal.error) {
+    html += '<div style="margin-top:12px;padding:8px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;font-size:12px;color:var(--tg-error)"><strong>Error:</strong> ' + (photoModal.error || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+  }
+  html += '</div>';
+
+  // Footer
+  html += '<div style="padding:14px 20px;border-top:1px solid var(--tg-border);display:flex;justify-content:flex-end;gap:8px;background:var(--tg-bg-secondary)">';
+  if (photoModal.submitting) {
+    html += '<button type="button" disabled style="padding:8px 14px;background:var(--tg-bg-tertiary);color:var(--tg-text-tertiary);border:0;border-radius:6px;font-size:13px;font-weight:600;cursor:wait">Generating&hellip;</button>';
+  } else {
+    html += '<button type="button" onclick="window.__photoGenerateClose()" class="btn" style="font-size:13px;padding:8px 14px">Cancel</button>';
+    html += '<button type="button" onclick="window.__photoGenerateSubmit()" class="btn btn-primary" style="font-size:13px;padding:8px 14px">Generate photo</button>';
+  }
+  html += '</div>';
+
+  html += '</div>';
+  html += '</div>';
+
+  host.innerHTML = html;
 }
 
 // Map AI compose section.type to a Stage B v2 sectionType.

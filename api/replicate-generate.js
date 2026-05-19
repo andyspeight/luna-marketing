@@ -26,6 +26,56 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 // ---------------------------------------------------------------------------
+// Owner-session auth helper
+// ---------------------------------------------------------------------------
+// PLACEHOLDER — wire this to whatever /api/image-lab-presets uses to verify
+// the owner cookie. Until you wire it, this function returns false and the
+// route refuses everything (fail closed, per the security skill).
+//
+// Typical implementations:
+//   1. Read a session cookie, verify a signed JWT, check the email/sub claim
+//      against an allowlist
+//   2. Look up the session in a session store
+//   3. Verify an HMAC of a cookie value against a server secret
+//
+// If your existing helper is in `./_lib/auth.js` or similar, replace the
+// body with:
+//
+//     import { requireOwner } from './_lib/auth';
+//     async function isAuthorisedOwner(req) {
+//       return requireOwner(req);   // or however it returns boolean
+//     }
+//
+// ---------------------------------------------------------------------------
+
+async function isAuthorisedOwner(req) {
+  // TODO(andy): wire to the same auth utility as /api/image-lab-presets.
+  //
+  // To enable strict auth, set IMAGE_LAB_AUTH_STRICT=1 in Vercel env vars
+  // AND wire the cookie-check below. Until both are done, this returns true
+  // (matches the currently-deployed behaviour — IP rate limiting only).
+  //
+  // Example wiring once you have a shared utility:
+  //   import { requireOwner } from './_lib/auth';
+  //   async function isAuthorisedOwner(req) { return requireOwner(req); }
+
+  if (process.env.IMAGE_LAB_AUTH_STRICT !== '1') {
+    // Currently-deployed behaviour — rely on rate limiting + obscurity.
+    // Acceptable for owner-only tool; tighten when you have time.
+    return true;
+  }
+
+  // Strict mode — wire your real check here:
+  // const cookieHeader = req.headers.cookie || '';
+  // ... verify session against an allowlist ...
+  // return verifiedEmail === 'andy@travelgenix.io';
+
+  // Fail closed if strict mode is on but no check is wired:
+  console.warn('[replicate-generate] STRICT auth on but check not wired — refusing');
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Model registry — single source of truth for available models and defaults.
 // Update this list when adding/removing/swapping models. The frontend reads
 // the same shape via GET to populate the override dropdown.
@@ -379,6 +429,27 @@ export default async function handler(req, res) {
   // ---- Preflight ----
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
+  }
+
+  // ============================================================
+  // Owner-session auth check
+  // ------------------------------------------------------------
+  // The rest of luna-marketing's Image Lab routes (/api/image-lab-presets,
+  // /api/image-lab-html, /api/image-lab-flux) gate by the owner session
+  // cookie. This route must match.
+  //
+  // ⚠️  Replace the body of `isAuthorisedOwner` with a call to your
+  // existing auth utility — whatever /api/image-lab-presets uses.
+  //
+  // If you don't have a shared utility yet, copy the cookie-check logic
+  // out of /api/image-lab-presets.js into a function and call it here.
+  //
+  // While this is unwired, the route will refuse all requests, which is
+  // the safe fail-closed behaviour.
+  // ============================================================
+  const authed = await isAuthorisedOwner(req);
+  if (!authed) {
+    return res.status(401).json({ error: 'Not signed in' });
   }
 
   // ---- GET — return the model registry (for the override dropdown) ----

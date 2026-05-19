@@ -11,13 +11,33 @@
 //
 // Required env vars:
 //   ANTHROPIC_API_KEY          — server-only, never client-side
-//   UPSTASH_REDIS_REST_URL     — shared with replicate-generate.js
-//   UPSTASH_REDIS_REST_TOKEN   — shared with replicate-generate.js
 // ============================================================================
 
 import Anthropic from '@anthropic-ai/sdk';
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiter — 60 classifications per hour per IP.
+// Resets on cold start. See replicate-generate.js for full rationale.
+// ---------------------------------------------------------------------------
+
+const RATE_WINDOW_MS = 60 * 60 * 1000;
+const RATE_MAX = 60;
+const rateBuckets = new Map();
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const cutoff = now - RATE_WINDOW_MS;
+  const bucket = (rateBuckets.get(ip) || []).filter((ts) => ts > cutoff);
+  if (bucket.length >= RATE_MAX) return { ok: false };
+  bucket.push(now);
+  rateBuckets.set(ip, bucket);
+  if (rateBuckets.size > 1000) {
+    for (const [k, v] of rateBuckets.entries()) {
+      if (v.every((ts) => ts <= cutoff)) rateBuckets.delete(k);
+    }
+  }
+  return { ok: true };
+}
 
 // ---------------------------------------------------------------------------
 // Owner-session auth helper — see replicate-generate.js for full notes.
@@ -53,21 +73,6 @@ function setCorsHeaders(req, res) {
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 
-let ratelimit = null;
-function getRatelimit() {
-  if (ratelimit) return ratelimit;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null;
-  }
-  ratelimit = new Ratelimit({
-    redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(60, '1 h'),
-    analytics: true,
-    prefix: 'imagelab:route',
-  });
-  return ratelimit;
-}
-
 const VALID_CATEGORIES = ['photoreal', 'mockup', 'text', 'vector'];
 
 const SYSTEM_PROMPT = `You are a classifier for an image-generation tool. Given an image brief, classify it into EXACTLY ONE of these four categories:
@@ -99,20 +104,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Not signed in' });
   }
 
-  // Rate limit — fail closed if not configured (security skill rule #5).
-  const rl = getRatelimit();
-  if (!rl) {
-    console.error('[route-image-brief] Upstash not configured — refusing request');
-    return res.status(500).json({ error: 'Service not configured.' });
-  }
-
+  // Rate limit — in-memory, see top of file.
   const ip =
     req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.headers['x-real-ip'] ||
     'unknown';
 
-  const { success } = await rl.limit(`ip:${ip}`);
-  if (!success) {
+  if (!checkRateLimit(ip).ok) {
     return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
   }
 

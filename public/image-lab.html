@@ -1818,14 +1818,32 @@ function togglePlan(idx) {
   if (el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 
-function downloadPng(url) {
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'image-lab-' + Date.now() + '.png';
-  a.target = '_blank';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+async function downloadPng(url) {
+  try {
+    var response = await fetch(url);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    var blob = await response.blob();
+
+    // Pick a sensible extension from the blob's MIME type
+    var ext = 'png';
+    if (blob.type) {
+      if (blob.type.indexOf('webp') !== -1) ext = 'webp';
+      else if (blob.type.indexOf('jpeg') !== -1 || blob.type.indexOf('jpg') !== -1) ext = 'jpg';
+      else if (blob.type.indexOf('svg') !== -1) ext = 'svg';
+      else if (blob.type.indexOf('gif') !== -1) ext = 'gif';
+    }
+
+    var blobUrl = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'image-lab-' + Date.now() + '.' + ext;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    alert('Download failed: ' + e.message + '\n\nReplicate URLs expire after about an hour. If this image has expired, generate again.');
+  }
 }
 
 function downloadSvg(idx) {

@@ -19,6 +19,22 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
+// ---------------------------------------------------------------------------
+// Owner-session auth helper — see replicate-generate.js for full notes.
+// Permissive by default to match currently-deployed behaviour; flip
+// IMAGE_LAB_AUTH_STRICT=1 in Vercel env vars and wire the check below to
+// enforce.
+// ---------------------------------------------------------------------------
+
+async function isAuthorisedOwner(req) {
+  if (process.env.IMAGE_LAB_AUTH_STRICT !== '1') {
+    return true;
+  }
+  // Wire your real cookie/session check here. Failing closed by default.
+  console.warn('[route-image-brief] STRICT auth on but check not wired — refusing');
+  return false;
+}
+
 const ALLOWED_ORIGINS = [
   'https://marketing.travelify.io',
   'https://luna-marketing.vercel.app',
@@ -75,6 +91,12 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Owner-session auth — see top of file for wiring notes.
+  const authed = await isAuthorisedOwner(req);
+  if (!authed) {
+    return res.status(401).json({ error: 'Not signed in' });
   }
 
   // Rate limit — fail closed if not configured (security skill rule #5).

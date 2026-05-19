@@ -45,7 +45,7 @@ const ALLOWED_MODELS = {
 const DEFAULT_MODEL_KEY = "sonnet";
 const DEFAULT_MAX_TOKENS = 16000;
 const MAX_PROMPT_LEN = 30000;
-const MAX_BRIEF_LEN = 2000;
+const MAX_BRIEF_LEN = 8000;
 
 // ─────────────────────────────────────────────────────────────────────
 // AUTH

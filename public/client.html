@@ -9033,7 +9033,8 @@ window.__aiImageGenerate = async function(idx) {
         sectionType: v2SectionType,
         sectionContent: sectionContent,
         slot: v2Slot,
-        source: 'composer'
+        source: 'composer',
+        outputContext: 'email'
       })
     });
     var d = await r.json();
@@ -9968,6 +9969,7 @@ window.__imageGenerateSubmit = async function() {
         sectionContent: sectionContent,
         slot: imgModal.inputs.slot,
         source: 'composer',
+        outputContext: 'email',
       }),
     });
     var d = await r.json();

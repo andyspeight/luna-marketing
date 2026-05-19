@@ -419,17 +419,60 @@ function aspectMapToGptImageSize(ar) {
 
 function normaliseOutput(model, raw) {
   const isSvg = model.slug.endsWith('-svg');
+
+  // The Replicate Node SDK returns a variety of shapes depending on the
+  // model and SDK version:
+  //   - Plain string URL (older models)
+  //   - Array of plain strings (most multi-output models)
+  //   - FileOutput object where `.url()` is a *method* returning a URL (SDK 1.x)
+  //   - ReadableStream (some streaming models)
+  //   - Plain object with .url / .image / .output property (some models)
+  //
+  // This function walks the value defensively and returns a string URL or null.
+
+  const extractUrl = async (value) => {
+    if (!value) return null;
+
+    // Plain string — already a URL
+    if (typeof value === 'string') return value;
+
+    // FileOutput from Replicate SDK 1.x: has a .url() method
+    if (typeof value.url === 'function') {
+      try {
+        const u = value.url();
+        // .url() can return a URL object or a string
+        if (u && typeof u === 'object' && typeof u.href === 'string') return u.href;
+        if (typeof u === 'string') return u;
+      } catch (_) { /* fall through */ }
+    }
+
+    // Direct .url property (plain object)
+    if (typeof value.url === 'string') return value.url;
+
+    // URL object (has .href)
+    if (typeof value.href === 'string') return value.href;
+
+    // Other common keys
+    if (typeof value.image === 'string') return value.image;
+    if (typeof value.output === 'string') return value.output;
+
+    return null;
+  };
+
   let url = null;
 
-  if (typeof raw === 'string') {
-    url = raw;
-  } else if (Array.isArray(raw) && raw.length) {
-    url = typeof raw[0] === 'string' ? raw[0] : raw[0]?.url || null;
-  } else if (raw && typeof raw === 'object') {
-    url = raw.url || raw.image || raw.output || null;
-  }
+  // Wrap in IIFE because extractUrl is async — but we need this function
+  // sync-ish. We'll return a Promise from the outer caller side instead.
+  // Actually no — we change the signature to async. See call site update.
 
-  return { url, isSvg, raw };
+  return (async () => {
+    if (Array.isArray(raw) && raw.length) {
+      url = await extractUrl(raw[0]);
+    } else {
+      url = await extractUrl(raw);
+    }
+    return { url, isSvg, raw };
+  })();
 }
 
 // ===========================================================================
@@ -541,15 +584,28 @@ export default async function handler(req, res) {
 
   try {
     const output = await replicate.run(model.slug, { input });
-    const normalised = normaliseOutput(model, output);
+    const normalised = await normaliseOutput(model, output);
 
     if (!normalised.url) {
-      console.error('[replicate-generate] No URL in output', { slug: model.slug, raw: output });
-      return res.status(502).json({ error: 'Generation succeeded but no image URL returned.' });
+      // Log the actual shape so we can patch this fast if a new model returns
+      // something we haven't accounted for.
+      const debugShape = {
+        type: typeof output,
+        isArray: Array.isArray(output),
+        isString: typeof output === 'string',
+        sample: typeof output === 'string'
+          ? output.slice(0, 200)
+          : (Array.isArray(output) ? output.slice(0, 2) : output),
+      };
+      console.error('[replicate-generate] No URL in output', { slug: model.slug, debugShape });
+      return res.status(502).json({
+        error: 'Generation succeeded but no image URL returned.',
+        debug: debugShape,
+      });
     }
 
     return res.status(200).json({
-      url: normalised.url,
+      url: String(normalised.url),
       isSvg: normalised.isSvg,
       model: {
         key: Object.entries(MODELS).find(([, v]) => v.slug === model.slug)?.[0],

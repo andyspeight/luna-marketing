@@ -23,6 +23,11 @@
 //   styleReference?: { layoutPattern, typographyFeel, density, mood },  // Stage E
 //   briefOverride?: string,   // Use this brief, skip generation
 //   source?: "composer" | "lab" | "manual" | "api",  // default "composer"
+//   outputContext?: "email" | "web" | "social",      // default "web"
+//                                                    //   email triggers the E1-E4 composition
+//                                                    //   rules in brief-generator (smaller min
+//                                                    //   type sizes, single-layer shadows,
+//                                                    //   lower density, no micro-detail).
 //   emailQueueId?: string,    // Link in Airtable
 //   name?: string             // Auto-generated if absent
 // }
@@ -56,6 +61,7 @@ const VALID_SLOTS = [
   "card", "card-square", "thumbnail", "banner", "wide"
 ];
 const VALID_SOURCES = ["composer", "lab", "manual", "api"];
+const VALID_OUTPUT_CONTEXTS = ["email", "web", "social"];
 
 const MAX_HEADLINE_LEN = 300;
 const MAX_BODY_LEN = 3000;
@@ -146,6 +152,9 @@ module.exports = async function handler(req, res) {
     if (body.source && !VALID_SOURCES.includes(body.source)) {
       return res.status(400).json({ error: `source must be one of: ${VALID_SOURCES.join(", ")}` });
     }
+    if (body.outputContext && !VALID_OUTPUT_CONTEXTS.includes(body.outputContext)) {
+      return res.status(400).json({ error: `outputContext must be one of: ${VALID_OUTPUT_CONTEXTS.join(", ")}` });
+    }
 
     // Either sectionContent OR briefOverride must be present
     if (!body.briefOverride && (!body.sectionContent || typeof body.sectionContent !== "object")) {
@@ -189,6 +198,7 @@ module.exports = async function handler(req, res) {
       styleReference: body.styleReference,
       briefOverride: body.briefOverride,
       source: body.source || "composer",
+      outputContext: body.outputContext || "web",
       emailQueueId: body.emailQueueId,
       name: body.name
     });

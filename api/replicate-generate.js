@@ -5,12 +5,11 @@
 //
 // Hardened API endpoint that proxies image-generation requests from the
 // Image Lab UI to Replicate. Token never leaves the server. Rate-limited via
-// Upstash Redis. Method-locked. Origin-checked. Generic error responses.
+// in-memory bucket (no Upstash). Method-locked. Origin-checked. Generic
+// error responses.
 //
 // Required env vars (Vercel project settings):
 //   REPLICATE_API_TOKEN        — Replicate API token (server-only)
-//   UPSTASH_REDIS_REST_URL     — Upstash Redis REST URL (shared with luna-chat)
-//   UPSTASH_REDIS_REST_TOKEN   — Upstash Redis REST token (shared with luna-chat)
 //
 // Optional env vars:
 //   OPENAI_API_KEY             — Required only if GPT Image 1.5 is selected
@@ -22,8 +21,39 @@
 // ============================================================================
 
 import Replicate from 'replicate';
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiter
+// ---------------------------------------------------------------------------
+// Owner-only tool. We don't need Upstash. This Map lives in the serverless
+// function's memory and resets on cold start (every few minutes of idle).
+// That's acceptable here: the limiter exists to catch runaway loops, not
+// determined attackers, since the URL isn't linked publicly.
+//
+// Limit: 30 generations per hour per IP. Same as the Upstash version.
+// ---------------------------------------------------------------------------
+
+const RATE_WINDOW_MS = 60 * 60 * 1000;   // 1 hour
+const RATE_MAX = 30;
+const rateBuckets = new Map();           // ip -> array of timestamps
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const cutoff = now - RATE_WINDOW_MS;
+  const bucket = (rateBuckets.get(ip) || []).filter((ts) => ts > cutoff);
+  if (bucket.length >= RATE_MAX) {
+    return { ok: false, remaining: 0, resetAt: bucket[0] + RATE_WINDOW_MS };
+  }
+  bucket.push(now);
+  rateBuckets.set(ip, bucket);
+  // Opportunistic cleanup to stop the Map growing forever
+  if (rateBuckets.size > 1000) {
+    for (const [k, v] of rateBuckets.entries()) {
+      if (v.every((ts) => ts <= cutoff)) rateBuckets.delete(k);
+    }
+  }
+  return { ok: true, remaining: RATE_MAX - bucket.length, resetAt: now + RATE_WINDOW_MS };
+}
 
 // ---------------------------------------------------------------------------
 // Owner-session auth helper
@@ -181,25 +211,8 @@ const VALID_CATEGORIES = Object.keys(CATEGORY_DEFAULTS);
 const VALID_MODEL_KEYS = Object.keys(MODELS);
 
 // ---------------------------------------------------------------------------
-// Rate limiting — Upstash Redis sliding window.
-// 30 generations per hour per IP. Image Lab is owner-only; this is a
-// defence-in-depth cap to prevent runaway loops or token leakage.
+// Rate limiting — in-memory, see top of file.
 // ---------------------------------------------------------------------------
-
-let ratelimit = null;
-function getRatelimit() {
-  if (ratelimit) return ratelimit;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return null;
-  }
-  ratelimit = new Ratelimit({
-    redis: Redis.fromEnv(),
-    limiter: Ratelimit.slidingWindow(30, '1 h'),
-    analytics: true,
-    prefix: 'imagelab:gen',
-  });
-  return ratelimit;
-}
 
 // ---------------------------------------------------------------------------
 // Allowed origins — locked to Travelify marketing surface + local dev.
@@ -474,27 +487,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Rate limit. Fail closed if Upstash isn't configured — the security skill
-  // says rate limiting is non-negotiable, so absence is a config error,
-  // not a free pass.
-  const rl = getRatelimit();
-  if (!rl) {
-    console.error('[replicate-generate] Upstash not configured — refusing request');
-    return res.status(500).json({ error: 'Service not configured. Contact admin.' });
-  }
-
+  // Rate limit — in-memory bucket per IP, see top of file.
   const ip =
     req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
     req.headers['x-real-ip'] ||
     'unknown';
 
-  const { success, remaining, reset } = await rl.limit(`ip:${ip}`);
-  res.setHeader('X-RateLimit-Remaining', String(remaining));
-  res.setHeader('X-RateLimit-Reset', String(reset));
-  if (!success) {
+  const rl = checkRateLimit(ip);
+  res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
+  res.setHeader('X-RateLimit-Reset', String(rl.resetAt));
+  if (!rl.ok) {
     return res.status(429).json({
       error: 'Rate limit exceeded. Try again later.',
-      retryAfter: reset,
+      retryAfter: rl.resetAt,
     });
   }
 

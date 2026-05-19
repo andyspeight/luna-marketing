@@ -4705,6 +4705,11 @@ function drawComposeForm() {
   h += '<div class="email-builder-right">';
   h += '<div class="email-builder-panel-header" style="display:flex;justify-content:space-between;align-items:center">';
   h += '<span>Live preview</span>';
+  h += '<div style="display:flex;gap:6px;align-items:center">';
+  h += '<button onclick="window.__builderOpenInboxPreview()" style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:3px 8px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="See the email at true inbox dimensions">';
+  h += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg>';
+  h += 'Inbox size';
+  h += '</button>';
   h += '<div style="display:flex;gap:4px">';
   h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'desktop' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'desktop\')" title="Desktop preview">';
   h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="1"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
@@ -4712,6 +4717,7 @@ function drawComposeForm() {
   h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'mobile' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'mobile\')" title="Mobile preview">';
   h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>';
   h += '</button>';
+  h += '</div>';
   h += '</div>';
   h += '</div>';
   h += '<div class="email-builder-preview-wrap' + (emailState.previewMode === 'mobile' ? ' is-mobile' : '') + '">';
@@ -8552,7 +8558,13 @@ function renderAiDraftBody() {
     h += '<span>Rendering&hellip;</span>';
     h += '</div>';
   } else {
+    h += '<div style="display:flex;gap:6px;align-items:center">';
+    h += '<button onclick="window.__aiOpenInboxPreview()"' + (aiCompose.previewHtml ? '' : ' disabled') + ' style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:4px 10px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer;display:inline-flex;align-items:center;gap:5px' + (aiCompose.previewHtml ? '' : ';opacity:0.5;cursor:not-allowed') + '" title="See the email at true inbox dimensions">';
+    h += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg>';
+    h += 'View at inbox size';
+    h += '</button>';
     h += '<button onclick="window.__aiRefreshPreview()" style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:4px 10px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer">Refresh preview</button>';
+    h += '</div>';
   }
   h += '</div>';
 
@@ -9280,6 +9292,151 @@ window.__aiPexelsPick = function(idx, pIdx) {
   section.__image.currentSvg = null; // not an SVG, so refinement N/A
   renderAiComposeModal();
   schedulePreviewRefresh(200);
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// INBOX-SIZE PREVIEW
+// ─────────────────────────────────────────────────────────────────────
+// Opens a dedicated modal showing the email rendered at TRUE inbox
+// dimensions (600px desktop, 380px mobile) side-by-side. This is the
+// only reliable way to evaluate how images, type and spacing will
+// actually look in the recipient's inbox — the embedded live preview
+// is constrained by the modal's right-hand column width and shrinks
+// content below 600px, making images appear blurrier than they really
+// will be in a real client.
+//
+// Works for both the AI compose modal and the regular email builder,
+// since both store rendered email HTML in known places.
+
+function __openInboxPreview(html, opts) {
+  if (!html) return;
+  opts = opts || {};
+  var title = opts.title || 'Inbox preview';
+
+  // Remove any existing instance
+  var existing = document.getElementById('inbox-preview-backdrop');
+  if (existing) existing.remove();
+
+  // Build the backdrop. Pure CSS, no Tailwind — must be standalone.
+  // Sits above the AI compose modal (z-index 1500 vs 1000 for the AI modal).
+  var bg = '#e2e8f0'; // light slate, gmail-ish neutral
+  var chromeBg = '#ffffff';
+
+  var bd = document.createElement('div');
+  bd.id = 'inbox-preview-backdrop';
+  bd.setAttribute('role', 'dialog');
+  bd.setAttribute('aria-modal', 'true');
+  bd.setAttribute('aria-label', title);
+  bd.style.cssText = [
+    'position:fixed', 'inset:0', 'background:rgba(15,23,42,0.75)',
+    'z-index:1500', 'display:flex', 'flex-direction:column',
+    'overflow:hidden'
+  ].join(';');
+
+  // Header bar
+  var header = document.createElement('div');
+  header.style.cssText = [
+    'flex:0 0 auto', 'padding:14px 20px', 'background:#0f172a',
+    'color:#fff', 'display:flex', 'align-items:center',
+    'justify-content:space-between', 'gap:16px'
+  ].join(';');
+  header.innerHTML =
+    '<div style="display:flex;align-items:center;gap:14px">' +
+      '<div style="font-size:14px;font-weight:600">' + title + '</div>' +
+      '<div style="font-size:11px;color:#94a3b8;font-family:var(--tg-font-mono,monospace)">Desktop 600 \u00b7 Mobile 380</div>' +
+    '</div>' +
+    '<button id="inbox-preview-close" aria-label="Close" style="background:none;border:none;color:#fff;cursor:pointer;padding:6px;border-radius:4px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-family:inherit">' +
+      '<span>Close</span>' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+    '</button>';
+
+  // Two-column body — desktop iframe and mobile iframe at TRUE dimensions
+  var body = document.createElement('div');
+  body.style.cssText = [
+    'flex:1', 'min-height:0', 'overflow:auto', 'background:' + bg,
+    'padding:32px 24px', 'display:flex', 'gap:32px',
+    'justify-content:center', 'align-items:flex-start'
+  ].join(';');
+
+  // Desktop column — 600px true width
+  var desktopCol = document.createElement('div');
+  desktopCol.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;gap:10px;align-items:center';
+  desktopCol.innerHTML =
+    '<div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.5px">Desktop \u00b7 600px</div>' +
+    '<div style="background:' + chromeBg + ';border-radius:8px;box-shadow:0 8px 32px rgba(15,23,42,0.15);overflow:hidden;width:600px">' +
+      '<iframe id="inbox-preview-desktop" sandbox="allow-same-origin" style="display:block;width:600px;height:780px;border:none;background:#fff"></iframe>' +
+    '</div>';
+
+  // Mobile column — 380px true width
+  var mobileCol = document.createElement('div');
+  mobileCol.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;gap:10px;align-items:center';
+  mobileCol.innerHTML =
+    '<div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.5px">Mobile \u00b7 380px</div>' +
+    '<div style="background:' + chromeBg + ';border-radius:24px;box-shadow:0 8px 32px rgba(15,23,42,0.15);overflow:hidden;width:380px;border:8px solid #1e293b">' +
+      '<iframe id="inbox-preview-mobile" sandbox="allow-same-origin" style="display:block;width:364px;height:780px;border:none;background:#fff"></iframe>' +
+    '</div>';
+
+  body.appendChild(desktopCol);
+  body.appendChild(mobileCol);
+
+  bd.appendChild(header);
+  bd.appendChild(body);
+  document.body.appendChild(bd);
+
+  // Inject HTML into both iframes. srcdoc respects sandbox attribute.
+  var dIframe = document.getElementById('inbox-preview-desktop');
+  var mIframe = document.getElementById('inbox-preview-mobile');
+  if (dIframe) dIframe.srcdoc = html;
+  if (mIframe) mIframe.srcdoc = html;
+
+  // Close handlers
+  var closeBtn = document.getElementById('inbox-preview-close');
+  function close() {
+    var node = document.getElementById('inbox-preview-backdrop');
+    if (node) node.remove();
+    document.removeEventListener('keydown', escHandler);
+  }
+  function escHandler(e) { if (e.key === 'Escape') close(); }
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  bd.addEventListener('click', function(e) { if (e.target === bd) close(); });
+  document.addEventListener('keydown', escHandler);
+}
+
+// AI compose: open inbox preview using the already-rendered previewHtml
+window.__aiOpenInboxPreview = function() {
+  if (!aiCompose.previewHtml) return;
+  __openInboxPreview(aiCompose.previewHtml, { title: 'AI compose \u2014 Inbox preview' });
+};
+
+// Regular builder: fetch current preview HTML (same call as the live
+// preview makes) and open the inbox-size modal with the result.
+window.__builderOpenInboxPreview = async function() {
+  try {
+    var iframe = document.getElementById('builderPreviewFrame');
+    var html = null;
+    // The builder iframe's srcdoc holds the most recently rendered email.
+    // If the iframe has content, prefer that over a fresh fetch — avoids
+    // re-fetching when the live preview is already up to date.
+    if (iframe && iframe.srcdoc) {
+      html = iframe.srcdoc;
+    }
+    if (!html) {
+      // Trigger a fresh render via existing path. If drawEmails is the
+      // builder's render entry it'll repaint the iframe; we then read it.
+      if (typeof drawEmails === 'function') drawEmails();
+      await new Promise(function(r) { setTimeout(r, 200); });
+      iframe = document.getElementById('builderPreviewFrame');
+      if (iframe) html = iframe.srcdoc;
+    }
+    if (!html) {
+      alert('Preview not yet rendered. Click around in the builder once and try again.');
+      return;
+    }
+    __openInboxPreview(html, { title: 'Email builder \u2014 Inbox preview' });
+  } catch (e) {
+    console.error('[inbox-preview] failed:', e);
+    alert('Could not open inbox preview: ' + e.message);
+  }
 };
 
 window.__aiToggleSection = function(idx) {

@@ -18,11 +18,27 @@ const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || "Travelgenix";
-const SENDER_EMAIL = "andy.speight@agendas.group";
+// Fallback sender used when the client record has no valid Reply To Email.
+// resolveSender() prefers the client's configured sender, falls back to this.
+const SENDER_EMAIL_FALLBACK = "andy.speight@agendas.group";
+
+// Test send limit — guards against accidental "I pasted my whole address book"
+// mistakes. 20 is plenty for QA, low enough to keep blast-radius small.
+const TEST_SEND_MAX_RECIPIENTS = 20;
 
 const CLIENTS_TABLE = "Clients";
 const EMAIL_QUEUE_TABLE = "Email Queue";
 const AUDIT_LOG_TABLE = "Audit Log";
+
+// Resolve a sender { email, name } from the client record. Falls back to the
+// hardcoded constant if the client hasn't set a valid Reply To Email.
+// This is called for both real sends and test sends.
+function resolveSender(client) {
+  const replyTo = (client && client["Reply To Email"]) || "";
+  const senderName = (client && (client["Sender Name"] || client["Business Name"])) || BREVO_SENDER_NAME;
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? replyTo : SENDER_EMAIL_FALLBACK;
+  return { email, name: senderName };
+}
 
 async function airtableFetch(url, options = {}) {
   const r = await fetch(url, {
@@ -94,7 +110,7 @@ async function writeAuditLog({ actor, action, subjectId, details, ip }) {
   }
 }
 
-async function sendViaBrevo({ to, toName, subject, htmlContent, textContent, replyTo, tags }) {
+async function sendViaBrevo({ sender, to, toName, subject, htmlContent, textContent, replyTo, tags }) {
   const url = "https://api.brevo.com/v3/smtp/email";
 
   // Brevo requires non-empty textContent. Auto-generate from HTML if missing.
@@ -121,8 +137,13 @@ async function sendViaBrevo({ to, toName, subject, htmlContent, textContent, rep
   }
   // Last-resort fallback: Brevo will not accept empty textContent
   if (!finalText) finalText = subject || "(no content)";
+  // Sender comes from resolveSender(client) — pulls from client record's
+  // Reply To Email + Sender Name fields, falls back to SENDER_EMAIL_FALLBACK.
+  const senderPayload = sender && sender.email
+    ? { email: sender.email, name: sender.name || BREVO_SENDER_NAME }
+    : { email: SENDER_EMAIL_FALLBACK, name: BREVO_SENDER_NAME };
   const payload = {
-    sender: { email: SENDER_EMAIL, name: BREVO_SENDER_NAME },
+    sender: senderPayload,
     to: [{ email: to, ...(toName ? { name: toName } : {}) }],
     subject: subject,
     htmlContent: htmlContent || `<p>${finalText}</p>`,
@@ -167,7 +188,7 @@ module.exports = async (req, res) => {
     }
 
     const body = req.body || {};
-    const { clientId, emailId } = body;
+    const { clientId, emailId, testRecipients } = body;
 
     if (!clientId) return res.status(400).json({ error: "clientId required" });
     if (!emailId) return res.status(400).json({ error: "emailId required" });
@@ -188,15 +209,100 @@ module.exports = async (req, res) => {
 
     const f = emailRec.fields;
 
+    if (!f["Subject"]) {
+      return res.status(400).json({ error: "Email has no subject" });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TEST SEND MODE — sends to a comma-delimited list of QA recipients
+    // without changing the email record's Status. Works on any status
+    // (Draft, Awaiting Approval, Quality Hold, Approved, Sent). The
+    // subject is prefixed [TEST] so recipients know it's not the real
+    // send. Each recipient gets a separate Brevo transactional call.
+    // ─────────────────────────────────────────────────────────────
+    const isTestSend = Array.isArray(testRecipients) && testRecipients.length > 0;
+    if (isTestSend) {
+      // Validate, lowercase, dedupe
+      const cleaned = [...new Set(
+        testRecipients
+          .map(e => String(e).trim().toLowerCase())
+          .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+      )];
+      if (cleaned.length === 0) {
+        return res.status(400).json({ error: "No valid email addresses in testRecipients" });
+      }
+      if (cleaned.length > TEST_SEND_MAX_RECIPIENTS) {
+        return res.status(400).json({
+          error: `Test send limited to ${TEST_SEND_MAX_RECIPIENTS} recipients per batch (got ${cleaned.length})`,
+        });
+      }
+
+      const sender = resolveSender(client);
+      const sentResults = [];
+      const failures = [];
+
+      for (const recipient of cleaned) {
+        try {
+          const r = await sendViaBrevo({
+            sender,
+            to: recipient,
+            toName: "",
+            subject: `[TEST] ${f["Subject"]}`,
+            htmlContent: f["Body HTML"] || "",
+            textContent: f["Body Plain"] || "",
+            replyTo: sender.email,
+            tags: ["luna-marketing", "test-send", `audience:${f["Audience"] || "unknown"}`],
+          });
+          sentResults.push({ recipient, messageId: r.messageId });
+        } catch (sendErr) {
+          failures.push({ recipient, error: sendErr.message });
+        }
+      }
+
+      // Record the test on the email, do NOT change Status
+      try {
+        await patchEmail(emailId, {
+          "Last Test Sent At": new Date().toISOString(),
+          "Last Test Recipients": cleaned.join(", "),
+        });
+      } catch (patchErr) {
+        // Non-fatal — the send already happened. Log and continue.
+        console.error("[EMAIL-TEST] patch failed:", patchErr.message);
+      }
+
+      await writeAuditLog({
+        actor,
+        action: "test-send",
+        subjectId: emailId,
+        details: {
+          sent: sentResults.length,
+          failed: failures.length,
+          recipients: cleaned,
+          sender: sender.email,
+          failures: failures.map(x => `${x.recipient}: ${x.error}`),
+        },
+        ip,
+      });
+
+      return res.status(200).json({
+        success: true,
+        mode: "test",
+        sent: sentResults.length,
+        failed: failures.length,
+        results: sentResults,
+        failures,
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // REAL SEND MODE — single recipient, requires Approved status
+    // ─────────────────────────────────────────────────────────────
+
     // Defensive checks
     if (f["Status"] !== "Approved") {
       return res.status(400).json({
         error: `Cannot send email with status "${f["Status"]}". Must be "Approved".`,
       });
-    }
-
-    if (!f["Subject"]) {
-      return res.status(400).json({ error: "Email has no subject" });
     }
 
     // Day B v1 limit: single-recipient only
@@ -212,16 +318,19 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Recipient Email is not a valid email address" });
     }
 
+    const realSender = resolveSender(client);
+
     // Send via Brevo
     let result;
     try {
       result = await sendViaBrevo({
+        sender: realSender,
         to: recipientEmail,
         toName: f["Recipient Name"] || "",
         subject: f["Subject"],
         htmlContent: f["Body HTML"] || "",
         textContent: f["Body Plain"] || "",
-        replyTo: SENDER_EMAIL,
+        replyTo: realSender.email,
         tags: ["luna-marketing", `audience:${f["Audience"] || "unknown"}`],
       });
     } catch (sendErr) {

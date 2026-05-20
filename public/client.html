@@ -4786,6 +4786,7 @@ function drawComposeForm() {
   h += '</div>';
   h += '<div class="email-builder-topbar-right">';
   h += '<button onclick="window.__emailComposeClose()" class="email-builder-btn email-builder-btn-ghost">Cancel</button>';
+  h += '<button onclick="window.__openSaveAsTemplateModal()" class="email-builder-btn email-builder-btn-ghost" title="Save the current section structure as a reusable template">Save as template</button>';
   h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" class="email-builder-btn email-builder-btn-primary">Save as Draft</button>';
   h += '</div>';
   h += '</div>';
@@ -7104,6 +7105,129 @@ async function loadEmailTemplates() {
     emailState.templates = [];
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// SAVE AS TEMPLATE — captures the current builder sections as a reusable
+// template in the Email Templates Airtable table. Reachable from the
+// manual builder's top bar.
+// ─────────────────────────────────────────────────────────────────────
+
+window.__openSaveAsTemplateModal = function() {
+  // Validate: must have at least one section
+  var sections = emailState.builderSections || [];
+  if (sections.length === 0) {
+    alert('Add at least one section before saving as a template.');
+    return;
+  }
+
+  // Suggest a name from the current subject (if set)
+  var suggestedName = (emailState.composeData && emailState.composeData.subject) || '';
+  suggestedName = String(suggestedName).slice(0, 60);
+
+  // Build modal
+  var existing = document.getElementById('saveTemplateModal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'saveTemplateModal';
+  modal.className = 'modal-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:var(--space-4)';
+  modal.innerHTML = ''
+    + '<div style="background:var(--tg-bg-primary);border-radius:var(--radius-lg);max-width:480px;width:100%;padding:var(--space-6);box-shadow:0 20px 50px rgba(0,0,0,0.3)">'
+    + '<h3 style="font-size:var(--text-lg);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-2)">Save as template</h3>'
+    + '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:0 0 var(--space-5)">This will save the current section structure (' + sections.length + ' section' + (sections.length === 1 ? '' : 's') + ') as a reusable template. Content stays \u2014 you can update it when re-applied to a new email.</p>'
+    + '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);margin:0 0 var(--space-1);text-transform:uppercase;letter-spacing:0.05em">Template name *</label>'
+    + '<input type="text" id="tmplName" maxlength="60" value="' + esc(suggestedName) + '" placeholder="e.g. Weekly AI digest" class="email-builder-input" style="width:100%;margin:0 0 var(--space-4)">'
+    + '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);margin:0 0 var(--space-1);text-transform:uppercase;letter-spacing:0.05em">Description</label>'
+    + '<input type="text" id="tmplDesc" maxlength="200" placeholder="What kind of email is this? Shown under the name in the dropdown" class="email-builder-input" style="width:100%;margin:0 0 var(--space-4)">'
+    + '<label style="display:block;font-size:var(--text-xs);font-weight:600;color:var(--tg-text-secondary);margin:0 0 var(--space-1);text-transform:uppercase;letter-spacing:0.05em">Category</label>'
+    + '<select id="tmplCategory" class="email-builder-input" style="width:100%;margin:0 0 var(--space-5)">'
+      + '<option value="">No category</option>'
+      + '<option value="Marketing">Marketing</option>'
+      + '<option value="Newsletter">Newsletter</option>'
+      + '<option value="Promotion">Promotion</option>'
+      + '<option value="Drip">Drip</option>'
+      + '<option value="Transactional">Transactional</option>'
+      + '<option value="Product Launch">Product Launch</option>'
+    + '</select>'
+    + '<div style="display:flex;justify-content:flex-end;gap:var(--space-2)">'
+      + '<button onclick="window.__closeSaveAsTemplateModal()" class="email-builder-btn email-builder-btn-ghost">Cancel</button>'
+      + '<button id="tmplSaveBtn" onclick="window.__submitSaveAsTemplate()" class="email-builder-btn email-builder-btn-primary">Save template</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(modal);
+
+  // Focus the name input
+  setTimeout(function() {
+    var nameInput = document.getElementById('tmplName');
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.select();
+    }
+  }, 50);
+};
+
+window.__closeSaveAsTemplateModal = function() {
+  var modal = document.getElementById('saveTemplateModal');
+  if (modal) modal.remove();
+};
+
+window.__submitSaveAsTemplate = async function() {
+  var nameEl = document.getElementById('tmplName');
+  var descEl = document.getElementById('tmplDesc');
+  var catEl = document.getElementById('tmplCategory');
+  var btn = document.getElementById('tmplSaveBtn');
+  if (!nameEl || !btn) return;
+
+  var name = String(nameEl.value || '').trim();
+  if (!name) {
+    alert('Please enter a template name.');
+    nameEl.focus();
+    return;
+  }
+
+  // Build sections payload (strip ids — templates use fresh ids when applied)
+  var sectionsPayload = (emailState.builderSections || []).map(function(s) {
+    return { type: s.type, props: s.props || {} };
+  });
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  btn.style.opacity = '0.6';
+
+  try {
+    var r = await fetch('/api/email-templates-save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile && state.profile.id || '',
+        templateName: name,
+        description: String(descEl ? descEl.value : '').trim(),
+        category: String(catEl ? catEl.value : '').trim(),
+        sectionsJson: JSON.stringify(sectionsPayload),
+        subjectSuggestion: (emailState.composeData && emailState.composeData.subject) || '',
+        previewSuggestion: (emailState.composeData && emailState.composeData.previewText) || '',
+      }),
+    });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Save failed');
+
+    window.__closeSaveAsTemplateModal();
+    // Refresh templates so the new one appears in the dropdown
+    await loadEmailTemplates();
+    drawEmails();
+    // Subtle confirmation — toast-ish (uses existing pattern from other handlers)
+    alert('Template saved as "' + name + '". It now appears in the Start from template dropdown.');
+  } catch (e) {
+    console.error('[save template] error:', e);
+    alert('Save failed: ' + e.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save template';
+      btn.style.opacity = '1';
+    }
+  }
+};
 
 function defaultPropsForType(type) {
   switch (type) {

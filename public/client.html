@@ -8993,6 +8993,9 @@ window.__aiImageGenerate = async function(idx) {
   console.log('[AI-GEN] called with idx=', idx, 'draft?', !!aiCompose.draft, 'section?', !!(aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections[idx]), 'total sections=', aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections.length);
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) { console.error('[AI-GEN] guard failed, exiting silently'); return; }
   var section = aiCompose.draft.sections[idx];
+  // Auto-expand the section card so the loading tracker + result are visible
+  // when the user fires generation from the "Images needed" rollup.
+  if (!section.__expanded) section.__expanded = true;
   if (!section.__image) section.__image = {};
   var imgState = section.__image;
 
@@ -9182,6 +9185,9 @@ window.__aiImagePhotoGenerate = async function(idx) {
   console.log('[AI-PHOTO] called with idx=', idx, 'draft?', !!aiCompose.draft, 'section?', !!(aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections[idx]));
   if (!aiCompose.draft || !aiCompose.draft.sections[idx]) { console.error('[AI-PHOTO] guard failed, exiting silently'); return; }
   var section = aiCompose.draft.sections[idx];
+  // Auto-expand the section card so the loading tracker + result are visible
+  // when the user fires generation from the "Images needed" rollup.
+  if (!section.__expanded) section.__expanded = true;
   if (!section.__image) section.__image = {};
   var imgState = section.__image;
 

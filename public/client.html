@@ -4203,6 +4203,7 @@ async function loadEmails() {
     else if (emailState.currentFilter === 'approved') status = 'Approved';
     else if (emailState.currentFilter === 'quality-hold') status = 'Quality Hold';
     else if (emailState.currentFilter === 'failed') status = 'Failed';
+    else if (emailState.currentFilter === 'cancelled') status = 'Cancelled';
     // 'all' = no status filter
   }
 
@@ -4243,6 +4244,7 @@ function drawEmails() {
       { key: 'approved', label: 'Approved' },
       { key: 'quality-hold', label: 'Quality Hold' },
       { key: 'failed', label: 'Failed' },
+      { key: 'cancelled', label: 'Cancelled' },
       { key: 'all', label: 'All' },
     ];
     for (var i = 0; i < filters.length; i++) {

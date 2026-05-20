@@ -21,6 +21,8 @@
 
 const { renderEmail } = require("../lib/email-renderer");
 const { prepareSections } = require("../lib/email-render-prepare");
+const { getBrand } = require("../lib/email-brand");
+const { buildBrandKit } = require("./brand-kit");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -82,6 +84,23 @@ async function authoriseRequest(req, targetTenantId) {
   return { ok: true, effectiveTenantId: targetTenantId || tenantIds[0] };
 }
 
+// Fetch the full client record by ID. Used to build the brand kit so the
+// preview reflects the client's My Settings (footer legal, socials, brand
+// colours) rather than generic Travelgenix defaults.
+async function loadClientRecord(clientId) {
+  if (!clientId || !/^rec[A-Za-z0-9]{14}$/.test(clientId)) return null;
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${CLIENTS_TABLE}/${clientId}`;
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_KEY}` } });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if (!data || !data.fields) return null;
+    return { id: data.id, ...data.fields };
+  } catch {
+    return null;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // HANDLER
 // ─────────────────────────────────────────────────────────────────────
@@ -137,13 +156,22 @@ module.exports = async function handler(req, res) {
       prepareWarnings.push("Offers fetch failed: " + e.message);
     }
 
-    // Render — default Travelgenix brand (Session 3 will plumb in real tenant brand)
+    // Load the effective tenant's record and build a brand kit, so the
+    // preview reflects the client's My Settings (footer legal, socials,
+    // brand colours) instead of generic Travelgenix defaults. Falls back
+    // to Travelgenix defaults gracefully if the record can't be loaded.
+    const client = await loadClientRecord(auth.effectiveTenantId);
+    const clientKit = client ? buildBrandKit(client) : null;
+    const brand = getBrand(clientKit);
+
+    // Render — now brand-kit-aware so the preview matches the actual sent email
     const result = renderEmail({
       sections: preparedSections,
       subject: body.subject || "Preview",
       title: body.subject || "Preview",
       previewText: body.previewText || "",
-      unsubUrl: "#preview"
+      unsubUrl: "#preview",
+      brand,
     });
 
     return res.status(200).json({

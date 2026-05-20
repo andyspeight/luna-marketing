@@ -4472,6 +4472,11 @@ function drawEmailDrawer() {
   var canCancel = email.status === 'Approved';
   var canEdit = email.status !== 'Sent';
 
+  // "Send test" is always available regardless of status — works on Draft,
+  // Approved, even Sent. Sends to a comma-delimited list of QA addresses,
+  // does NOT change the email's Status.
+  var testBtn = '<button class="email-action-edit" onclick="window.__openTestSendModal(\'' + email.id + '\')" title="Send a test copy without changing status" style="border-color:var(--tg-accent);color:var(--tg-accent-dark)">Send test</button>';
+
   if (emailState.editing) {
     bodyHTML += '<div class="email-actions">';
     bodyHTML += '<button class="email-action-edit" onclick="window.__emailCancelEdit()">Cancel</button>';
@@ -4480,12 +4485,19 @@ function drawEmailDrawer() {
   } else if (canApprove) {
     bodyHTML += '<div class="email-actions">';
     if (canEdit) bodyHTML += '<button class="email-action-edit" onclick="window.__emailEdit()">Edit</button>';
+    bodyHTML += testBtn;
     bodyHTML += '<button class="email-action-reject" onclick="window.__emailReject()">Reject</button>';
     bodyHTML += '<button class="email-action-approve" onclick="window.__emailApprove()">Approve</button>';
     bodyHTML += '</div>';
   } else if (canCancel) {
     bodyHTML += '<div class="email-actions">';
+    bodyHTML += testBtn;
     bodyHTML += '<button class="email-action-reject" onclick="window.__emailCancel()">Cancel send</button>';
+    bodyHTML += '</div>';
+  } else {
+    // Sent / Failed / other terminal states — still allow re-testing
+    bodyHTML += '<div class="email-actions">';
+    bodyHTML += testBtn;
     bodyHTML += '</div>';
   }
 
@@ -7568,6 +7580,132 @@ window.__emailSendNow = async function() {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// TEST SEND MODAL
+// Sends the email to a comma-delimited list of recipients via the
+// existing /api/email-send-now endpoint (testRecipients param).
+// Works regardless of email status. Does NOT change the email's
+// Status — leaves Draft as Draft, Approved as Approved, etc.
+// Available from: AI composer modal AND Email Queue drawer.
+// ─────────────────────────────────────────────────────────────────
+
+window.__openTestSendModal = function(emailId, contextLabel) {
+  if (!emailId) {
+    alert('Save the email as a draft first, then you can send a test.');
+    return;
+  }
+  // Remove any existing modal
+  var existing = document.getElementById('testSendBackdrop');
+  if (existing) existing.remove();
+
+  var bd = document.createElement('div');
+  bd.id = 'testSendBackdrop';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+  bd.onclick = function(e) { if (e.target === bd) window.__closeTestSendModal(); };
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--tg-bg-primary);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.25);width:100%;max-width:520px;max-height:90vh;overflow:auto;font-family:var(--tg-font-body)';
+  box.innerHTML =
+    '<div style="padding:20px 24px 12px;border-bottom:1px solid var(--tg-border)">' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--tg-text-primary)">Send test email</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--tg-text-tertiary);margin-top:6px">' + esc(contextLabel || 'Sends a copy without changing the email\u2019s status. Subject will be prefixed [TEST].') + '</div>' +
+    '</div>' +
+    '<div style="padding:20px 24px">' +
+      '<label style="display:block;font-size:11px;font-weight:600;color:var(--tg-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Recipient emails (comma-separated, max 20)</label>' +
+      '<textarea id="testSendInput" rows="4" placeholder="andy@example.com, darren@example.com, test@example.com" style="width:100%;padding:12px 14px;border:1px solid var(--tg-border);border-radius:8px;font-size:13px;font-family:var(--tg-font-mono);background:var(--tg-bg-primary);color:var(--tg-text-primary);box-sizing:border-box;resize:vertical;line-height:1.5"></textarea>' +
+      '<div id="testSendCount" style="margin-top:8px;font-size:12px;color:var(--tg-text-tertiary);min-height:18px"></div>' +
+    '</div>' +
+    '<div style="padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end">' +
+      '<button onclick="window.__closeTestSendModal()" class="btn btn-ghost btn-sm" style="padding:10px 18px">Cancel</button>' +
+      '<button id="testSendSubmit" onclick="window.__submitTestSend(\'' + emailId + '\')" class="btn btn-primary btn-sm" style="padding:10px 18px" disabled>Send test</button>' +
+    '</div>';
+
+  bd.appendChild(box);
+  document.body.appendChild(bd);
+
+  // Live validation as the user types
+  var input = document.getElementById('testSendInput');
+  var submitBtn = document.getElementById('testSendSubmit');
+  var counter = document.getElementById('testSendCount');
+  function updateCount() {
+    var raw = input.value || '';
+    var parts = raw.split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
+    var deduped = [];
+    var seen = {};
+    parts.forEach(function(p) { if (!seen[p]) { seen[p] = 1; deduped.push(p); } });
+    var rxEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    var valid = deduped.filter(function(e) { return rxEmail.test(e); });
+    var invalid = deduped.filter(function(e) { return !rxEmail.test(e); });
+    if (deduped.length === 0) {
+      counter.textContent = '';
+      counter.style.color = 'var(--tg-text-tertiary)';
+      submitBtn.disabled = true;
+    } else if (invalid.length > 0) {
+      counter.innerHTML = '\u2717 ' + invalid.length + ' invalid: ' + esc(invalid.slice(0, 3).join(', ')) + (invalid.length > 3 ? '\u2026' : '');
+      counter.style.color = 'var(--tg-error)';
+      submitBtn.disabled = true;
+    } else if (valid.length > 20) {
+      counter.textContent = '\u2717 Too many — max 20 recipients per test send (you have ' + valid.length + ')';
+      counter.style.color = 'var(--tg-error)';
+      submitBtn.disabled = true;
+    } else {
+      counter.innerHTML = '\u2713 ' + valid.length + ' valid recipient' + (valid.length === 1 ? '' : 's');
+      counter.style.color = 'var(--tg-success)';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send test to ' + valid.length;
+    }
+  }
+  input.addEventListener('input', updateCount);
+  setTimeout(function() { input.focus(); }, 50);
+};
+
+window.__closeTestSendModal = function() {
+  var bd = document.getElementById('testSendBackdrop');
+  if (bd) bd.remove();
+};
+
+window.__submitTestSend = async function(emailId) {
+  var input = document.getElementById('testSendInput');
+  var submitBtn = document.getElementById('testSendSubmit');
+  if (!input || !submitBtn) return;
+  var raw = input.value || '';
+  var recipients = raw.split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s.length > 0; });
+  if (recipients.length === 0) return;
+
+  submitBtn.disabled = true;
+  var originalLabel = submitBtn.textContent;
+  submitBtn.textContent = 'Sending\u2026';
+  console.log('[EMAIL-TEST] sending to', recipients.length, 'recipients for emailId=', emailId);
+
+  try {
+    var r = await fetch('/api/email-send-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        emailId: emailId,
+        testRecipients: recipients,
+      }),
+    });
+    var d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || 'Test send failed');
+    window.__closeTestSendModal();
+    var msg = 'Test sent to ' + d.sent + ' recipient' + (d.sent === 1 ? '' : 's');
+    if (d.failed > 0) msg += ' \u00b7 ' + d.failed + ' failed';
+    showEmailToast(msg, d.failed > 0 ? 'error' : 'success');
+    console.log('[EMAIL-TEST] result:', d);
+    if (typeof loadEmails === 'function') loadEmails();
+  } catch (e) {
+    console.error('[EMAIL-TEST] failed:', e);
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+    alert('Test send failed: ' + e.message);
+  }
+};
+
 // ── TOAST HELPER ──
 function showEmailToast(msg, type) {
   var t = document.createElement('div');
@@ -8645,7 +8783,12 @@ function renderAiComposeModal() {
     html += '<button class="btn" onclick="window.__emailComposeAiBack()">&larr; Back to brief</button>';
     html += '<div style="display:flex;gap:var(--space-2)">';
     html += '<button class="btn" onclick="window.__emailComposeAiRegenerate()">Generate again</button>';
-    html += '<button class="btn btn-primary" id="ai-save-btn" onclick="window.__emailComposeAiSave()">Save as draft</button>';
+    // Send test — enabled only after Save (we need an emailId to test against).
+    // Title hint explains the disabled state to the user.
+    var testBtnDisabled = aiCompose.savedEmailId ? '' : ' disabled';
+    var testBtnTitle = aiCompose.savedEmailId ? 'Send a test copy to QA recipients' : 'Save as draft first, then you can send a test';
+    html += '<button class="btn" id="ai-test-btn" onclick="window.__openTestSendModal(\'' + (aiCompose.savedEmailId || '') + '\')" title="' + testBtnTitle + '"' + testBtnDisabled + '>Send test</button>';
+    html += '<button class="btn btn-primary" id="ai-save-btn" onclick="window.__emailComposeAiSave()">' + (aiCompose.savedEmailId ? 'Save changes' : 'Save as draft') + '</button>';
     html += '</div>';
   } else {
     html += '<div></div><div></div>';
@@ -10290,10 +10433,18 @@ window.__emailComposeAiSave = async function() {
     });
     var d = await r.json();
     if (!r.ok || !d.success) throw new Error(d.error || 'Save failed');
-    aiCompose.open = false;
-    var backdrop = document.getElementById('ai-compose-backdrop');
-    if (backdrop) backdrop.remove();
+    // Capture the saved email's record ID so the Send test button can enable.
+    // The composer stays open so the user can fire a test, or close manually.
+    aiCompose.savedEmailId = d.emailId || d.id || d.recordId || null;
+    aiCompose.saving = false;
+    console.log('[EMAIL-COMPOSE] saved as draft, emailId=', aiCompose.savedEmailId);
     if (typeof loadEmails === 'function') loadEmails();
+    // Re-render so the Send test button enables and the Save label updates.
+    renderAiComposeModal();
+    // Brief confirmation toast so the user knows the save actually happened.
+    if (typeof showEmailToast === 'function') {
+      showEmailToast('Saved as draft', 'success');
+    }
   } catch (e) {
     aiCompose.saving = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Save as draft'; }

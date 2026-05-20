@@ -374,6 +374,7 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 .cal-status-dot { width:6px; height:6px; border-radius:var(--radius-full); flex-shrink:0; }
 .cal-status-queued { background:var(--tg-warning); } .cal-status-approved { background:var(--tg-success); }
 .cal-status-rejected { background:var(--tg-error); } .cal-status-suppressed { background:var(--tg-text-tertiary); }
+.cal-status-published { background:var(--tg-accent); }
 .cal-popup { position:fixed; width:280px; background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); z-index:60; pointer-events:none; opacity:0; transition:opacity var(--duration-fast); }
 .cal-popup.visible { opacity:1; }
 .cal-popup-img { width:100%; aspect-ratio:1.91/1; object-fit:cover; display:block; border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
@@ -2094,8 +2095,8 @@ var CAL_S=6,CAL_E=22,CAL_H=60;var MONTHS=['January','February','March','April','
 function getWeek(off){var n=new Date();var d=n.getDay();var mo=1-d+(d===0?-6:0);var m=new Date(n);m.setDate(n.getDate()+mo+off*7);var ds=[];for(var i=0;i<7;i++){var x=new Date(m);x.setDate(m.getDate()+i);ds.push(x)}return ds}
 function isToday(d){var n=new Date();return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}
 function pad2(n){return n<10?'0'+n:''+n}function timeTop(h,m){return((h-CAL_S)+m/60)*CAL_H}function parseTime(t){var p=(t||'09:00').split(':');return{h:parseInt(p[0])||9,m:parseInt(p[1])||0}}
-function matchDay(p,di){var days=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];return(p.title||'').toLowerCase().includes(days[di])}
-function stClass(s){s=(s||'').toLowerCase();return s==='approved'?'cal-status-approved':s==='rejected'||s==='replaced'?'cal-status-rejected':s==='suppressed'?'cal-status-suppressed':'cal-status-queued'}
+function matchDay(p,di,weekDates){if(!p.scheduled_date||!weekDates||!weekDates[di])return false;var pd=new Date(p.scheduled_date+'T00:00:00');var td=weekDates[di];return pd.getFullYear()===td.getFullYear()&&pd.getMonth()===td.getMonth()&&pd.getDate()===td.getDate()}
+function stClass(s){s=(s||'').toLowerCase();return s==='published'?'cal-status-published':s==='approved'?'cal-status-approved':s==='rejected'||s==='replaced'?'cal-status-rejected':s==='suppressed'?'cal-status-suppressed':'cal-status-queued'}
 
 // Events View
 var EVT_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3062,13 +3063,13 @@ function renderCalendar(){
   for(var hr=CAL_S;hr<CAL_E;hr++){var t=(hr-CAL_S)*CAL_H;h+='<div class="cal-time-label" style="position:absolute;top:'+t+'px;left:0;width:56px;height:'+CAL_H+'px"><span>'+pad2(hr)+':00</span></div><div class="cal-hour-line" style="top:'+t+'px;left:56px"></div>'}
   for(var ci=0;ci<7;ci++){var isT=isToday(dates[ci]);var cl='calc(56px + '+ci+' * ((100% - 56px) / 7))';var cw='calc((100% - 56px) / 7)';
     h+='<div class="cal-col'+(isT?' today':'')+'" style="position:absolute;top:0;left:'+cl+';width:'+cw+';height:'+gh+'px" data-day="'+ci+'" ondragover="event.preventDefault();C.calDragOver(event,this)" ondragleave="C.calDragLeave(this)" ondrop="C.calDrop(event,'+ci+')">';
-    posts.filter(function(p){return matchDay(p,ci)}).forEach(function(p){var tm=parseTime(p.scheduled_time);var pt=timeTop(tm.h,tm.m);var sc=stClass(p.status);
+    posts.filter(function(p){return matchDay(p,ci,dates)}).forEach(function(p){var tm=parseTime(p.scheduled_time);var pt=timeTop(tm.h,tm.m);var sc=stClass(p.status);
       h+='<div class="cal-post" draggable="true" data-pid="'+p.id+'" style="top:'+pt+'px;height:50px" ondragstart="C.calDragStart(event,\''+p.id+'\')" onmouseenter="C.calShowPopup(event,\''+p.id+'\')" onmousemove="C.calMovePopup(event)" onmouseleave="C.calHidePopup()">';
       h+='<div class="cal-post-time">'+pad2(tm.h)+':'+pad2(tm.m)+'</div><div class="cal-post-dest">'+esc(p.destination||'General')+'</div>';
       h+='<div class="cal-post-foot"><span class="cal-platform-icon cal-platform-fb">f</span><span class="cal-platform-icon cal-platform-ig">ig</span><span class="cal-platform-icon cal-platform-tw">x</span><span class="cal-platform-icon cal-platform-pin">P</span><span class="cal-platform-icon cal-platform-tt">tt</span><span class="cal-platform-icon cal-platform-gbp">G</span><span class="cal-status-dot '+sc+'"></span></div></div>'});
     h+='</div>'}
   h+='</div></div>';
-  h+='<div class="cal-legend"><span class="cal-legend-item"><span class="cal-status-dot cal-status-queued"></span> Queued</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
+  h+='<div class="cal-legend"><span class="cal-legend-item"><span class="cal-status-dot cal-status-queued"></span> Queued</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-published"></span> Published</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
   h+='<span style="margin-left:auto" class="cal-legend-item"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> FB</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> IG</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tw" style="width:12px;height:12px;font-size:7px">x</span> X</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-pin" style="width:12px;height:12px;font-size:7px">P</span> Pin</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tt" style="width:12px;height:12px;font-size:7px">tt</span> TT</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-gbp" style="width:12px;height:12px;font-size:7px">G</span> GBP</span></div>';
   $('view-calendar').innerHTML=h;var scr=$('calScroll');if(scr)scr.scrollTop=Math.max(0,timeTop(8,0));
 }

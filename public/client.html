@@ -8990,7 +8990,8 @@ function scheduleAiImageTickerIfNeeded() {
 }
 
 window.__aiImageGenerate = async function(idx) {
-  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  console.log('[AI-GEN] called with idx=', idx, 'draft?', !!aiCompose.draft, 'section?', !!(aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections[idx]), 'total sections=', aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections.length);
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) { console.error('[AI-GEN] guard failed, exiting silently'); return; }
   var section = aiCompose.draft.sections[idx];
   if (!section.__image) section.__image = {};
   var imgState = section.__image;
@@ -9178,7 +9179,8 @@ function aspectRatioForSlot(slot) {
 // Stage B pipeline. Response uses { url } not { pngUrl }, and there is
 // no { ok: true } field — we rely on r.ok (HTTP 200).
 window.__aiImagePhotoGenerate = async function(idx) {
-  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  console.log('[AI-PHOTO] called with idx=', idx, 'draft?', !!aiCompose.draft, 'section?', !!(aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections[idx]));
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) { console.error('[AI-PHOTO] guard failed, exiting silently'); return; }
   var section = aiCompose.draft.sections[idx];
   if (!section.__image) section.__image = {};
   var imgState = section.__image;
@@ -9802,7 +9804,8 @@ window.__aiImagesNeededGenerate = function(idx) {
 // is visible, then opens the picker and auto-fires the initial search
 // using Luna's suggestion as the query seed.
 window.__aiImagesNeededOpenStock = function(idx) {
-  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) return;
+  console.log('[AI-STOCK] called with idx=', idx, 'draft?', !!aiCompose.draft, 'section?', !!(aiCompose.draft && aiCompose.draft.sections && aiCompose.draft.sections[idx]));
+  if (!aiCompose.draft || !aiCompose.draft.sections[idx]) { console.error('[AI-STOCK] guard failed, exiting silently'); return; }
   var section = aiCompose.draft.sections[idx];
   if (!section.__expanded) {
     section.__expanded = true;

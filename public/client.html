@@ -4492,6 +4492,7 @@ function drawEmailDrawer() {
   } else if (canCancel) {
     bodyHTML += '<div class="email-actions">';
     bodyHTML += testBtn;
+    bodyHTML += '<button class="email-action-approve" onclick="window.__openAudienceSendModal(\'' + email.id + '\')" style="background:var(--tg-accent);border-color:var(--tg-accent)">Send to audience</button>';
     bodyHTML += '<button class="email-action-reject" onclick="window.__emailCancel()">Cancel send</button>';
     bodyHTML += '</div>';
   } else {
@@ -7703,6 +7704,208 @@ window.__submitTestSend = async function(emailId) {
     submitBtn.disabled = false;
     submitBtn.textContent = originalLabel;
     alert('Test send failed: ' + e.message);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// AUDIENCE SEND MODAL — Stage 2
+// Pick one or more Brevo lists, see live subscriber totals, hit
+// /api/email-send-audience. Two-step UX:
+//   1. List picker modal (checkboxes + total)
+//   2. Big red confirmation modal (irreversible)
+//
+// Only triggered from the Email Queue drawer when status === 'Approved'.
+// Reuses the auto-discovered audiences endpoint, so renames in Brevo
+// flow through automatically.
+// ─────────────────────────────────────────────────────────────────
+
+window.__audienceSendState = { emailId: null, selected: {} };
+
+window.__openAudienceSendModal = async function(emailId) {
+  if (!emailId) return;
+  window.__audienceSendState = { emailId: emailId, selected: {} };
+
+  var existing = document.getElementById('audienceSendBackdrop');
+  if (existing) existing.remove();
+
+  var bd = document.createElement('div');
+  bd.id = 'audienceSendBackdrop';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+  bd.onclick = function(e) { if (e.target === bd) window.__closeAudienceSendModal(); };
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--tg-bg-primary);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.25);width:100%;max-width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;font-family:var(--tg-font-body)';
+  box.innerHTML =
+    '<div style="padding:20px 24px 14px;border-bottom:1px solid var(--tg-border)">' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--tg-text-primary)">Send to audience</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--tg-text-tertiary);margin-top:6px">Pick one or more lists. Brevo dedupes across lists automatically.</div>' +
+    '</div>' +
+    '<div id="audienceSendList" style="padding:16px 24px;overflow-y:auto;flex:1;min-height:120px">' +
+      '<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary);font-size:13px">Loading audiences from Brevo\u2026</div>' +
+    '</div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--tg-border);display:flex;align-items:center;gap:10px;background:var(--tg-bg-secondary)">' +
+      '<div id="audienceSendTotal" style="flex:1;font-size:13px;color:var(--tg-text-secondary);font-variant-numeric:tabular-nums">No lists selected</div>' +
+      '<button onclick="window.__closeAudienceSendModal()" class="btn btn-ghost btn-sm" style="padding:9px 16px">Cancel</button>' +
+      '<button id="audienceSendNext" onclick="window.__confirmAudienceSend()" class="btn btn-primary btn-sm" style="padding:9px 16px" disabled>Continue\u2026</button>' +
+    '</div>';
+
+  bd.appendChild(box);
+  document.body.appendChild(bd);
+
+  // Fetch audiences
+  try {
+    var r = await fetch('/api/audiences?clientId=' + encodeURIComponent(state.profile.id));
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Failed to load audiences');
+    var audiences = d.audiences || [];
+    window.__renderAudienceList(audiences);
+  } catch (e) {
+    console.error('[EMAIL-AUDIENCE] load failed:', e);
+    var listEl = document.getElementById('audienceSendList');
+    if (listEl) {
+      listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--tg-error);font-size:13px">Could not load audiences: ' + esc(e.message) + '</div>';
+    }
+  }
+};
+
+window.__renderAudienceList = function(audiences) {
+  var listEl = document.getElementById('audienceSendList');
+  if (!listEl) return;
+  if (!audiences.length) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--tg-text-tertiary);font-size:13px">No contact lists found in your Brevo account.</div>';
+    return;
+  }
+  var h = '';
+  audiences.forEach(function(a) {
+    if (!a.configured || a.error) return; // Skip broken lists
+    var checked = window.__audienceSendState.selected[a.listId] ? 'checked' : '';
+    h += '<label style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--tg-border);border-radius:10px;cursor:pointer;transition:background var(--duration-fast)" onmouseover="this.style.background=\'var(--tg-bg-secondary)\'" onmouseout="this.style.background=\'transparent\'">';
+    h += '<input type="checkbox" ' + checked + ' onchange="window.__toggleAudience(\'' + esc(a.listId) + '\',' + (a.totalSubscribers || 0) + ',this.checked,\'' + esc(a.listName || a.label) + '\')" style="width:16px;height:16px;flex-shrink:0">';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div style="font-size:14px;font-weight:600;color:var(--tg-text-primary)">' + esc(a.listName || a.label) + '</div>';
+    h += '<div style="font-size:11px;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono);margin-top:2px">' + esc(a.audienceMapping || 'LIST') + ' \u00b7 ID ' + esc(a.listId) + '</div>';
+    h += '</div>';
+    h += '<div style="text-align:right">';
+    h += '<div style="font-size:18px;font-weight:700;color:var(--tg-text-primary);font-variant-numeric:tabular-nums">' + (a.totalSubscribers || 0).toLocaleString() + '</div>';
+    h += '<div style="font-size:10px;color:var(--tg-text-tertiary);text-transform:uppercase;letter-spacing:0.5px">subscribers</div>';
+    h += '</div>';
+    h += '</label>';
+  });
+  listEl.innerHTML = h;
+};
+
+window.__toggleAudience = function(listId, subscribers, checked, listName) {
+  if (checked) {
+    window.__audienceSendState.selected[listId] = { subscribers: subscribers, name: listName };
+  } else {
+    delete window.__audienceSendState.selected[listId];
+  }
+  // Update footer
+  var ids = Object.keys(window.__audienceSendState.selected);
+  var total = 0;
+  ids.forEach(function(id) { total += window.__audienceSendState.selected[id].subscribers || 0; });
+  var totalEl = document.getElementById('audienceSendTotal');
+  var btn = document.getElementById('audienceSendNext');
+  if (totalEl) {
+    if (ids.length === 0) {
+      totalEl.textContent = 'No lists selected';
+    } else {
+      totalEl.innerHTML = '<strong>' + ids.length + ' list' + (ids.length === 1 ? '' : 's') + '</strong> \u00b7 ~' + total.toLocaleString() + ' subscribers';
+    }
+  }
+  if (btn) {
+    btn.disabled = ids.length === 0;
+    btn.textContent = ids.length === 0 ? 'Continue\u2026' : 'Continue (' + total.toLocaleString() + ')';
+  }
+};
+
+window.__closeAudienceSendModal = function() {
+  var bd = document.getElementById('audienceSendBackdrop');
+  if (bd) bd.remove();
+  var confirmBd = document.getElementById('audienceConfirmBackdrop');
+  if (confirmBd) confirmBd.remove();
+};
+
+window.__confirmAudienceSend = function() {
+  var st = window.__audienceSendState;
+  var ids = Object.keys(st.selected);
+  if (ids.length === 0) return;
+  var total = 0;
+  var names = [];
+  ids.forEach(function(id) {
+    total += st.selected[id].subscribers || 0;
+    names.push(st.selected[id].name);
+  });
+
+  // Remove existing confirm modal if any
+  var existing = document.getElementById('audienceConfirmBackdrop');
+  if (existing) existing.remove();
+
+  var bd = document.createElement('div');
+  bd.id = 'audienceConfirmBackdrop';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--tg-bg-primary);border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.3);width:100%;max-width:480px;font-family:var(--tg-font-body);overflow:hidden';
+  box.innerHTML =
+    '<div style="padding:24px 24px 16px;background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(239,68,68,0.02));border-bottom:1px solid rgba(239,68,68,0.15)">' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+        '<div style="font-size:17px;font-weight:700;color:#dc2626">Confirm send</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="padding:20px 24px">' +
+      '<div style="font-size:14px;color:var(--tg-text-primary);line-height:1.6;margin-bottom:14px">You\u2019re about to send this email to <strong>~' + total.toLocaleString() + ' subscriber' + (total === 1 ? '' : 's') + '</strong> across <strong>' + names.length + ' list' + (names.length === 1 ? '' : 's') + '</strong>:</div>' +
+      '<ul style="margin:0 0 16px;padding-left:20px;font-size:13px;color:var(--tg-text-secondary);line-height:1.7">' +
+        names.map(function(n) { return '<li>' + esc(n) + '</li>'; }).join('') +
+      '</ul>' +
+      '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:12px 14px;font-size:12px;color:#991b1b;line-height:1.5"><strong>This cannot be undone.</strong> Once Brevo accepts the campaign, the email is on its way.</div>' +
+    '</div>' +
+    '<div style="padding:14px 24px;border-top:1px solid var(--tg-border);display:flex;gap:10px;justify-content:flex-end;background:var(--tg-bg-secondary)">' +
+      '<button onclick="document.getElementById(\'audienceConfirmBackdrop\').remove()" class="btn btn-ghost btn-sm" style="padding:9px 16px">Cancel</button>' +
+      '<button id="audienceConfirmSend" onclick="window.__fireAudienceSend()" class="btn btn-sm" style="padding:9px 18px;background:#dc2626;color:#fff;border-color:#dc2626;font-weight:700">Send to ' + total.toLocaleString() + '</button>' +
+    '</div>';
+
+  bd.appendChild(box);
+  document.body.appendChild(bd);
+};
+
+window.__fireAudienceSend = async function() {
+  var st = window.__audienceSendState;
+  var ids = Object.keys(st.selected).map(function(id) { return parseInt(id, 10); }).filter(function(n) { return Number.isInteger(n); });
+  if (ids.length === 0 || !st.emailId) return;
+  var total = 0;
+  ids.forEach(function(id) { total += st.selected[String(id)].subscribers || 0; });
+
+  var btn = document.getElementById('audienceConfirmSend');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending\u2026'; btn.style.opacity = '0.7'; }
+  console.log('[EMAIL-AUDIENCE] firing send for emailId=', st.emailId, 'listIds=', ids, 'recipientsCount=', total);
+
+  try {
+    var r = await fetch('/api/email-send-audience', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        emailId: st.emailId,
+        listIds: ids,
+        recipientsCount: total,
+      }),
+    });
+    var d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || d.detail || 'Send failed');
+    window.__closeAudienceSendModal();
+    closeEmailDrawer();
+    showEmailToast('Sent to ~' + (d.recipientsCount || total).toLocaleString() + ' subscribers \u00b7 campaign ' + (d.brevoCampaignId || ''), 'success');
+    console.log('[EMAIL-AUDIENCE] sent:', d);
+    if (typeof loadEmails === 'function') loadEmails();
+  } catch (e) {
+    console.error('[EMAIL-AUDIENCE] send failed:', e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Send to ' + total.toLocaleString(); btn.style.opacity = '1'; }
+    alert('Send failed: ' + e.message);
   }
 };
 

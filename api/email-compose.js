@@ -170,6 +170,11 @@ module.exports = async (req, res) => {
       "Email Type": emailType || "Newsletter",
       "Send Result": "Pending",
       "Unsub URL Token": unsubToken,
+      // Link to the owning client so email-list can filter per-tenant.
+      // Without this, email-list would show ALL emails to any authenticated
+      // user (multi-tenancy gap). multipleRecordLinks expects an array of
+      // record IDs.
+      "Client": [clientId],
     };
     if (recipientEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
       fields["Recipient Email"] = recipientEmail.trim();

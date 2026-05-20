@@ -98,18 +98,11 @@ function sanitiseHTML(html) {
   return clean;
 }
 
-// Build the unsubscribe footer that gets injected into HTML emails
-function buildUnsubFooter(token) {
-  const baseURL = "https://luna-marketing.vercel.app";
-  const unsubURL = `${baseURL}/unsubscribe?token=${encodeURIComponent(token)}`;
-  return `
-<div style="margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#64748b;line-height:1.6;text-align:center">
-  <p style="margin:0 0 8px">You're receiving this because you subscribed to Travelgenix updates.</p>
-  <p style="margin:0"><a href="${unsubURL}" style="color:#0096b7;text-decoration:underline">Unsubscribe</a> &middot; <a href="https://travelgenix.io" style="color:#0096b7;text-decoration:underline">Visit Travelgenix</a></p>
-</div>`.trim();
-}
-
-// Generate a unique unsubscribe token for this email
+// Generate a unique unsubscribe token for this email. The token is stored
+// on the email record and substituted into the rendered HTML's {{UNSUB_URL}}
+// placeholder by /api/email-render via buildUnsubUrl(). The footer section
+// itself emits the {{UNSUB_URL}} token, so the unsubscribe link lives there
+// rather than being appended at compose time.
 function generateUnsubToken() {
   return `unsub_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 }
@@ -158,12 +151,12 @@ module.exports = async (req, res) => {
       || req.connection?.remoteAddress
       || "";
 
-    // Sanitise HTML and inject unsub footer
+    // Sanitise HTML. The footer section (rendered later by email-renderer)
+    // is now the sole footer — we no longer inject a hardcoded Travelgenix
+    // footer here. The Unsub URL Token is still written to the record so
+    // the renderer can substitute {{UNSUB_URL}} at render time.
     const unsubToken = generateUnsubToken();
-    let cleanHTML = sanitiseHTML(bodyHTML || "");
-    if (cleanHTML) {
-      cleanHTML = cleanHTML + buildUnsubFooter(unsubToken);
-    }
+    const cleanHTML = sanitiseHTML(bodyHTML || "");
 
     // Build the record
     const fields = {

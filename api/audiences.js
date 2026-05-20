@@ -1,26 +1,37 @@
 // api/audiences.js
-// Day B — Email Suite v1
+// Email Suite — Day B v1, auto-discovery rewrite (20 May 2026)
 //
-// Fetches the Brevo lists configured for this account, with contact counts
-// and metadata. Results are cached briefly to avoid hammering Brevo's API.
+// Fetches every Brevo list on the account dynamically. No env-var mapping,
+// no hardcoded list names — the portal stays in sync with Brevo automatically.
+// When the user renames a list in Brevo or adds a new one, it shows up here
+// without any code or env-var changes.
 //
 // GET /api/audiences?clientId=recXXX
 //
-// Returns: { success, audiences: [{ id, name, totalSubscribers, totalBlacklisted, ... }] }
+// Returns: {
+//   success,
+//   generatedAt,
+//   audiences: [{
+//     listId,            // string, Brevo list ID
+//     listName,          // string, the name as set in Brevo
+//     label,             // string, same as listName (kept for client compat)
+//     audienceMapping,   // string, derived from listName for header label
+//     configured: true,  // always true for discovered lists
+//     totalSubscribers,  // number
+//     totalBlacklisted,  // number
+//     folderId,          // number or null
+//     createdAt,         // ISO date or null
+//   }]
+// }
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
-// Brevo list ID env vars (set in Vercel)
-// These map our internal audience labels to actual Brevo list IDs
-const LIST_IDS = {
-  "Travelgenix Clients": process.env.BREVO_LIST_TG_CLIENTS || process.env.BREVO_LIST_TRAVELGENIX_CLIENTS,
-  "Inbound Leads": process.env.BREVO_LIST_INBOUND_LEADS || process.env.BREVO_LIST_INBOUND,
-  "Demo Requested": process.env.BREVO_LIST_DEMO_REQUESTED,
-};
-
 const CLIENTS_TABLE = "Clients";
+
+// Page size for Brevo's list endpoint. 50 is the max per page.
+const BREVO_LIST_PAGE_SIZE = 50;
 
 async function airtableFetch(url) {
   const r = await fetch(url, {
@@ -44,19 +55,50 @@ async function authenticateClient(clientId) {
   }
 }
 
-async function fetchBrevoList(listId) {
-  if (!listId || !BREVO_API_KEY) return null;
-  const url = `https://api.brevo.com/v3/contacts/lists/${listId}`;
-  try {
-    const r = await fetch(url, {
-      headers: { "api-key": BREVO_API_KEY, Accept: "application/json" },
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) {
-    console.error(`Brevo list fetch failed for ID ${listId}:`, e.message);
-    return null;
+// Fetch every list on the Brevo account, paginating if there are more than 50.
+// Returns the raw Brevo list objects.
+async function fetchAllBrevoLists() {
+  if (!BREVO_API_KEY) return [];
+  const all = [];
+  let offset = 0;
+  // Safety cap — stop after 10 pages (500 lists). No real account has more.
+  for (let page = 0; page < 10; page++) {
+    const url = `https://api.brevo.com/v3/contacts/lists?limit=${BREVO_LIST_PAGE_SIZE}&offset=${offset}`;
+    let res;
+    try {
+      res = await fetch(url, {
+        headers: { "api-key": BREVO_API_KEY, Accept: "application/json" },
+      });
+    } catch (e) {
+      console.error("Brevo lists fetch failed:", e.message);
+      return all;
+    }
+    if (!res.ok) {
+      console.error("Brevo lists fetch non-OK:", res.status);
+      return all;
+    }
+    const data = await res.json().catch(() => ({}));
+    const batch = Array.isArray(data.lists) ? data.lists : [];
+    if (batch.length === 0) break;
+    all.push(...batch);
+    if (batch.length < BREVO_LIST_PAGE_SIZE) break;
+    offset += BREVO_LIST_PAGE_SIZE;
   }
+  return all;
+}
+
+// Derive a short header label from the list name. Used for the small
+// uppercase pill at the top of each card in the portal. Heuristics — no
+// hardcoded mapping. The label is purely cosmetic: send routing is by
+// list ID, not by this label.
+function deriveLabel(listName) {
+  const n = (listName || "").toLowerCase();
+  if (!n) return "LIST";
+  if (n.includes("current") || n.includes("client") || n.includes("customer")) return "CLIENTS";
+  if (n.includes("potential") || n.includes("lead") || n.includes("prospect")) return "LEADS";
+  if (n.includes("all")) return "ALL CONTACTS";
+  if (n.includes("test") || n.includes("qa")) return "TEST";
+  return "LIST";
 }
 
 module.exports = async (req, res) => {
@@ -77,50 +119,26 @@ module.exports = async (req, res) => {
       return res.status(503).json({ error: "Brevo API key not configured" });
     }
 
-    // Build audience list
-    const labelToAudienceMap = {
-      "Travelgenix Clients": "Client",
-      "Inbound Leads": "Nurture",
-      "Demo Requested": "Nurture",
-    };
+    const rawLists = await fetchAllBrevoLists();
 
-    const audiences = [];
-    for (const [label, listId] of Object.entries(LIST_IDS)) {
-      if (!listId) {
-        audiences.push({
-          label,
-          listId: null,
-          audienceMapping: labelToAudienceMap[label],
-          configured: false,
-          error: "Brevo list ID not set in environment",
-        });
-        continue;
-      }
+    // Shape each list to the contract the client portal expects.
+    // `configured: true` because we found the list on Brevo — the old
+    // env-var path is gone. `audienceMapping` is now a derived header
+    // label, kept for client-side template compatibility.
+    const audiences = rawLists.map(list => ({
+      listId: String(list.id),
+      listName: list.name || "(unnamed list)",
+      label: list.name || "(unnamed list)",
+      audienceMapping: deriveLabel(list.name),
+      configured: true,
+      totalSubscribers: list.totalSubscribers || list.uniqueSubscribers || 0,
+      totalBlacklisted: list.totalBlacklisted || 0,
+      folderId: list.folderId || null,
+      createdAt: list.createdAt || null,
+    }));
 
-      const list = await fetchBrevoList(listId);
-      if (!list) {
-        audiences.push({
-          label,
-          listId,
-          audienceMapping: labelToAudienceMap[label],
-          configured: true,
-          error: "Could not fetch from Brevo",
-        });
-        continue;
-      }
-
-      audiences.push({
-        label,
-        listId: String(list.id || listId),
-        listName: list.name || label,
-        audienceMapping: labelToAudienceMap[label],
-        configured: true,
-        totalSubscribers: list.totalSubscribers || list.uniqueSubscribers || 0,
-        totalBlacklisted: list.totalBlacklisted || 0,
-        folderId: list.folderId || null,
-        createdAt: list.createdAt || null,
-      });
-    }
+    // Sort by subscriber count descending — biggest lists first.
+    audiences.sort((a, b) => (b.totalSubscribers || 0) - (a.totalSubscribers || 0));
 
     return res.status(200).json({
       success: true,

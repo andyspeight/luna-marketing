@@ -71,8 +71,20 @@ function isoDaysAgo(days) {
   return d.toISOString();
 }
 
-function buildFilterFormula({ view, status, audience }) {
+function buildFilterFormula({ view, status, audience, clientId }) {
   const clauses = [];
+
+  // Client filter — only return emails linked to this client. The Client
+  // field is a multipleRecordLinks to the Clients table. FIND() on the
+  // record ID inside it gives us a client-scoped query. We OR with a
+  // blank-Client check so any email that hasn't yet been backfilled with
+  // a Client link still appears in the queue (graceful for the rollout
+  // window before all existing records are backfilled — once every record
+  // has a Client link, the blank clause becomes a no-op).
+  if (clientId) {
+    const safeId = clientId.replace(/'/g, "\\'");
+    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), {Client}='')`);
+  }
 
   // Status filter
   if (status) {
@@ -82,6 +94,8 @@ function buildFilterFormula({ view, status, audience }) {
     clauses.push(`AND({Status}='Sent', IS_AFTER({Sent At}, '${since}'))`);
   } else {
     // Default: queue view = anything not Sent and not Cancelled
+    // Cancelled is reachable via the explicit `status=Cancelled` chip,
+    // not the default queue view.
     clauses.push(`AND({Status}!='Sent', {Status}!='Cancelled')`);
   }
 
@@ -142,8 +156,8 @@ module.exports = async (req, res) => {
       return res.status(403).json({ error: "Email suite not available for this client" });
     }
 
-    // Build filter
-    const formula = buildFilterFormula({ view, status, audience });
+    // Build filter — pass clientId so we scope to this tenant's emails
+    const formula = buildFilterFormula({ view, status, audience, clientId });
     
     // Sort: queue ascending by scheduled send, sent descending by sent at
     const sortField = view === "sent" ? "Sent At" : "Scheduled Send";

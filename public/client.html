@@ -1755,7 +1755,7 @@ select.of-input { cursor: pointer; height: 34px; }
 (function(){
 'use strict';
 var SK='luna_client_session',TK='luna_client_theme',MAX=4*3600000;
-var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',dragPid:null};
+var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',dragPid:null,postImage:{}};
 // Travelgenix's own client record. Only this account sees the admin
 // sub-tabs inside Events. Everyone else just sees the standard view.
 var OWNER_CLIENT_ID = 'recFXQY7be6gMr4In';
@@ -1856,6 +1856,142 @@ var CHANNEL_ICONS = {
   'Pinterest': '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.15 9.42 7.6 11.18-.1-.94-.2-2.38.04-3.41l1.4-5.93s-.35-.71-.35-1.76c0-1.65.96-2.88 2.15-2.88 1.01 0 1.5.76 1.5 1.67 0 1.02-.65 2.54-.98 3.95-.28 1.18.59 2.14 1.75 2.14 2.1 0 3.71-2.21 3.71-5.41 0-2.83-2.03-4.81-4.93-4.81-3.36 0-5.33 2.52-5.33 5.12 0 1.01.39 2.1.88 2.69.1.12.11.22.08.34l-.33 1.33c-.05.22-.18.27-.41.16-1.54-.72-2.5-2.96-2.5-4.77 0-3.87 2.82-7.43 8.13-7.43 4.27 0 7.59 3.04 7.59 7.11 0 4.24-2.67 7.65-6.39 7.65-1.25 0-2.42-.65-2.82-1.42l-.77 2.93c-.28 1.07-1.03 2.42-1.53 3.24 1.15.36 2.37.55 3.64.55 6.63 0 12-5.37 12-12S18.63 0 12 0"/></svg>'
 };
 
+// ─────────────────────────────────────────────────────────────────
+// SOCIAL POST IMAGE CONTROLS
+// Generate (Stage B HTML) / Photo (Replicate) / Stock (Pexels)
+// Mirrors the email composer's image pipeline but flatter:
+//  - No briefs object (we build a brief at call-time from caption + dest)
+//  - No anti-pattern validator (short prompts, not user-authored)
+//  - Per-post transient state stored in state.postImage[pid]
+//  - Aspect ratio derived from the active platform tab on the card
+// ─────────────────────────────────────────────────────────────────
+
+// Map a platform's CSS aspect-ratio string to an image-generate-v2 slot.
+function postImagePlatToSlot(ratioStr) {
+  if (!ratioStr) return 'hero';
+  if (ratioStr === '1/1') return 'hero-square';
+  if (ratioStr === '2/3' || ratioStr === '9/16') return 'hero-tall';
+  return 'hero';
+}
+
+// Resolve the currently-active platform key on a post card from the DOM.
+function postImageActivePlatKey(pid, post) {
+  var card = document.getElementById('cp-' + pid);
+  if (card) {
+    var activeTab = card.querySelector('.plat-tab.active');
+    if (activeTab) {
+      var onclick = activeTab.getAttribute('onclick') || '';
+      var m = onclick.match(/'[^']*-([a-z]+)'/);
+      if (m && m[1]) return m[1];
+    }
+  }
+  for (var i = 0; i < PLATS.length; i++) {
+    if (post && post['caption_' + PLATS[i].key]) return PLATS[i].key;
+  }
+  return 'instagram';
+}
+
+// Build a short on-brand brief from caption + destination + pillar.
+function postImageBuildBrief(post, platKey, mode) {
+  var caption = (post['caption_' + platKey] || post.caption_facebook || post.caption_instagram || '').trim();
+  var captionSnip = caption.slice(0, 240).replace(/\s+/g, ' ');
+  var dest = (post.destination || '').trim();
+  var pillar = (post.content_pillar || '').trim();
+  var contentType = (post.content_type || '').trim();
+  var parts = [];
+  if (mode === 'photo') {
+    parts.push('Photoreal travel marketing image.');
+  } else {
+    parts.push('On-brand social media visual for a ' + (contentType || 'travel') + ' post.');
+  }
+  if (dest) parts.push('Destination: ' + dest + '.');
+  if (pillar) parts.push('Theme: ' + pillar + '.');
+  if (captionSnip) parts.push('Post angle: ' + captionSnip);
+  return parts.join(' ');
+}
+
+// Render the 3-button control row, OR the loading tracker, OR the Stock panel.
+function renderPostImageControls(p, imgState) {
+  imgState = imgState || {};
+  var pid = p.id;
+
+  if (imgState.loading) {
+    var modeLabel = imgState.mode === 'photo' ? 'Generating photoreal image…' : 'Generating image…';
+    var h = '<div class="post-img-tracker" style="padding:var(--space-3);background:rgba(0,180,216,0.04);border-top:1px solid var(--tg-border);border-bottom:1px solid var(--tg-border)">';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="font-size:var(--text-xs);font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px">'+modeLabel+'</div>';
+    h += '<span id="post-img-elapsed-'+pid+'" style="margin-left:auto;font-family:var(--tg-font-mono);font-size:var(--text-xs);color:var(--tg-text-tertiary)">0s</span></div>';
+    h += '<div id="post-img-progress-'+pid+'" class="post-img-progress" style="display:flex;gap:6px">';
+    h += '<div data-stage="1" style="flex:1;padding:6px 8px;border-radius:6px;background:rgba(0,180,216,0.1);font-size:11px;color:var(--tg-text-secondary);text-align:center">Writing brief</div>';
+    h += '<div data-stage="2" style="flex:1;padding:6px 8px;border-radius:6px;background:var(--tg-bg-secondary);font-size:11px;color:var(--tg-text-tertiary);text-align:center">Rendering design</div>';
+    h += '<div data-stage="3" style="flex:1;padding:6px 8px;border-radius:6px;background:var(--tg-bg-secondary);font-size:11px;color:var(--tg-text-tertiary);text-align:center">Uploading</div>';
+    h += '</div></div>';
+    return h;
+  }
+
+  if (imgState.stockOpen) {
+    var seed = (p.destination || '').trim();
+    var h2 = '<div class="img-search-panel" style="padding:var(--space-3);background:var(--tg-bg-secondary);border-top:1px solid var(--tg-border)">';
+    h2 += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+    h2 += '<input placeholder="Search stock images…" id="imgq-'+pid+'" value="'+esc(seed)+'" onkeydown="if(event.key===\'Enter\')C.imgStockSearch(\''+pid+'\')" style="flex:1;padding:6px 10px;border:1px solid var(--tg-border);border-radius:var(--radius-md);font-size:var(--text-sm);background:var(--tg-bg-primary)">';
+    h2 += '<button class="btn btn-ghost btn-sm" onclick="C.imgStockSearch(\''+pid+'\')">Search</button>';
+    h2 += '<button class="btn btn-ghost btn-sm" onclick="C.imgStockClose(\''+pid+'\')" title="Close stock picker" aria-label="Close">×</button>';
+    h2 += '</div>';
+    h2 += '<div id="imgr-'+pid+'" style="display:flex;gap:6px;overflow-x:auto;min-height:44px"></div>';
+    h2 += '</div>';
+    return h2;
+  }
+
+  var err = imgState.error ? '<div style="padding:0 var(--space-3) var(--space-2);font-size:var(--text-xs);color:var(--tg-error)">'+esc(imgState.error)+'</div>' : '';
+  var h3 = err + '<div class="post-img-controls" style="display:flex;gap:6px;padding:var(--space-2) var(--space-3);align-items:center">';
+  h3 += '<button class="btn btn-primary btn-sm" onclick="C.imgGenerate(\''+pid+'\')" style="font-size:11px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="Generate via Stage B HTML render (high quality, 90-120s)">';
+  h3 += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15 9l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>';
+  h3 += 'Generate AI</button>';
+  h3 += '<button class="btn btn-ghost btn-sm" onclick="C.imgPhoto(\''+pid+'\')" style="font-size:11px;padding:6px 10px" title="Photoreal generation via Replicate (10-30s)" aria-label="Generate photoreal image">';
+  h3 += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  h3 += '</button>';
+  h3 += '<button class="btn btn-ghost btn-sm" onclick="C.imgStockOpen(\''+pid+'\')" style="font-size:11px;padding:6px 10px;display:inline-flex;align-items:center;gap:4px" title="Pick from the stock library">';
+  h3 += 'Stock<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+  h3 += '</button>';
+  h3 += '</div>';
+  return h3;
+}
+
+// Per-second ticker that advances stage classes on any post currently generating.
+var __postImageTickerHandle = null;
+function schedulePostImageTickerIfNeeded() {
+  if (__postImageTickerHandle) return;
+  __postImageTickerHandle = setInterval(function() {
+    var anyLoading = false;
+    Object.keys(state.postImage || {}).forEach(function(pid) {
+      var s = state.postImage[pid];
+      if (!s || !s.loading) return;
+      anyLoading = true;
+      var elapsedSec = Math.round((Date.now() - (s.startedAt || Date.now())) / 1000);
+      var elapsedEl = document.getElementById('post-img-elapsed-' + pid);
+      if (elapsedEl) elapsedEl.textContent = elapsedSec + 's';
+      var progressEl = document.getElementById('post-img-progress-' + pid);
+      if (!progressEl) return;
+      var fast = s.mode === 'photo';
+      var stage1Done = fast ? elapsedSec > 5 : elapsedSec > 15;
+      var stage2Done = fast ? elapsedSec > 20 : elapsedSec > 90;
+      var steps = progressEl.querySelectorAll('[data-stage]');
+      steps.forEach(function(stepEl) {
+        var stage = stepEl.getAttribute('data-stage');
+        var active = false, done = false;
+        if (stage === '1') { active = !stage1Done; done = stage1Done; }
+        else if (stage === '2') { active = stage1Done && !stage2Done; done = stage2Done; }
+        else if (stage === '3') { active = stage2Done; done = false; }
+        stepEl.style.background = done ? 'rgba(16,185,129,0.12)' : (active ? 'rgba(0,180,216,0.1)' : 'var(--tg-bg-secondary)');
+        stepEl.style.color = done ? '#059669' : (active ? 'var(--tg-text-secondary)' : 'var(--tg-text-tertiary)');
+      });
+    });
+    if (!anyLoading) {
+      clearInterval(__postImageTickerHandle);
+      __postImageTickerHandle = null;
+    }
+  }, 1000);
+}
+
 async function loadPosts(){
   if(!state.profile)return;
   try{var r=await fetch('/api/posts?status=Queued');var d=await r.json();if(!d.success)throw new Error(d.error);state.posts=d.posts.filter(function(p){return p.client_id===state.profile.id});var r2=await fetch('/api/posts');var d2=await r2.json();state.allPosts=(d2.posts||[]).filter(function(p){return p.client_id===state.profile.id});state.selected={};renderStats();renderPosts();var badge=$('postsTab').querySelector('.tab-badge');if(!badge){badge=document.createElement('span');badge.className='tab-badge';$('postsTab').appendChild(badge)}badge.textContent=state.posts.length;badge.style.display=state.posts.length>0?'inline':'none';$('postsTab').classList.toggle('has-badge',state.posts.length>0)}catch(e){$('view-posts').innerHTML='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-error)">'+e.message+'</div>'}
@@ -1918,7 +2054,9 @@ function renderPosts(){
       h+='<span style="color:var(--tg-text-tertiary);font-size:var(--text-xs)">Target channel: '+esc(p.target_channel||'(not set)')+'. Caption is empty. Reject this post or wait for re-generation.</span>';
       h+='</div>';
     }
-    h+='<div class="img-search-panel"><input placeholder="Search for a new image..." id="imgq-'+p.id+'" onkeydown="if(event.key===\'Enter\')C.searchImg(\''+p.id+'\')"><button class="btn btn-ghost btn-sm" onclick="C.searchImg(\''+p.id+'\')">Search</button><div id="imgr-'+p.id+'" style="display:flex;gap:var(--space-1);margin-top:var(--space-2);overflow-x:auto;width:100%"></div></div>';
+    // Image generation controls: Generate (Stage B) / Photo (Replicate) / Stock (Pexels)
+    // Active platform tab determines aspect ratio: IG=1:1, FB/LI/Twitter/GBP=16:9.
+    h+=renderPostImageControls(p,state.postImage[p.id]||{});
     // Meta row with B2B badges (Target Channel + Content Pillar)
     h+='<div style="padding:var(--space-2) var(--space-3);display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">';
     if(p.target_channel){h+='<span class="channel-pill" data-ch="'+esc(p.target_channel)+'">'+(CHANNEL_ICONS[p.target_channel]||'')+' '+esc(p.target_channel)+'</span>'}
@@ -3295,6 +3433,120 @@ window.C={
   reposition:function(evt,pid){var img=evt.target;if(!img||img.tagName!=='IMG')return;var rect=img.getBoundingClientRect();var x=((evt.clientX-rect.left)/rect.width*100).toFixed(1);var y=((evt.clientY-rect.top)/rect.height*100).toFixed(1);var pos=x+'% '+y+'%';img.style.objectPosition=pos;fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imagePosition:pos})})},
   searchImg:async function(pid){var q=$('imgq-'+pid);if(!q||!q.value.trim())return;var r=$('imgr-'+pid);r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Searching...</span>';try{var res=await fetch('/api/images?q='+encodeURIComponent(q.value.trim()));var d=await res.json();if(!d.photos||!d.photos.length){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">No results</span>';return}r.innerHTML='';d.photos.forEach(function(ph){var url=ph.src.large2x||ph.src.large;var thumb=ph.src.small||ph.src.tiny;r.innerHTML+='<img src="'+thumb+'" style="width:60px;height:40px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer;border:2px solid transparent" onclick="C.setImg(\''+pid+'\',\''+url+'\',this)" onmouseover="this.style.borderColor=\'var(--tg-accent)\'" onmouseout="this.style.borderColor=\'transparent\'" alt="Search result">'})}catch(e){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-error)">Error searching</span>'}},
   setImg:async function(pid,url,thumb){await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:url})});var card=$('cp-'+pid);if(card)card.querySelectorAll('.post-img').forEach(function(img){img.src=url});if(thumb)thumb.style.borderColor='var(--tg-success)'},
+  // ─── Social post image generation (Generate / Photo / Stock) ───
+  imgStockOpen:function(pid){
+    if(!state.postImage[pid])state.postImage[pid]={};
+    state.postImage[pid].stockOpen=true;
+    state.postImage[pid].error=null;
+    renderPosts();
+    // Auto-fire an initial search seeded with the destination so the user
+    // sees results immediately, no extra click required.
+    setTimeout(function(){ if(state.postImage[pid]&&state.postImage[pid].stockOpen)C.imgStockSearch(pid); },50);
+  },
+  imgStockClose:function(pid){
+    if(!state.postImage[pid])return;
+    state.postImage[pid].stockOpen=false;
+    renderPosts();
+  },
+  imgStockSearch:async function(pid){
+    var q=$('imgq-'+pid);if(!q||!q.value.trim())return;
+    var r=$('imgr-'+pid);if(!r)return;
+    r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Searching…</span>';
+    try{
+      var res=await fetch('/api/images?q='+encodeURIComponent(q.value.trim()));
+      var d=await res.json();
+      if(!d.photos||!d.photos.length){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">No results</span>';return}
+      r.innerHTML='';
+      d.photos.forEach(function(ph){
+        var url=ph.src.large2x||ph.src.large;
+        var thumb=ph.src.small||ph.src.tiny;
+        r.innerHTML+='<img src="'+thumb+'" style="width:60px;height:40px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer;border:2px solid transparent;flex-shrink:0" onclick="C.setImg(\''+pid+'\',\''+url+'\',this)" onmouseover="this.style.borderColor=\'var(--tg-accent)\'" onmouseout="this.style.borderColor=\'transparent\'" alt="Search result">';
+      });
+    }catch(e){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-error)">Error searching</span>'}
+  },
+  imgGenerate:async function(pid){
+    var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
+    if(!post){console.error('[POST-AI-GEN] post not found',pid);return}
+    var platKey=postImageActivePlatKey(pid,post);
+    var platDef=PLATS.find(function(pl){return pl.key===platKey})||PLATS[1];
+    var slot=postImagePlatToSlot(platDef.ratio);
+    var brief=postImageBuildBrief(post,platKey,'generate');
+    console.log('[POST-AI-GEN] pid=',pid,'plat=',platKey,'slot=',slot);
+    if(!state.postImage[pid])state.postImage[pid]={};
+    state.postImage[pid].loading=true;
+    state.postImage[pid].mode='generate';
+    state.postImage[pid].error=null;
+    state.postImage[pid].startedAt=Date.now();
+    state.postImage[pid].stockOpen=false;
+    renderPosts();
+    schedulePostImageTickerIfNeeded();
+    try{
+      var r=await fetch('/api/image-generate-v2',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        tenantId:state.profile.id,
+        sectionType:'hero',
+        slot:slot,
+        briefOverride:brief,
+        source:'composer',
+        outputContext:'social'
+      })});
+      var d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||'Generation failed');
+      // Persist the new image URL to Airtable on the post record.
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:d.pngUrl})});
+      // Update local state so subsequent renders see the new URL.
+      post.image_url=d.pngUrl;
+      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2.image_url=d.pngUrl;
+      state.postImage[pid].loading=false;
+      state.postImage[pid].mode=null;
+      state.postImage[pid].error=null;
+      renderPosts();
+    }catch(e){
+      console.error('[POST-AI-GEN] failed:',e);
+      state.postImage[pid].loading=false;
+      state.postImage[pid].error=e.message||'Generation failed';
+      renderPosts();
+    }
+  },
+  imgPhoto:async function(pid){
+    var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
+    if(!post){console.error('[POST-AI-PHOTO] post not found',pid);return}
+    var platKey=postImageActivePlatKey(pid,post);
+    var platDef=PLATS.find(function(pl){return pl.key===platKey})||PLATS[1];
+    var ratio=platDef.ratio==='1/1'?'1:1':(platDef.ratio==='2/3'||platDef.ratio==='9/16'?'2:3':'16:9');
+    var prompt=postImageBuildBrief(post,platKey,'photo');
+    console.log('[POST-AI-PHOTO] pid=',pid,'plat=',platKey,'ratio=',ratio);
+    if(!state.postImage[pid])state.postImage[pid]={};
+    state.postImage[pid].loading=true;
+    state.postImage[pid].mode='photo';
+    state.postImage[pid].error=null;
+    state.postImage[pid].startedAt=Date.now();
+    state.postImage[pid].stockOpen=false;
+    renderPosts();
+    schedulePostImageTickerIfNeeded();
+    try{
+      var r=await fetch('/api/replicate-generate',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        tenantId:state.profile.id,
+        prompt:prompt,
+        aspectRatio:ratio,
+        source:'composer',
+        outputContext:'social'
+      })});
+      var d=await r.json();
+      if(!r.ok||!d.url)throw new Error(d.error||'Photo generation failed');
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:d.url})});
+      post.image_url=d.url;
+      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2.image_url=d.url;
+      state.postImage[pid].loading=false;
+      state.postImage[pid].mode=null;
+      state.postImage[pid].error=null;
+      renderPosts();
+    }catch(e){
+      console.error('[POST-AI-PHOTO] failed:',e);
+      state.postImage[pid].loading=false;
+      state.postImage[pid].error=e.message||'Photo generation failed';
+      renderPosts();
+    }
+  },
   gen:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Generating...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='This may take 30-60 seconds...';try{var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');var n=d.posts?d.posts.length:0;fb.style.color='var(--tg-success)';fb.textContent=n+' post'+(n!==1?'s':'')+' generated';await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Posts'}},
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},
   createPost:async function(){var txt=$('promptText');var fb=$('prompt-fb');var btn=$('promptBtn');if(!txt||!txt.value.trim())return;btn.disabled=true;btn.textContent='Generating...';fb.style.cssText='display:block;background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);color:var(--tg-text-tertiary)';fb.textContent='Creating post for all 7 platforms...';try{var r=await fetch('/api/prompt-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id,prompt:txt.value.trim()})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Post created and added to queue';txt.value='';await loadPosts()}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Post'}},

@@ -4921,6 +4921,10 @@ function drawComposeForm() {
     { type: 'cta-banner', icon: '<rect x="2" y="6" width="20" height="12" rx="1.5" fill="currentColor" opacity="0.15"/><line x1="5" y1="10" x2="19" y2="10"/><line x1="5" y1="13" x2="14" y2="13"/><rect x="14" y="14" width="6" height="3" rx="1.5"/>' },
     { type: 'footer-light', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.08"/><line x1="9" y1="16" x2="15" y2="16"/><circle cx="8" cy="19" r="0.8"/><circle cx="12" cy="19" r="0.8"/><circle cx="16" cy="19" r="0.8"/>' },
 
+    // ── Colour-aware sections (May 2026) — work across archetypes ──────
+    { type: 'hero-coloured', icon: '<rect x="2" y="3" width="20" height="14" rx="1" fill="currentColor" opacity="0.5"/><line x1="5" y1="7" x2="10" y2="7" stroke="white"/><line x1="5" y1="11" x2="19" y2="11" stroke="white" stroke-width="2.4"/><line x1="5" y1="14" x2="15" y2="14" stroke="white"/>' },
+    { type: 'story-numbered', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.06"/><text x="5" y="9" font-size="6" font-weight="700" fill="currentColor">01</text><line x1="11" y1="7" x2="20" y2="7"/><line x1="5" y1="13" x2="20" y2="13" stroke-width="2.4"/><line x1="5" y1="16" x2="20" y2="16"/><line x1="5" y1="18.5" x2="14" y2="18.5"/>' },
+
     // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
     { type: 'generated-image', icon: '<rect x="2" y="3" width="20" height="18" rx="1"/><path d="M4 16l4-4 3 3 4-5 5 7" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>' },
 
@@ -5393,6 +5397,41 @@ var SECTION_META = {
   },
 
   // ════════════════════════════════════════════════════════════════
+  // COLOUR-AWARE SECTIONS (May 2026) — work across archetypes
+  // ════════════════════════════════════════════════════════════════
+  'hero-coloured': {
+    label: 'Hero (coloured)',
+    description: 'Bold coloured hero block with eyebrow, headline, subhead, optional CTA. Colour picker for full background customisation.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow (small caps, top-left)', type: 'text', maxLength: 60 },
+      { key: 'date_label', label: 'Date / right-side label', type: 'text', maxLength: 40 },
+      { key: 'headline', label: 'Headline (line breaks supported)', type: 'longText', required: true, maxLength: 200 },
+      { key: 'subhead', label: 'Subhead paragraph', type: 'longText', maxLength: 240 },
+      { key: 'cta_text', label: 'CTA button text', type: 'text', maxLength: 40 },
+      { key: 'cta_url', label: 'CTA button URL', type: 'url' },
+      { key: 'background_colour', label: 'Background colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: '#00B4D8', help: 'Leave empty to use your brand accent colour.' },
+      { key: 'text_colour', label: 'Text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF', help: 'Pick a colour that contrasts strongly with the background.' },
+      { key: 'eyebrow_colour', label: 'Eyebrow colour (advanced)', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to text colour at 85% opacity', help: 'Override the eyebrow/date colour. Leave empty for sensible default.' },
+    ],
+  },
+  'story-numbered': {
+    label: 'Story (numbered)',
+    description: 'Numbered story block ("01 | WE REBRANDED") with headline, body, optional image and CTA. Optional tinted background for feature cards.',
+    fields: [
+      { key: 'number_label', label: 'Number / chapter label (e.g. "01")', type: 'text', maxLength: 8 },
+      { key: 'eyebrow_label', label: 'Eyebrow text (e.g. "WE REBRANDED")', type: 'text', maxLength: 60 },
+      { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'body', label: 'Body (blank line between paragraphs)', type: 'longText', required: true, maxLength: 3000 },
+      { key: 'image_url', label: 'Image URL', type: 'url' },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
+      { key: 'cta_text', label: 'CTA button text', type: 'text', maxLength: 40 },
+      { key: 'cta_url', label: 'CTA button URL', type: 'url' },
+      { key: 'background_colour', label: 'Background tint colour', type: 'colour', defaultPreview: '#FFF7ED', placeholder: 'Leave empty for no tint', help: 'Apply a tinted background for feature-card treatment. Leave empty for plain stories.' },
+      { key: 'accent_colour', label: 'Accent colour (number + button)', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Leave empty to use brand primary', help: 'Colour of the number label and CTA button. Defaults to your brand primary.' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════
   // ARCHETYPE A — B2B WEEKLY (May 2026)
   // ════════════════════════════════════════════════════════════════
   'masthead': {
@@ -5693,6 +5732,15 @@ function sectionSummary(section) {
     }
     case 'cta-banner': return p.title || (p.cta && p.cta.text) || 'CTA banner';
     case 'footer-light': return p.logo_text || p.tagline || 'Light footer';
+    // ── Colour-aware sections ────────────────────────────────────────
+    case 'hero-coloured': {
+      var h = (p.headline || '').split(/\r?\n/)[0] || 'Hero';
+      return h.slice(0, 50);
+    }
+    case 'story-numbered': {
+      var prefix = p.number_label ? p.number_label + ' · ' : '';
+      return (prefix + (p.headline || 'Story')).slice(0, 60);
+    }
     // ── Generated image (Stage C) ────────────────────────────────────
     case 'generated-image': {
       if (p.imageUrl) return (p.imageAlt || 'Generated image').slice(0, 50);
@@ -5938,6 +5986,22 @@ function renderField(section, basePath, field, depth) {
     h += '</select>';
   } else if (field.type === 'boolean') {
     h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.checked)"> ' + esc(field.checkboxLabel || field.label) + '</label>';
+  } else if (field.type === 'colour') {
+    // Colour picker pair: native HTML5 picker + hex text input that stay in
+    // sync. Either input updates the section prop on change. We default the
+    // visible picker to white when val is empty (otherwise it'd flash
+    // browser-default black during streaming) but write through an empty
+    // string so the section file's brand-kit fallback still wins.
+    var cid = fid;
+    var pickerVal = (val && /^#[0-9A-Fa-f]{6}$/.test(val)) ? val : (field.defaultPreview || '#FFFFFF');
+    var textVal = val || '';
+    h += '<div style="display:flex;gap:6px;align-items:stretch">';
+    h += '<input type="color" id="' + cid + '-picker" value="' + esc(pickerVal) + '" oninput="document.getElementById(\'' + cid + '\').value=this.value;window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)" style="width:42px;height:38px;padding:2px;border:1px solid var(--tg-border);border-radius:6px;background:var(--tg-bg-primary);cursor:pointer;flex:0 0 auto" aria-label="' + esc(field.label || 'Colour') + ' picker">';
+    h += '<input type="text" id="' + cid + '" value="' + esc(textVal) + '" placeholder="' + esc(field.placeholder || '#1B2B5B (leave empty for default)') + '" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" class="email-builder-prop-input" style="flex:1;font-family:var(--tg-font-mono,monospace);letter-spacing:0.02em" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){document.getElementById(\'' + cid + '-picker\').value=this.value;}window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+    h += '</div>';
+    if (field.help) {
+      h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-tertiary);margin-top:4px">' + esc(field.help) + '</div>';
+    }
   } else {
     var t = field.type === 'url' ? 'url' : 'text';
     // ── Stage C: image-field generate button ─────────────────────────
@@ -7336,6 +7400,30 @@ function defaultPropsForType(type) {
       ],
       reason: '',
       legal: '',
+    };
+    // ── Colour-aware sections (May 2026) ────────────────────────────
+    case 'hero-coloured': return {
+      eyebrow: '',
+      date_label: '',
+      headline: 'Your headline here',
+      subhead: '',
+      cta_text: '',
+      cta_url: '',
+      background_colour: '',
+      text_colour: '',
+      eyebrow_colour: '',
+    };
+    case 'story-numbered': return {
+      number_label: '',
+      eyebrow_label: '',
+      headline: 'Section heading',
+      body: 'First paragraph.\n\nSecond paragraph.',
+      image_url: '',
+      image_alt: '',
+      cta_text: '',
+      cta_url: '',
+      background_colour: '',
+      accent_colour: '',
     };
     // ── Generated image (Stage C, May 2026) ────────────────────────
     case 'generated-image': return {

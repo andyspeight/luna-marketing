@@ -7454,7 +7454,7 @@ async function drawAudiencesView() {
   // Description
   h += '<div style="background:linear-gradient(135deg,rgba(0,180,216,0.06),rgba(27,43,91,0.04));border:1px solid rgba(0,180,216,0.15);border-radius:var(--radius-md);padding:16px 20px;margin-bottom:var(--space-4)">';
   h += '<div style="font-size:13px;color:var(--tg-text-secondary);line-height:1.6">';
-  h += '<strong style="color:var(--tg-text-primary)">Brevo audiences</strong> are your contact lists. Each list maps to one of our four audience types: Cold (cold prospects), Nurture (inbound leads), Client (paying customers), and Drip (sequence pipeline). Counts update from Brevo on load.';
+  h += '<strong style="color:var(--tg-text-primary)">Brevo audiences</strong> are your contact lists, pulled live from your Brevo account. Rename a list in Brevo or add a new one and it shows up here automatically. Subscriber counts refresh on load.';
   h += '</div></div>';
 
   if (emailState.audiences === null) {
@@ -7466,7 +7466,7 @@ async function drawAudiencesView() {
   }
 
   if (!emailState.audiences.length) {
-    h += '<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No audiences configured.</div>';
+    h += '<div style="text-align:center;padding:40px;color:var(--tg-text-tertiary)">No contact lists found in Brevo. Create a list in your Brevo dashboard and it will appear here.</div>';
     el.innerHTML = h;
     return;
   }

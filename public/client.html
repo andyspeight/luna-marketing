@@ -5377,13 +5377,13 @@ var SECTION_META = {
   },
   'footer-light': {
     label: 'Footer (light)',
-    description: 'Light grey marketing footer with logo, tagline, social icons, and manage links',
+    description: 'Light grey marketing footer. Most fields pull from your Settings automatically (socials, reason, legal, logo) — only fill them here to override per-email.',
     fields: [
-      { key: 'logo_text', label: 'Logo wordmark text (used if no image)', type: 'text', maxLength: 30 },
-      { key: 'logo_url', label: 'Logo image URL', type: 'url' },
-      { key: 'logo_link_url', label: 'Logo link URL', type: 'url' },
+      { key: 'logo_text', label: 'Logo wordmark (overrides My Settings)', type: 'text', maxLength: 30 },
+      { key: 'logo_url', label: 'Logo image URL (overrides My Settings)', type: 'url' },
+      { key: 'logo_link_url', label: 'Logo link URL (overrides My Settings)', type: 'url' },
       { key: 'tagline', label: 'Tagline', type: 'longText', maxLength: 200 },
-      { key: 'socials', label: 'Social links', type: 'array', itemLabel: 'social', itemFields: [
+      { key: 'socials', label: 'Social links (overrides My Settings → Social Links)', type: 'array', itemLabel: 'social', itemFields: [
         { key: 'platform', label: 'Platform', type: 'select', required: true, options: ['linkedin', 'facebook', 'instagram', 'x', 'youtube', 'tiktok'] },
         { key: 'url', label: 'Profile URL', type: 'url', required: true },
       ]},
@@ -5391,8 +5391,8 @@ var SECTION_META = {
         { key: 'label', label: 'Link label', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Link URL', type: 'url', required: true },
       ]},
-      { key: 'reason', label: 'Send reason line', type: 'text', maxLength: 200 },
-      { key: 'legal', label: 'Legal meta line', type: 'text', maxLength: 200 },
+      { key: 'reason', label: 'Send reason (overrides My Settings → Footer reason)', type: 'text', maxLength: 200 },
+      { key: 'legal', label: 'Legal meta (overrides My Settings → Footer legal lines)', type: 'text', maxLength: 200 },
     ],
   },
 

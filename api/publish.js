@@ -106,7 +106,30 @@ var PLATFORM_MAP = {
   "X/Twitter": "twitter", "TikTok": "tiktok", "Pinterest": "pinterest", "Google Business": "google"
 };
 
+// Map a Metricool network to the Airtable image-URL field that holds the
+// ratio-correct image for that platform. Added 21 May 2026 as part of the
+// per-platform image generation work. Falls back to legacy "Image URL"
+// if the bucket field is empty (so older posts keep working).
+var NETWORK_IMAGE_FIELD = {
+  facebook:  "Image URL - Landscape",  // 1.91:1
+  linkedin:  "Image URL - Landscape",  // 1.91:1
+  google:    "Image URL - Landscape",  // 1.91:1
+  instagram: "Image URL - Square",     // 1:1
+  twitter:   "Image URL - Wide",       // 16:9
+  pinterest: "Image URL - Portrait",   // 2:3
+  tiktok:    "Image URL - Portrait"    // 2:3 (TT image post)
+};
+
+function imageForNetwork(post, network, legacyFallback) {
+  var f = post && post.fields ? post.fields : {};
+  var fieldName = NETWORK_IMAGE_FIELD[network];
+  if (fieldName && f[fieldName]) return f[fieldName];
+  if (legacyFallback) return legacyFallback;
+  return f["Image URL"] || null;
+}
+
 // Schedule a post across connected platforms with per-platform captions
+// AND per-platform images (picked from the right ratio bucket).
 async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
   var f = post.fields;
   var fbCap = f["Caption - Facebook"] || "";
@@ -134,8 +157,13 @@ async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
     var cap = f[plat.caption] || fbCap;
     if (!cap) continue;
 
+    // Resolve the right image for THIS platform's ratio bucket.
+    // Falls back to the legacy imageUrl param (already pre-normalised by the
+    // caller via Metricool's normalize endpoint) when no bucket image exists.
+    var platImg = imageForNetwork(post, plat.network, imageUrl);
+
     try {
-      var r = await scheduleOne(blogId, dateTime, cap, plat, imageUrl);
+      var r = await scheduleOne(blogId, dateTime, cap, plat, platImg);
       results.push(r);
       if (i < activePlatforms.length - 1) await new Promise(function(resolve) { setTimeout(resolve, 500); });
     } catch (e) {

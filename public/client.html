@@ -5031,6 +5031,7 @@ function drawComposeForm() {
     { type: 'product-cards-3up', icon: '<rect x="2" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><rect x="9" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><rect x="16" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><circle cx="5" cy="8" r="0.9"/><line x1="3" y1="13" x2="7" y2="13"/><circle cx="12" cy="8" r="0.9"/><line x1="10" y1="13" x2="14" y2="13"/><circle cx="19" cy="8" r="0.9"/><line x1="17" y1="13" x2="21" y2="13"/>' },
     { type: 'cta-pill', icon: '<rect x="3" y="9" width="18" height="6" rx="3" fill="currentColor"/><line x1="8" y1="12" x2="16" y2="12" stroke="white" stroke-width="1.4"/>' },
     { type: 'image-full-bleed', icon: '<rect x="1" y="5" width="22" height="14" rx="0.4"/><circle cx="5" cy="9" r="1"/><polyline points="23,18 17,12 9,18 1,13"/>' },
+    { type: 'image', icon: '<rect x="4" y="5" width="16" height="12" rx="1"/><circle cx="8" cy="9" r="1.2"/><polyline points="20,15 15,10 9,16 4,12"/>' },
     { type: 'footer-icons', icon: '<circle cx="6" cy="6" r="2.3" fill="currentColor"/><circle cx="12" cy="6" r="2.3" fill="currentColor"/><circle cx="18" cy="6" r="2.3" fill="currentColor"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="20" y2="18" stroke-width="0.8"/><line x1="7" y1="21" x2="17" y2="21" stroke-width="0.8"/>' },
 
     // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
@@ -5622,6 +5623,20 @@ var SECTION_META = {
       { key: 'rule_colour', label: 'Rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
     ],
   },
+  'image': {
+    label: 'Image',
+    description: 'A single image dropped between text blocks. Standard email padding, optional caption, alignment and width controls. For edge-to-edge atmospheric imagery use Image (full-bleed) instead.',
+    fields: [
+      { key: 'image_url', label: 'Image URL', type: 'url', required: true },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
+      { key: 'link_url', label: 'Optional link URL (wraps the image)', type: 'url' },
+      { key: 'caption', label: 'Caption (italic, below image)', type: 'text', maxLength: 200 },
+      { key: 'alignment', label: 'Alignment', type: 'select', options: ['left', 'center', 'right'] },
+      { key: 'width', label: 'Width', type: 'select', options: ['small', 'medium', 'full'] },
+      { key: 'rounded', label: 'Rounded corners', type: 'boolean', checkboxLabel: 'Round the image corners (uncheck for sharp editorial look)' },
+      { key: 'background_colour', label: 'Background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for transparent' },
+    ],
+  },
   'footer-icons': {
     label: 'Footer (icon circles)',
     description: 'Daily-Beacon-style footer with circle icons (phone/email/location/website), manage links, address, company meta and copyright. Icons auto-build from My Settings if not specified.',
@@ -5973,6 +5988,10 @@ function sectionSummary(section) {
     case 'cta-pill': return (p.text || 'CTA pill').slice(0, 40);
     case 'image-full-bleed': {
       if (p.image_url) return (p.image_alt || p.caption || 'Full-bleed image').slice(0, 50);
+      return '(no image)';
+    }
+    case 'image': {
+      if (p.image_url) return (p.image_alt || p.caption || 'Image').slice(0, 50);
       return '(no image)';
     }
     case 'footer-icons': {
@@ -7721,6 +7740,16 @@ function defaultPropsForType(type) {
       show_rule_above: false,
       show_rule_below: false,
       rule_colour: '',
+    };
+    case 'image': return {
+      image_url: '',
+      image_alt: '',
+      link_url: '',
+      caption: '',
+      alignment: 'center',
+      width: 'full',
+      rounded: true,
+      background_colour: '',
     };
     case 'footer-icons': return {
       icons: [],

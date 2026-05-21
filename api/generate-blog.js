@@ -2,10 +2,22 @@
 // Generates one weekly blog article for Travelgenix and publishes to Duda
 // Can be triggered by cron (alongside social posts) or manually
 // POST /api/generate-blog with Authorization: Bearer {CRON_SECRET}
+//
+// HARDENED 21 May 2026:
+//   - BRAND_GUARDRAILS prepended to system prompt (anti-fabrication rules)
+//   - assertGuardrailsPresent runs before the model call
+//   - validateContent runs on blog body and LinkedIn teaser; if either fails,
+//     Duda publish is REFUSED and the blog is saved as Quality Hold instead
+//   - AUTO_PUBLISH_ENABLED env var also gates Duda publish: even with valid
+//     content, the blog stays as Queued (not Published) when the kill switch
+//     is on. Blog publishing IS auto-publishing — same kill switch applies.
 
 const Anthropic = require("@anthropic-ai/sdk").default;
 const { importAndPublishBlog } = require("./duda-blog.js");
 const { promotionDecide, renderBlogSolutionsBlock } = require("../lib/promotion-client.js");
+const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
+const { validateContent } = require("./validate-content.js");
+const { assertGuardrailsPresent } = require("../lib/generation-pipeline.js");
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -33,7 +45,7 @@ function getNextMonday() {
   return d.toISOString().split("T")[0];
 }
 
-const BLOG_SYSTEM_PROMPT = `You are the content engine for Travelgenix — a UK-based travel technology SaaS company. You are writing a weekly blog article for travelgenix.io/blog.
+const BLOG_VOICE_PROMPT = `You are the content engine for Travelgenix — a UK-based travel technology SaaS company. You are writing a weekly blog article for travelgenix.io/blog.
 
 ## Voice
 You are writing as Andy Speight, CEO of Travelgenix. The voice is warm, direct and a little playful. Knowledgeable but never condescending. Short sentences. Punchy. Like a smart friend giving honest advice.
@@ -120,17 +132,23 @@ module.exports = async (req, res) => {
   try {
     console.log("Generating weekly blog article for Travelgenix...");
 
+    // Assemble the hardened system prompt: BRAND_GUARDRAILS comes first so the
+    // anti-fabrication rules sit above everything else. The voice/style block
+    // follows. assertGuardrailsPresent throws if the sentinel is missing.
+    const systemPrompt = BRAND_GUARDRAILS + "\n\n" + BLOG_VOICE_PROMPT;
+    assertGuardrailsPresent(systemPrompt);
+
     // Generate blog content with web search
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 6000,
       temperature: 0.7,
-      system: BLOG_SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages: [
         {
           role: "user",
-          content: `Write a blog article for Travelgenix for the week of ${getNextMonday()}. Search for current UK travel industry news first, then write the article. Return ONLY valid JSON.`,
+          content: `Write a blog article for Travelgenix for the week of ${getNextMonday()}. Search for current UK travel industry news first, then write the article. Remember: never invent client names, never invent statistics that aren't sourced from a real publication (cite ABTA / Skift / Travel Weekly / Phocuswright / Travolution etc. when quoting a stat), never name competitors. Return ONLY valid JSON.`,
         },
       ],
     });
@@ -167,6 +185,28 @@ module.exports = async (req, res) => {
     blog.description = stripCitations(blog.description);
     blog.excerpt = stripCitations(blog.excerpt);
     blog.linkedInTeaser = stripCitations(blog.linkedInTeaser);
+
+    // ── VALIDATOR — anti-hallucination check on blog body + LinkedIn teaser
+    //
+    // Blogs are higher-stakes than social posts because they go straight to
+    // Duda with no human review. We run the same validator the social path
+    // uses; if either the body or teaser fails, the Duda publish is REFUSED
+    // and the blog is saved as Quality Hold for manual review.
+    //
+    // Stats are tolerated in blog content (allowBenchmarkStats=true) because
+    // the system prompt requires citing real publications, but client names,
+    // fake quotes, fake awards and competitor mentions still fail hard.
+    const bodyValidation = validateContent(blog.content || "", { allowBenchmarkStats: true });
+    const teaserValidation = validateContent(blog.linkedInTeaser || "");
+    const bodyFailed = bodyValidation.severity === "fail";
+    const teaserFailed = teaserValidation.severity === "fail";
+    const validatorBlocked = bodyFailed || teaserFailed;
+
+    if (validatorBlocked) {
+      console.warn("[generate-blog] Validator blocked publishing:");
+      if (bodyFailed) console.warn("  BODY:\n" + bodyValidation.formattedReport);
+      if (teaserFailed) console.warn("  TEASER:\n" + teaserValidation.formattedReport);
+    }
 
     // ── PROMOTION ENGINE — append Solutions block to the blog body ──
     // Asks the engine to pick a relevant TG product based on the blog topic,
@@ -211,20 +251,33 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Publish to Duda
+    // Publish to Duda — gated by validator AND the auto-publish kill switch.
+    // Blogs publish straight to production with no human review, so we treat
+    // any block as a hard stop.
+    const killSwitchOn = process.env.AUTO_PUBLISH_ENABLED !== "true";
     let dudaResult = null;
-    try {
-      dudaResult = await importAndPublishBlog(DUDA_SITE_ID, {
-        title: blog.title,
-        content: blog.content,
-        description: blog.description,
-        author: "Andy Speight",
-        imageUrl: imageUrl,
-      });
-      console.log(`Blog published to Duda: ${dudaResult.slug}`);
-    } catch (e) {
-      console.error("Duda publish error:", e.message);
-      // Don't fail the whole request — still save to queue
+    let publishSkippedReason = null;
+    if (validatorBlocked) {
+      publishSkippedReason = "validator_blocked";
+      console.warn("[generate-blog] Refusing Duda publish — content validation failed.");
+    } else if (killSwitchOn) {
+      publishSkippedReason = "auto_publish_kill_switch";
+      console.warn("[generate-blog] Refusing Duda publish — AUTO_PUBLISH_ENABLED env not 'true'.");
+    } else {
+      try {
+        dudaResult = await importAndPublishBlog(DUDA_SITE_ID, {
+          title: blog.title,
+          content: blog.content,
+          description: blog.description,
+          author: "Andy Speight",
+          imageUrl: imageUrl,
+        });
+        console.log(`Blog published to Duda: ${dudaResult.slug}`);
+      } catch (e) {
+        console.error("Duda publish error:", e.message);
+        publishSkippedReason = "duda_error: " + e.message;
+        // Don't fail the whole request — still save to queue
+      }
     }
 
     // Save to Post Queue in Airtable (for tracking + LinkedIn teaser)
@@ -241,7 +294,11 @@ module.exports = async (req, res) => {
         fld8s5QVemJ4plhzs: `https://travelgenix.io/blog/${blog.slug || ""}`, // CTA URL
         fld1a2lxyXPC71UtQ: getNextMonday(), // Scheduled Date
         fld2zaXYmEXQHTua8: "10:00", // Scheduled Time
-        fldDmTOSTSlkObab7: dudaResult ? "Published" : "Queued", // Status
+        // Status: Quality Hold if validator failed; Published if Duda accepted;
+        // Queued if validator passed but kill switch or Duda blocked publish.
+        fldDmTOSTSlkObab7: validatorBlocked
+          ? "Quality Hold"
+          : (dudaResult ? "Published" : "Queued"),
         fldFWP2Zkppxipo9U: weekLabel, // Generated Week
         fldYHX5rR7f0Dgsnu: "LinkedIn Personal", // Target Channel (teaser)
         fldZyrr9DTA6mQvxH: blog.pillar || "Education", // Content Pillar
@@ -250,6 +307,17 @@ module.exports = async (req, res) => {
       },
     };
 
+    // Quality Issues field for human review
+    if (validatorBlocked) {
+      const issuesReport = [
+        bodyFailed ? "BODY:\n" + bodyValidation.formattedReport : null,
+        teaserFailed ? "\nTEASER:\n" + teaserValidation.formattedReport : null,
+      ].filter(Boolean).join("\n").slice(0, 50000);
+      // The Post Queue table has a Quality Issues field; field IDs vary by deployment,
+      // so write by field name via typecast.
+      queueRecord.fields["Quality Issues"] = issuesReport;
+    }
+
     if (imageUrl) {
       queueRecord.fields.fldNjzWAIj9eknEWS = imageUrl;
     }
@@ -257,7 +325,7 @@ module.exports = async (req, res) => {
     await writeToQueue(queueRecord);
 
     return res.status(200).json({
-      status: "success",
+      status: validatorBlocked ? "quality_hold" : "success",
       blog: {
         title: blog.title,
         slug: blog.slug,
@@ -266,12 +334,21 @@ module.exports = async (req, res) => {
       },
       duda: dudaResult
         ? { slug: dudaResult.slug, status: "published" }
-        : { status: "failed_to_publish" },
+        : { status: "not_published", reason: publishSkippedReason || "unknown" },
+      validation: {
+        body: { severity: bodyValidation.severity, issueCount: bodyValidation.issues.length },
+        teaser: { severity: teaserValidation.severity, issueCount: teaserValidation.issues.length },
+        formattedReport: validatorBlocked
+          ? [bodyFailed ? bodyValidation.formattedReport : null, teaserFailed ? teaserValidation.formattedReport : null].filter(Boolean).join("\n---\n")
+          : null,
+      },
+      autoPublishKillSwitch: killSwitchOn,
       imageUrl,
       usage: response.usage,
     });
   } catch (e) {
     console.error("Blog generation error:", e);
-    return res.status(500).json({ error: e.message });
+    const msg = e && e.message ? e.message : String(e);
+    return res.status(500).json({ error: msg, guardrails_failed: msg.indexOf("GUARDRAILS_MISSING") !== -1 });
   }
 };

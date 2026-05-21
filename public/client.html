@@ -1806,14 +1806,26 @@ document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab
 
 // Data
 var PLATS=[
-  {key:'facebook',icon:'FB',ratio:'1.91/1',img:'image_url',cls:'plat-fb',name:'Facebook',color:'#1877F2',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> Like</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Share</span>'},
-  {key:'instagram',icon:'IG',ratio:'1/1',img:'image_url',cls:'plat-ig',name:'Instagram',color:'#E1306C',actions:'<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'},
-  {key:'linkedin',icon:'LI',ratio:'1.91/1',img:'image_url',cls:'plat-li',name:'LinkedIn',color:'#0A66C2',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/></svg> Like</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg> Repost</span>'},
-  {key:'twitter',icon:'X',ratio:'16/9',img:'image_url',cls:'plat-tw',name:'X / Twitter',color:'#000',actions:'<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
-  {key:'pinterest',icon:'Pin',ratio:'2/3',img:'pinterest_image_url',cls:'plat-pin',name:'Pinterest',color:'#E60023',actions:'<span style="margin-left:auto;background:#E60023;color:#fff;padding:4px 16px;border-radius:20px;font-weight:600;font-size:var(--text-xs)">Save</span>'},
-  {key:'tiktok',icon:'TT',ratio:'9/16',img:'video_url',vid:true,cls:'plat-tt',name:'TikTok',color:'#010101',actions:'<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>'},
-  {key:'gbp',icon:'GBP',ratio:'1.91/1',img:'image_url',cls:'plat-gbp',name:'Google Business',color:'#4285F4',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> View on Maps</span>'}
+  {key:'facebook',icon:'FB',ratio:'1.91/1',bucket:'landscape',img:'image_url_landscape',cls:'plat-fb',name:'Facebook',color:'#1877F2',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> Like</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Share</span>'},
+  {key:'instagram',icon:'IG',ratio:'1/1',bucket:'square',img:'image_url_square',cls:'plat-ig',name:'Instagram',color:'#E1306C',actions:'<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'},
+  {key:'linkedin',icon:'LI',ratio:'1.91/1',bucket:'landscape',img:'image_url_landscape',cls:'plat-li',name:'LinkedIn',color:'#0A66C2',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/></svg> Like</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span><span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg> Repost</span>'},
+  {key:'twitter',icon:'X',ratio:'16/9',bucket:'wide',img:'image_url_wide',cls:'plat-tw',name:'X / Twitter',color:'#000',actions:'<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
+  {key:'pinterest',icon:'Pin',ratio:'2/3',bucket:'portrait',img:'image_url_portrait',cls:'plat-pin',name:'Pinterest',color:'#E60023',actions:'<span style="margin-left:auto;background:#E60023;color:#fff;padding:4px 16px;border-radius:20px;font-weight:600;font-size:var(--text-xs)">Save</span>'},
+  {key:'tiktok',icon:'TT',ratio:'9/16',bucket:'portrait',img:'video_url',vid:true,cls:'plat-tt',name:'TikTok',color:'#010101',actions:'<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>'},
+  {key:'gbp',icon:'GBP',ratio:'1.91/1',bucket:'landscape',img:'image_url_landscape',cls:'plat-gbp',name:'Google Business',color:'#4285F4',actions:'<span style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> View on Maps</span>'}
 ];
+
+// Resolve the best image URL for a given post + platform.
+// Looks up the platform's preferred bucket field (e.g. image_url_landscape
+// for Facebook), then falls back to the legacy image_url field if that
+// bucket isn't populated. This keeps old posts working while letting new
+// per-platform-generated posts show the right image per tab.
+function getImageForPost(p, pl) {
+  if (!p || !pl) return '';
+  if (pl.vid) return p[pl.img] || '';
+  var bucketField = pl.img;
+  return p[bucketField] || p.image_url || '';
+}
 
 // Map a post's target_channel to the platform key(s) it should display.
 // Returns null when there's no specific channel set — caller should fall
@@ -1920,7 +1932,11 @@ function renderPostImageControls(p, imgState) {
   var pid = p.id;
 
   if (imgState.loading) {
-    var modeLabel = imgState.mode === 'photo' ? 'Generating photoreal image…' : 'Generating image…';
+    var bucketsDone = imgState.bucketsDone || 0;
+    var bucketsTotal = imgState.bucketsTotal || 4;
+    var modeLabel = imgState.mode === 'photo'
+      ? 'Generating photoreal images for all platforms ('+bucketsDone+'/'+bucketsTotal+')…'
+      : 'Generating images for all platforms ('+bucketsDone+'/'+bucketsTotal+')…';
     var h = '<div class="post-img-tracker" style="padding:var(--space-3);background:rgba(0,180,216,0.04);border-top:1px solid var(--tg-border);border-bottom:1px solid var(--tg-border)">';
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="font-size:var(--text-xs);font-weight:600;color:var(--tg-accent-dark);text-transform:uppercase;letter-spacing:0.5px">'+modeLabel+'</div>';
     h += '<span id="post-img-elapsed-'+pid+'" style="margin-left:auto;font-family:var(--tg-font-mono);font-size:var(--text-xs);color:var(--tg-text-tertiary)">0s</span></div>';
@@ -1947,10 +1963,10 @@ function renderPostImageControls(p, imgState) {
 
   var err = imgState.error ? '<div style="padding:0 var(--space-3) var(--space-2);font-size:var(--text-xs);color:var(--tg-error)">'+esc(imgState.error)+'</div>' : '';
   var h3 = err + '<div class="post-img-controls" style="display:flex;gap:6px;padding:var(--space-2) var(--space-3);align-items:center">';
-  h3 += '<button class="btn btn-primary btn-sm" onclick="C.imgGenerate(\''+pid+'\')" style="font-size:11px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="Generate via Stage B HTML render (high quality, 90-120s)">';
+  h3 += '<button class="btn btn-primary btn-sm" onclick="C.imgGenerate(\''+pid+'\')" style="font-size:11px;padding:6px 12px;display:inline-flex;align-items:center;gap:4px" title="Generate one AI graphic per platform ratio (landscape, square, wide, portrait) in parallel">';
   h3 += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15 9l7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg>';
   h3 += 'Generate AI</button>';
-  h3 += '<button class="btn btn-ghost btn-sm" onclick="C.imgPhoto(\''+pid+'\')" style="font-size:11px;padding:6px 10px" title="Photoreal generation via Replicate (10-30s)" aria-label="Generate photoreal image">';
+  h3 += '<button class="btn btn-ghost btn-sm" onclick="C.imgPhoto(\''+pid+'\')" style="font-size:11px;padding:6px 10px" title="Photoreal generation for every platform (landscape, square, wide, portrait) in parallel" aria-label="Generate photoreal images for every platform">';
   h3 += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
   h3 += '</button>';
   h3 += '<button class="btn btn-ghost btn-sm" onclick="C.imgStockOpen(\''+pid+'\')" style="font-size:11px;padding:6px 10px;display:inline-flex;align-items:center;gap:4px" title="Pick from the stock library">';
@@ -2091,7 +2107,7 @@ function renderPosts(){
     PLATS.forEach(function(pl,i){
       if(!shouldShowPlat(p,pl.key))return;
       var isActive=!firstActiveSet;if(isActive)firstActiveSet=true;
-      var cap=p['caption_'+pl.key]||'';var imgSrc=p[pl.img]||p.image_url||'';var wc=cap.split(/\s+/).filter(Boolean).length;
+      var cap=p['caption_'+pl.key]||'';var imgSrc=getImageForPost(p,pl);var wc=cap.split(/\s+/).filter(Boolean).length;
       h+='<div class="plat-content'+(isActive?' active':'')+'" id="pc-'+p.id+'-'+pl.key+'"><div class="plat-frame" style="margin:var(--space-2) var(--space-3) 0">';
       h+='<div class="plat-header" style="background:'+pl.color+'08"><div class="plat-avatar">'+cName.charAt(0)+'</div><div><div class="plat-author">'+cName+'</div><div class="plat-author-sub">'+pl.name+' &middot; Just now</div></div><span class="post-wc" style="margin-left:auto">'+wc+' words</span></div>';
       if(pl.vid&&p.video_url)h+='<video src="'+p.video_url+'" style="width:100%;aspect-ratio:'+pl.ratio+';object-fit:cover;display:block;background:var(--tg-primary)" muted loop onmouseenter="this.play()" onmouseleave="this.pause()"></video>';
@@ -3503,7 +3519,31 @@ window.C={
   cancelFirstComment:function(pid,platform){var fcId='fc-'+pid+'-'+platform;var el=$(fcId);if(!el)return;var post=state.posts.find(function(p){return p.id===pid});el.innerHTML=esc(post?post.first_comment||'':'')},
   reposition:function(evt,pid){var img=evt.target;if(!img||img.tagName!=='IMG')return;var rect=img.getBoundingClientRect();var x=((evt.clientX-rect.left)/rect.width*100).toFixed(1);var y=((evt.clientY-rect.top)/rect.height*100).toFixed(1);var pos=x+'% '+y+'%';img.style.objectPosition=pos;fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imagePosition:pos})})},
   searchImg:async function(pid){var q=$('imgq-'+pid);if(!q||!q.value.trim())return;var r=$('imgr-'+pid);r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">Searching...</span>';try{var res=await fetch('/api/images?q='+encodeURIComponent(q.value.trim()));var d=await res.json();if(!d.photos||!d.photos.length){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">No results</span>';return}r.innerHTML='';d.photos.forEach(function(ph){var url=ph.src.large2x||ph.src.large;var thumb=ph.src.small||ph.src.tiny;r.innerHTML+='<img src="'+thumb+'" style="width:60px;height:40px;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer;border:2px solid transparent" onclick="C.setImg(\''+pid+'\',\''+url+'\',this)" onmouseover="this.style.borderColor=\'var(--tg-accent)\'" onmouseout="this.style.borderColor=\'transparent\'" alt="Search result">'})}catch(e){r.innerHTML='<span style="font-size:var(--text-xs);color:var(--tg-error)">Error searching</span>'}},
-  setImg:async function(pid,url,thumb){await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:url})});var card=$('cp-'+pid);if(card)card.querySelectorAll('.post-img').forEach(function(img){img.src=url});if(thumb)thumb.style.borderColor='var(--tg-success)'},
+  setImg:async function(pid,url,thumb){
+    // Stock pick: one photo → write to legacy field + all 4 ratio buckets so
+    // every platform tab shows the same picked photo. Per-platform tailoring
+    // only matters for AI-generated graphics (where text composition gets
+    // cropped); stock photos are best repurposed at the same source URL.
+    await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      recordId:pid,
+      imageUrl:url,
+      imageUrlLandscape:url,
+      imageUrlSquare:url,
+      imageUrlWide:url,
+      imageUrlPortrait:url
+    })});
+    // Update local state so subsequent renders show the new image immediately
+    var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
+    if(post){
+      post.image_url=url;
+      post.image_url_landscape=url;
+      post.image_url_square=url;
+      post.image_url_wide=url;
+      post.image_url_portrait=url;
+    }
+    var card=$('cp-'+pid);if(card)card.querySelectorAll('.post-img').forEach(function(img){img.src=url});
+    if(thumb)thumb.style.borderColor='var(--tg-success)';
+  },
   // ─── Social post image generation (Generate / Photo / Stock) ───
   imgStockOpen:function(pid){
     if(!state.postImage[pid])state.postImage[pid]={};
@@ -3539,84 +3579,121 @@ window.C={
     var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
     if(!post){console.error('[POST-AI-GEN] post not found',pid);return}
     var platKey=postImageActivePlatKey(pid,post);
-    var platDef=PLATS.find(function(pl){return pl.key===platKey})||PLATS[1];
-    var slot=postImagePlatToSlot(platDef.ratio);
     var brief=postImageBuildBrief(post,platKey,'generate');
-    console.log('[POST-AI-GEN] pid=',pid,'plat=',platKey,'slot=',slot);
+    // Generate ONE image per ratio bucket so every platform gets a properly-
+    // composed graphic. 4 parallel calls; ~25-40s end-to-end matches a single
+    // generation since they run concurrently.
+    var BUCKETS=[
+      {bucket:'landscape',slot:'hero',        field:'image_url_landscape', patch:'imageUrlLandscape'},
+      {bucket:'square',   slot:'hero-square', field:'image_url_square',    patch:'imageUrlSquare'},
+      {bucket:'wide',     slot:'hero-wide',   field:'image_url_wide',      patch:'imageUrlWide'},
+      {bucket:'portrait', slot:'hero-tall',   field:'image_url_portrait',  patch:'imageUrlPortrait'}
+    ];
+    console.log('[POST-AI-GEN] pid=',pid,'starting',BUCKETS.length,'parallel generations');
     if(!state.postImage[pid])state.postImage[pid]={};
     state.postImage[pid].loading=true;
     state.postImage[pid].mode='generate';
     state.postImage[pid].error=null;
     state.postImage[pid].startedAt=Date.now();
     state.postImage[pid].stockOpen=false;
+    state.postImage[pid].bucketsTotal=BUCKETS.length;
+    state.postImage[pid].bucketsDone=0;
     renderPosts();
     schedulePostImageTickerIfNeeded();
-    try{
+    var results=await Promise.allSettled(BUCKETS.map(async function(b){
       var r=await fetch('/api/image-generate-v2',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         tenantId:state.profile.id,
         sectionType:'hero',
-        slot:slot,
+        slot:b.slot,
         briefOverride:brief,
         source:'composer',
         outputContext:'social'
       })});
       var d=await r.json();
-      if(!r.ok||!d.ok)throw new Error(d.error||'Generation failed');
-      // Persist the new image URL to Airtable on the post record.
-      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:d.pngUrl})});
-      // Update local state so subsequent renders see the new URL.
-      post.image_url=d.pngUrl;
-      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2.image_url=d.pngUrl;
-      state.postImage[pid].loading=false;
-      state.postImage[pid].mode=null;
-      state.postImage[pid].error=null;
-      renderPosts();
-    }catch(e){
-      console.error('[POST-AI-GEN] failed:',e);
-      state.postImage[pid].loading=false;
-      state.postImage[pid].error=e.message||'Generation failed';
-      renderPosts();
+      if(!r.ok||!d.ok)throw new Error(d.error||('Generation failed for '+b.bucket));
+      // Persist this bucket's URL to its Airtable field
+      var patchBody={recordId:pid};
+      patchBody[b.patch]=d.pngUrl;
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patchBody)});
+      // Update local state — same field name used by getImageForPost
+      post[b.field]=d.pngUrl;
+      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2[b.field]=d.pngUrl;
+      var p3=state.allPosts.find(function(x){return x.id===pid});if(p3)p3[b.field]=d.pngUrl;
+      state.postImage[pid].bucketsDone=(state.postImage[pid].bucketsDone||0)+1;
+      return {bucket:b.bucket,url:d.pngUrl};
+    }));
+    var succeeded=results.filter(function(x){return x.status==='fulfilled'});
+    var failed=results.filter(function(x){return x.status==='rejected'});
+    if(failed.length){
+      console.error('[POST-AI-GEN] '+failed.length+'/'+BUCKETS.length+' bucket(s) failed:',failed.map(function(x){return x.reason&&x.reason.message}));
     }
+    state.postImage[pid].loading=false;
+    state.postImage[pid].mode=null;
+    if(succeeded.length===0){
+      state.postImage[pid].error=(failed[0]&&failed[0].reason&&failed[0].reason.message)||'Generation failed';
+    }else if(failed.length){
+      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' image variants failed — others succeeded';
+    }else{
+      state.postImage[pid].error=null;
+    }
+    renderPosts();
   },
   imgPhoto:async function(pid){
     var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
     if(!post){console.error('[POST-AI-PHOTO] post not found',pid);return}
     var platKey=postImageActivePlatKey(pid,post);
-    var platDef=PLATS.find(function(pl){return pl.key===platKey})||PLATS[1];
-    var ratio=platDef.ratio==='1/1'?'1:1':(platDef.ratio==='2/3'||platDef.ratio==='9/16'?'2:3':'16:9');
     var prompt=postImageBuildBrief(post,platKey,'photo');
-    console.log('[POST-AI-PHOTO] pid=',pid,'plat=',platKey,'ratio=',ratio);
+    var BUCKETS=[
+      {bucket:'landscape',ratio:'16:9',field:'image_url_landscape',patch:'imageUrlLandscape'},
+      {bucket:'square',   ratio:'1:1', field:'image_url_square',   patch:'imageUrlSquare'},
+      {bucket:'wide',     ratio:'16:9',field:'image_url_wide',     patch:'imageUrlWide'},
+      {bucket:'portrait', ratio:'2:3', field:'image_url_portrait', patch:'imageUrlPortrait'}
+    ];
+    console.log('[POST-AI-PHOTO] pid=',pid,'starting',BUCKETS.length,'parallel photo generations');
     if(!state.postImage[pid])state.postImage[pid]={};
     state.postImage[pid].loading=true;
     state.postImage[pid].mode='photo';
     state.postImage[pid].error=null;
     state.postImage[pid].startedAt=Date.now();
     state.postImage[pid].stockOpen=false;
+    state.postImage[pid].bucketsTotal=BUCKETS.length;
+    state.postImage[pid].bucketsDone=0;
     renderPosts();
     schedulePostImageTickerIfNeeded();
-    try{
+    var results=await Promise.allSettled(BUCKETS.map(async function(b){
       var r=await fetch('/api/replicate-generate',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         tenantId:state.profile.id,
         prompt:prompt,
-        aspectRatio:ratio,
+        aspectRatio:b.ratio,
         source:'composer',
         outputContext:'social'
       })});
       var d=await r.json();
-      if(!r.ok||!d.url)throw new Error(d.error||'Photo generation failed');
-      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:pid,imageUrl:d.url})});
-      post.image_url=d.url;
-      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2.image_url=d.url;
-      state.postImage[pid].loading=false;
-      state.postImage[pid].mode=null;
-      state.postImage[pid].error=null;
-      renderPosts();
-    }catch(e){
-      console.error('[POST-AI-PHOTO] failed:',e);
-      state.postImage[pid].loading=false;
-      state.postImage[pid].error=e.message||'Photo generation failed';
-      renderPosts();
+      if(!r.ok||!d.url)throw new Error(d.error||('Photo generation failed for '+b.bucket));
+      var patchBody={recordId:pid};
+      patchBody[b.patch]=d.url;
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patchBody)});
+      post[b.field]=d.url;
+      var p2=state.posts.find(function(x){return x.id===pid});if(p2)p2[b.field]=d.url;
+      var p3=state.allPosts.find(function(x){return x.id===pid});if(p3)p3[b.field]=d.url;
+      state.postImage[pid].bucketsDone=(state.postImage[pid].bucketsDone||0)+1;
+      return {bucket:b.bucket,url:d.url};
+    }));
+    var succeeded=results.filter(function(x){return x.status==='fulfilled'});
+    var failed=results.filter(function(x){return x.status==='rejected'});
+    if(failed.length){
+      console.error('[POST-AI-PHOTO] '+failed.length+'/'+BUCKETS.length+' bucket(s) failed:',failed.map(function(x){return x.reason&&x.reason.message}));
     }
+    state.postImage[pid].loading=false;
+    state.postImage[pid].mode=null;
+    if(succeeded.length===0){
+      state.postImage[pid].error=(failed[0]&&failed[0].reason&&failed[0].reason.message)||'Photo generation failed';
+    }else if(failed.length){
+      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' photo variants failed — others succeeded';
+    }else{
+      state.postImage[pid].error=null;
+    }
+    renderPosts();
   },
   gen:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Generating...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='This may take 30-60 seconds...';try{var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');var n=d.posts?d.posts.length:0;fb.style.color='var(--tg-success)';fb.textContent=n+' post'+(n!==1?'s':'')+' generated';await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Posts'}},
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},

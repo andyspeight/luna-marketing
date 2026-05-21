@@ -75,20 +75,20 @@ function buildFilterFormula({ view, status, audience, clientId }) {
   const clauses = [];
 
   // Client filter — only return emails linked to this client. The Client
-  // field is a multipleRecordLinks to the Clients table. FIND() on the
-  // record ID inside it gives us a client-scoped query. We OR with a
-  // BLANK check so any email that hasn't yet been backfilled with a
-  // Client link still appears in the queue (graceful for the rollout
-  // window before all existing records are backfilled — once every record
-  // has a Client link, the BLANK clause becomes a no-op).
+  // field is a multipleRecordLinks to the Clients table.
   //
-  // CRITICAL: for multipleRecordLinks, an empty field is BLANK(), NOT ''.
-  // The string-equality comparison silently fails to match empty links.
-  // Using BLANK() correctly excludes empty links from the filter, so they
-  // pass through the OR and remain visible.
+  // For multipleRecordLinks fields, neither {Client}='' nor {Client}=BLANK()
+  // reliably detect empty linked-record fields in Airtable's formula engine.
+  // The reliable pattern is LEN(ARRAYJOIN({Client}))=0 — joining an empty
+  // linked-record array produces an empty string of length 0.
+  //
+  // The OR clause matches: (A) emails linked to this client OR (B) emails
+  // with no client link at all (graceful for un-backfilled records during
+  // the rollout window). Once every email has a Client link, the LEN clause
+  // becomes a no-op naturally.
   if (clientId) {
     const safeId = clientId.replace(/'/g, "\\'");
-    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), {Client}=BLANK())`);
+    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), LEN(ARRAYJOIN({Client}))=0)`);
   }
 
   // Status filter

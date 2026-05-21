@@ -77,13 +77,18 @@ function buildFilterFormula({ view, status, audience, clientId }) {
   // Client filter — only return emails linked to this client. The Client
   // field is a multipleRecordLinks to the Clients table. FIND() on the
   // record ID inside it gives us a client-scoped query. We OR with a
-  // blank-Client check so any email that hasn't yet been backfilled with
-  // a Client link still appears in the queue (graceful for the rollout
+  // BLANK check so any email that hasn't yet been backfilled with a
+  // Client link still appears in the queue (graceful for the rollout
   // window before all existing records are backfilled — once every record
-  // has a Client link, the blank clause becomes a no-op).
+  // has a Client link, the BLANK clause becomes a no-op).
+  //
+  // CRITICAL: for multipleRecordLinks, an empty field is BLANK(), NOT ''.
+  // The string-equality comparison silently fails to match empty links.
+  // Using BLANK() correctly excludes empty links from the filter, so they
+  // pass through the OR and remain visible.
   if (clientId) {
     const safeId = clientId.replace(/'/g, "\\'");
-    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), {Client}='')`);
+    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), {Client}=BLANK())`);
   }
 
   // Status filter

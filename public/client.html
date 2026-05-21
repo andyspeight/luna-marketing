@@ -4513,6 +4513,79 @@ window.__emailPreview = function(mode) {
 };
 
 window.__emailEdit = function() {
+  var email = emailState.currentEmail;
+  if (!email) return;
+
+  // If the email was built via the section builder OR the AI composer,
+  // it has a Sections JSON blob. Branch to the section builder pre-loaded
+  // with those sections (as a NEW draft — saves create a fresh record,
+  // the original is untouched).
+  //
+  // If no Sections JSON, fall through to the legacy plain-text editor.
+  // That editor was the only way to edit older emails that pre-date the
+  // section system, and it still works for those.
+  if (email.sectionsJson && typeof email.sectionsJson === 'string') {
+    var parsed = null;
+    try {
+      parsed = JSON.parse(email.sectionsJson);
+    } catch (e) {
+      // Malformed — fall through to legacy editor as a safe default.
+      console.warn('[__emailEdit] sectionsJson failed to parse, using legacy editor:', e);
+    }
+
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Hydrate sections — each section needs an `id` for the builder's
+      // selection/reorder logic. Stored JSON only has {type, props}, so
+      // we mint fresh IDs here.
+      var hydrated = parsed
+        .filter(function(s) { return s && typeof s.type === 'string'; })
+        .map(function(s) {
+          return {
+            id: (typeof genSectionId === 'function' ? genSectionId() : ('sec-' + Math.random().toString(36).slice(2))),
+            type: s.type,
+            props: s.props || {},
+          };
+        });
+
+      if (hydrated.length === 0) {
+        // Sections JSON was present but empty/invalid — fall through.
+        emailState.editing = true;
+        drawEmailDrawer();
+        return;
+      }
+
+      // Pre-fill compose data from this email. Don't carry recipientEmail
+      // or scheduledSend over — the duplicate is a fresh draft.
+      emailState.composeData = {
+        subject: email.subject || '',
+        previewText: email.previewText || '',
+        bodyHTML: '',
+        bodyPlain: '',
+        audience: email.audience || 'Client',
+        audienceSegment: email.audienceSegment || '',
+        recipientEmail: '',
+        scheduledSend: '',
+        emailType: email.emailType || 'Newsletter',
+      };
+      emailState.builderSections = hydrated;
+      emailState.selectedSectionId = hydrated[0].id;
+      emailState.builderInitialised = true;
+      emailState.previewHTML = '';
+
+      // Track that we duplicated from an existing email — used to show
+      // a banner in the builder so the user understands save creates new.
+      emailState.duplicatedFromEmailId = email.id;
+      emailState.duplicatedFromSubject = email.subject || '';
+
+      // Close the drawer + open compose
+      closeEmailDrawer();
+      emailState.composeOpen = true;
+      drawEmails();
+      return;
+    }
+  }
+
+  // Legacy fallback — plain-text editor for older emails
   emailState.editing = true;
   drawEmailDrawer();
 };
@@ -4640,6 +4713,11 @@ emailState.composeData = {
 };
 emailState.audiences = null;
 emailState.audiencesLoading = false;
+// Set when user clicks Edit on a section-built email. The compose flow
+// pre-loads with that email's sections + metadata, shows a banner, and
+// saves create a NEW draft (never overwrites the original).
+emailState.duplicatedFromEmailId = null;
+emailState.duplicatedFromSubject = '';
 
 // Override the original drawEmails to include Compose button and Audiences sub-tab
 var __originalDrawEmails = drawEmails;
@@ -4742,6 +4820,10 @@ window.__emailComposeClose = function() {
   emailState.builderSections = null;
   emailState.selectedSectionId = null;
   emailState.previewHTML = '';
+  // Clear duplicate-from state too — a fresh compose shouldn't show
+  // the banner that says "duplicated from..."
+  emailState.duplicatedFromEmailId = null;
+  emailState.duplicatedFromSubject = '';
   drawEmails();
 };
 
@@ -4790,6 +4872,23 @@ function drawComposeForm() {
   h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" class="email-builder-btn email-builder-btn-primary">Save as Draft</button>';
   h += '</div>';
   h += '</div>';
+
+  // ─── DUPLICATE-FROM BANNER ───
+  // Shown when the user opened this compose by clicking Edit on an
+  // existing section-built email. Saves create a NEW draft (per the
+  // safest-edit decision — no update endpoint, no risk of corrupting
+  // the original). The original email stays in the queue, the user
+  // can Cancel it after the new one is saved.
+  if (emailState.duplicatedFromEmailId) {
+    h += '<div style="margin:0 var(--space-5) var(--space-4);padding:12px 16px;background:var(--tg-bg-warning,#FFF7ED);border:1px solid var(--tg-border-warning,#F97316);border-radius:var(--radius-md);display:flex;align-items:center;gap:10px;font-size:var(--text-sm)">';
+    h += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    h += '<div style="color:#9A3412;line-height:1.4">';
+    h += '<strong>Editing a copy</strong> of "' + esc(emailState.duplicatedFromSubject || 'existing email') + '". ';
+    h += 'Saving creates a new draft — the original stays in your queue. ';
+    h += 'Cancel the original after saving if you want to replace it.';
+    h += '</div>';
+    h += '</div>';
+  }
 
   // ─── METADATA STRIP ───
   h += '<div class="email-builder-metastrip">';
@@ -7857,6 +7956,9 @@ window.__emailComposeSave = async function() {
     emailState.builderSections = null;
     emailState.selectedSectionId = null;
     emailState.previewHTML = '';
+    // Clear duplicate-from state — next compose is a fresh start
+    emailState.duplicatedFromEmailId = null;
+    emailState.duplicatedFromSubject = '';
     loadEmails();  // refresh queue
   } catch (e) {
     alert('Save failed: ' + e.message);

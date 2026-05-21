@@ -1867,11 +1867,15 @@ var CHANNEL_ICONS = {
 // ─────────────────────────────────────────────────────────────────
 
 // Map a platform's CSS aspect-ratio string to an image-generate-v2 slot.
+// Each branch is the platform's preferred aspect for AI-generated imagery.
+// All produced images satisfy Instagram's 1.91:1–4:5 envelope (the strictest
+// social platform) so a single image can also be safely cross-published.
 function postImagePlatToSlot(ratioStr) {
-  if (!ratioStr) return 'hero';
-  if (ratioStr === '1/1') return 'hero-square';
-  if (ratioStr === '2/3' || ratioStr === '9/16') return 'hero-tall';
-  return 'hero';
+  if (!ratioStr) return 'hero-square';        // safest universal default
+  if (ratioStr === '1/1') return 'hero-square';     // 1:1  — Instagram, universal
+  if (ratioStr === '16/9') return 'hero-wide';      // 16:9 — X / Twitter
+  if (ratioStr === '2/3' || ratioStr === '9/16') return 'hero-tall'; // 2:3 — Pinterest / TikTok (portrait)
+  return 'hero';                              // 1.91:1 — Facebook / LinkedIn / GBP
 }
 
 // Resolve the currently-active platform key on a post card from the DOM.
@@ -10359,13 +10363,14 @@ async function __legacyImageGenerate(idx, briefText, style, dimensions) {
 // default photoreal model): 1:1, 16:9, 3:2, 2:3, 4:5, 5:4, 9:16, 3:4,
 // 4:3. The model's validator rejects unsupported values with HTTP 422
 // (verified 19 May 2026 via Vercel logs). When a slot's native pixel
-// ratio (e.g. hero 2:1, banner 10:3) isn't in that list, we round to
-// the nearest supported value — 16:9 for wide slots, 3:2 for the rest.
+// ratio (e.g. banner 10:3) isn't in that list, we round to the nearest
+// supported value — 16:9 for wide slots, 3:2 for the rest.
 function aspectRatioForSlot(slot) {
   switch (slot) {
-    case 'hero':           return '16:9';  // 1200x600 (2:1) → nearest 16:9
+    case 'hero':           return '16:9';  // 1200x630 (1.905:1) → nearest 16:9
     case 'hero-square':    return '1:1';
-    case 'hero-tall':      return '3:2';   // 1200x800 (landscape) → 3:2
+    case 'hero-tall':      return '2:3';   // 1200x1500 portrait
+    case 'hero-wide':      return '16:9';  // 1200x675 — exact 16:9
     case 'feature-story':  return '3:2';   // 1200x500 closest to 3:2
     case 'card':           return '3:2';
     case 'card-square':    return '1:1';
@@ -11514,9 +11519,10 @@ var V2_SECTION_TYPES = [
 
 // V2 slot options shown in the dropdown
 var V2_SLOTS = [
-  { value: 'hero',          label: 'Hero (1200 \u00d7 600)' },
-  { value: 'hero-square',   label: 'Hero square (1200 \u00d7 1200)' },
-  { value: 'hero-tall',     label: 'Hero tall (1200 \u00d7 800)' },
+  { value: 'hero',          label: 'Hero (1200 \u00d7 630) 1.91:1' },
+  { value: 'hero-square',   label: 'Hero square (1200 \u00d7 1200) 1:1' },
+  { value: 'hero-tall',     label: 'Hero tall (1200 \u00d7 1500) 2:3' },
+  { value: 'hero-wide',     label: 'Hero wide (1200 \u00d7 675) 16:9' },
   { value: 'feature-story', label: 'Feature story (1200 \u00d7 500)' },
   { value: 'card',          label: 'Card (600 \u00d7 400)' },
   { value: 'card-square',   label: 'Card square (600 \u00d7 600)' },

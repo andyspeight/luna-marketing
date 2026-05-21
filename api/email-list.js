@@ -71,24 +71,25 @@ function isoDaysAgo(days) {
   return d.toISOString();
 }
 
-function buildFilterFormula({ view, status, audience, clientId }) {
+function buildFilterFormula({ view, status, audience, clientId, clientName }) {
   const clauses = [];
 
   // Client filter — only return emails linked to this client. The Client
   // field is a multipleRecordLinks to the Clients table.
   //
-  // For multipleRecordLinks fields, neither {Client}='' nor {Client}=BLANK()
-  // reliably detect empty linked-record fields in Airtable's formula engine.
-  // The reliable pattern is LEN(ARRAYJOIN({Client}))=0 — joining an empty
-  // linked-record array produces an empty string of length 0.
+  // CRITICAL: ARRAYJOIN() on a linked-record field returns the linked
+  // record's *primary field value* (e.g. "Travelgenix"), NOT the record
+  // ID. So FIND('recXXX', ARRAYJOIN({Client})) never matches — we have
+  // to match against the displayed name instead. This is why the previous
+  // ID-based formula returned zero results.
   //
-  // The OR clause matches: (A) emails linked to this client OR (B) emails
-  // with no client link at all (graceful for un-backfilled records during
-  // the rollout window). Once every email has a Client link, the LEN clause
-  // becomes a no-op naturally.
-  if (clientId) {
-    const safeId = clientId.replace(/'/g, "\\'");
-    clauses.push(`OR(FIND('${safeId}', ARRAYJOIN({Client})), LEN(ARRAYJOIN({Client}))=0)`);
+  // We use the client's Business Name (passed in by the caller from the
+  // authenticated client record) as the match value. For empty-link
+  // detection we use LEN(ARRAYJOIN({Client}))=0 which is the reliable
+  // pattern for "no linked records".
+  if (clientName) {
+    const safeName = clientName.replace(/'/g, "\\'");
+    clauses.push(`OR(FIND('${safeName}', ARRAYJOIN({Client}))>0, LEN(ARRAYJOIN({Client}))=0)`);
   }
 
   // Status filter
@@ -161,8 +162,12 @@ module.exports = async (req, res) => {
       return res.status(403).json({ error: "Email suite not available for this client" });
     }
 
-    // Build filter — pass clientId so we scope to this tenant's emails
-    const formula = buildFilterFormula({ view, status, audience, clientId });
+    // Build filter — pass client name so we scope to this tenant's emails.
+    // We use the Business Name (the Clients table's primary field) because
+    // ARRAYJOIN on a linked-record field returns the primary field value,
+    // not the record ID — see buildFilterFormula for the full explanation.
+    const clientName = client["Business Name"] || client["businessName"] || "";
+    const formula = buildFilterFormula({ view, status, audience, clientId, clientName });
     
     // Sort: queue ascending by scheduled send, sent descending by sent at
     const sortField = view === "sent" ? "Sent At" : "Scheduled Send";

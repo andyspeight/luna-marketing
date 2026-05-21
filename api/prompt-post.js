@@ -12,6 +12,7 @@ var {
   buildSystemPrompt,
   callModel,
   validateAndTagPosts,
+  normalizePost,
 } = require("../lib/generation-pipeline.js");
 
 var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
@@ -128,6 +129,10 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       return res.status(500).json({ error: "Failed to parse response: " + e.message, raw: cleaned.substring(0, 500) });
     }
+
+    // Normalize to snake_case so downstream reads work regardless of which
+    // prompt convention the model followed (B2B emits camelCase, B2C snake_case).
+    post = normalizePost(post);
 
     // Run through the same validator (single-post = one-element array)
     var taggedArr = validateAndTagPosts([post]);

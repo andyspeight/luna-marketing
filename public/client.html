@@ -374,7 +374,6 @@ body { font-family:var(--tg-font-body); background:var(--tg-bg-secondary); color
 .cal-status-dot { width:6px; height:6px; border-radius:var(--radius-full); flex-shrink:0; }
 .cal-status-queued { background:var(--tg-warning); } .cal-status-approved { background:var(--tg-success); }
 .cal-status-rejected { background:var(--tg-error); } .cal-status-suppressed { background:var(--tg-text-tertiary); }
-.cal-status-published { background:var(--tg-accent); }
 .cal-popup { position:fixed; width:280px; background:var(--tg-bg-primary); border:1px solid var(--tg-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); z-index:60; pointer-events:none; opacity:0; transition:opacity var(--duration-fast); }
 .cal-popup.visible { opacity:1; }
 .cal-popup-img { width:100%; aspect-ratio:1.91/1; object-fit:cover; display:block; border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
@@ -2095,8 +2094,8 @@ var CAL_S=6,CAL_E=22,CAL_H=60;var MONTHS=['January','February','March','April','
 function getWeek(off){var n=new Date();var d=n.getDay();var mo=1-d+(d===0?-6:0);var m=new Date(n);m.setDate(n.getDate()+mo+off*7);var ds=[];for(var i=0;i<7;i++){var x=new Date(m);x.setDate(m.getDate()+i);ds.push(x)}return ds}
 function isToday(d){var n=new Date();return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}
 function pad2(n){return n<10?'0'+n:''+n}function timeTop(h,m){return((h-CAL_S)+m/60)*CAL_H}function parseTime(t){var p=(t||'09:00').split(':');return{h:parseInt(p[0])||9,m:parseInt(p[1])||0}}
-function matchDay(p,di,weekDates){if(!p.scheduled_date||!weekDates||!weekDates[di])return false;var pd=new Date(p.scheduled_date+'T00:00:00');var td=weekDates[di];return pd.getFullYear()===td.getFullYear()&&pd.getMonth()===td.getMonth()&&pd.getDate()===td.getDate()}
-function stClass(s){s=(s||'').toLowerCase();return s==='published'?'cal-status-published':s==='approved'?'cal-status-approved':s==='rejected'||s==='replaced'?'cal-status-rejected':s==='suppressed'?'cal-status-suppressed':'cal-status-queued'}
+function matchDay(p,di){var days=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];return(p.title||'').toLowerCase().includes(days[di])}
+function stClass(s){s=(s||'').toLowerCase();return s==='approved'?'cal-status-approved':s==='rejected'||s==='replaced'?'cal-status-rejected':s==='suppressed'?'cal-status-suppressed':'cal-status-queued'}
 
 // Events View
 var EVT_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -3063,13 +3062,13 @@ function renderCalendar(){
   for(var hr=CAL_S;hr<CAL_E;hr++){var t=(hr-CAL_S)*CAL_H;h+='<div class="cal-time-label" style="position:absolute;top:'+t+'px;left:0;width:56px;height:'+CAL_H+'px"><span>'+pad2(hr)+':00</span></div><div class="cal-hour-line" style="top:'+t+'px;left:56px"></div>'}
   for(var ci=0;ci<7;ci++){var isT=isToday(dates[ci]);var cl='calc(56px + '+ci+' * ((100% - 56px) / 7))';var cw='calc((100% - 56px) / 7)';
     h+='<div class="cal-col'+(isT?' today':'')+'" style="position:absolute;top:0;left:'+cl+';width:'+cw+';height:'+gh+'px" data-day="'+ci+'" ondragover="event.preventDefault();C.calDragOver(event,this)" ondragleave="C.calDragLeave(this)" ondrop="C.calDrop(event,'+ci+')">';
-    posts.filter(function(p){return matchDay(p,ci,dates)}).forEach(function(p){var tm=parseTime(p.scheduled_time);var pt=timeTop(tm.h,tm.m);var sc=stClass(p.status);
+    posts.filter(function(p){return matchDay(p,ci)}).forEach(function(p){var tm=parseTime(p.scheduled_time);var pt=timeTop(tm.h,tm.m);var sc=stClass(p.status);
       h+='<div class="cal-post" draggable="true" data-pid="'+p.id+'" style="top:'+pt+'px;height:50px" ondragstart="C.calDragStart(event,\''+p.id+'\')" onmouseenter="C.calShowPopup(event,\''+p.id+'\')" onmousemove="C.calMovePopup(event)" onmouseleave="C.calHidePopup()">';
       h+='<div class="cal-post-time">'+pad2(tm.h)+':'+pad2(tm.m)+'</div><div class="cal-post-dest">'+esc(p.destination||'General')+'</div>';
       h+='<div class="cal-post-foot"><span class="cal-platform-icon cal-platform-fb">f</span><span class="cal-platform-icon cal-platform-ig">ig</span><span class="cal-platform-icon cal-platform-tw">x</span><span class="cal-platform-icon cal-platform-pin">P</span><span class="cal-platform-icon cal-platform-tt">tt</span><span class="cal-platform-icon cal-platform-gbp">G</span><span class="cal-status-dot '+sc+'"></span></div></div>'});
     h+='</div>'}
   h+='</div></div>';
-  h+='<div class="cal-legend"><span class="cal-legend-item"><span class="cal-status-dot cal-status-queued"></span> Queued</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-published"></span> Published</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
+  h+='<div class="cal-legend"><span class="cal-legend-item"><span class="cal-status-dot cal-status-queued"></span> Queued</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-approved"></span> Approved</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-rejected"></span> Rejected</span><span class="cal-legend-item"><span class="cal-status-dot cal-status-suppressed"></span> Suppressed</span>';
   h+='<span style="margin-left:auto" class="cal-legend-item"><span class="cal-platform-icon cal-platform-fb" style="width:12px;height:12px;font-size:7px">f</span> FB</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-ig" style="width:12px;height:12px;font-size:7px">ig</span> IG</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tw" style="width:12px;height:12px;font-size:7px">x</span> X</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-pin" style="width:12px;height:12px;font-size:7px">P</span> Pin</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-tt" style="width:12px;height:12px;font-size:7px">tt</span> TT</span><span class="cal-legend-item"><span class="cal-platform-icon cal-platform-gbp" style="width:12px;height:12px;font-size:7px">G</span> GBP</span></div>';
   $('view-calendar').innerHTML=h;var scr=$('calScroll');if(scr)scr.scrollTop=Math.max(0,timeTop(8,0));
 }
@@ -4926,6 +4925,15 @@ function drawComposeForm() {
     { type: 'hero-coloured', icon: '<rect x="2" y="3" width="20" height="14" rx="1" fill="currentColor" opacity="0.5"/><line x1="5" y1="7" x2="10" y2="7" stroke="white"/><line x1="5" y1="11" x2="19" y2="11" stroke="white" stroke-width="2.4"/><line x1="5" y1="14" x2="15" y2="14" stroke="white"/>' },
     { type: 'story-numbered', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.06"/><text x="5" y="9" font-size="6" font-weight="700" fill="currentColor">01</text><line x1="11" y1="7" x2="20" y2="7"/><line x1="5" y1="13" x2="20" y2="13" stroke-width="2.4"/><line x1="5" y1="16" x2="20" y2="16"/><line x1="5" y1="18.5" x2="14" y2="18.5"/>' },
 
+    // ── Daily-Beacon-style sections (May 2026) — editorial publication
+    { type: 'masthead-bar', icon: '<rect x="2" y="4" width="20" height="5" rx="0" fill="currentColor"/><line x1="2" y1="12" x2="22" y2="12" stroke-width="1"/>' },
+    { type: 'headline-duotone', icon: '<rect x="3" y="5" width="11" height="4" rx="0.5" fill="currentColor" opacity="0.7"/><rect x="3" y="11" width="16" height="4" rx="0.5" fill="currentColor"/><line x1="3" y1="19" x2="21" y2="19" stroke-width="2.4"/>' },
+    { type: 'image-duo', icon: '<rect x="2" y="4" width="9" height="12" rx="0.6"/><circle cx="5" cy="8" r="0.8"/><rect x="13" y="4" width="9" height="12" rx="0.6"/><circle cx="16" cy="8" r="0.8"/><line x1="2" y1="20" x2="22" y2="20"/>' },
+    { type: 'product-cards-3up', icon: '<rect x="2" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><rect x="9" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><rect x="16" y="4" width="6" height="16" rx="1.2" fill="currentColor" opacity="0.12"/><circle cx="5" cy="8" r="0.9"/><line x1="3" y1="13" x2="7" y2="13"/><circle cx="12" cy="8" r="0.9"/><line x1="10" y1="13" x2="14" y2="13"/><circle cx="19" cy="8" r="0.9"/><line x1="17" y1="13" x2="21" y2="13"/>' },
+    { type: 'cta-pill', icon: '<rect x="3" y="9" width="18" height="6" rx="3" fill="currentColor"/><line x1="8" y1="12" x2="16" y2="12" stroke="white" stroke-width="1.4"/>' },
+    { type: 'image-full-bleed', icon: '<rect x="1" y="5" width="22" height="14" rx="0.4"/><circle cx="5" cy="9" r="1"/><polyline points="23,18 17,12 9,18 1,13"/>' },
+    { type: 'footer-icons', icon: '<circle cx="6" cy="6" r="2.3" fill="currentColor"/><circle cx="12" cy="6" r="2.3" fill="currentColor"/><circle cx="18" cy="6" r="2.3" fill="currentColor"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="20" y2="18" stroke-width="0.8"/><line x1="7" y1="21" x2="17" y2="21" stroke-width="0.8"/>' },
+
     // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
     { type: 'generated-image', icon: '<rect x="2" y="3" width="20" height="18" rx="1"/><path d="M4 16l4-4 3 3 4-5 5 7" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>' },
 
@@ -5433,6 +5441,110 @@ var SECTION_META = {
   },
 
   // ════════════════════════════════════════════════════════════════
+  // DAILY-BEACON-STYLE SECTIONS (May 2026) — editorial publication feel
+  // for Travelgenix's own marketing/product launch emails.
+  // ════════════════════════════════════════════════════════════════
+  'masthead-bar': {
+    label: 'Masthead (dark bar)',
+    description: 'Full-width coloured bar with centred italic serif wordmark and optional thin underline rule. Daily Beacon look — black bar, white text by default. Override colours for Travelgenix brand.',
+    fields: [
+      { key: 'wordmark', label: 'Wordmark text', type: 'text', required: true, maxLength: 60 },
+      { key: 'wordmark_link_url', label: 'Wordmark link URL', type: 'url' },
+      { key: 'background_colour', label: 'Bar background colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000', help: 'Daily Beacon default is black.' },
+      { key: 'text_colour', label: 'Wordmark colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF' },
+      { key: 'rule_colour', label: 'Underline rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
+      { key: 'show_rule', label: 'Show underline rule', type: 'boolean', checkboxLabel: 'Show a thin rule below the bar' },
+    ],
+  },
+  'headline-duotone': {
+    label: 'Headline (duotone)',
+    description: 'Two-stack serif headline with a coloured first line and a base-colour second line. Optional subhead with inline **bold** / *italic*. Defaults to Daily Beacon orange + black with a thick rule below.',
+    fields: [
+      { key: 'line_one', label: 'First line (accent colour)', type: 'text', required: true, maxLength: 60 },
+      { key: 'line_two', label: 'Second line (base colour)', type: 'text', required: true, maxLength: 80 },
+      { key: 'subhead', label: 'Subhead (supports **bold** and *italic*)', type: 'longText', maxLength: 200 },
+      { key: 'accent_colour', label: 'First line colour', type: 'colour', defaultPreview: '#E85D1A', placeholder: '#E85D1A', help: 'Daily Beacon orange. Try your brand accent.' },
+      { key: 'base_colour', label: 'Second line + rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
+      { key: 'show_rule', label: 'Show thick rule below', type: 'boolean', checkboxLabel: 'Show a thick rule under the headline' },
+      { key: 'rule_thickness', label: 'Rule thickness', type: 'select', options: ['thin', 'medium', 'thick'] },
+    ],
+  },
+  'image-duo': {
+    label: 'Image (two-up)',
+    description: 'Two side-by-side images with optional shared caption and underline rule. Daily Beacon style. Stacks vertically on mobile.',
+    fields: [
+      { key: 'image_one_url', label: 'First image URL', type: 'url', required: true },
+      { key: 'image_one_alt', label: 'First image alt text', type: 'text', maxLength: 120 },
+      { key: 'image_two_url', label: 'Second image URL', type: 'url', required: true },
+      { key: 'image_two_alt', label: 'Second image alt text', type: 'text', maxLength: 120 },
+      { key: 'caption', label: 'Shared caption (optional)', type: 'text', maxLength: 200 },
+      { key: 'show_rule_below', label: 'Show rule below images', type: 'boolean', checkboxLabel: 'Show a thin rule under the row' },
+      { key: 'rule_colour', label: 'Rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for transparent' },
+    ],
+  },
+  'product-cards-3up': {
+    label: 'Product cards (3-up)',
+    description: 'Three rounded cards in a row, each with an image, title, and optional body. Daily Beacon style — soft grey card backgrounds. Useful for product showcases, three-package comparisons, feature highlights. Stacks vertically on mobile.',
+    fields: [
+      { key: 'cards', label: 'Cards (up to 3)', type: 'array', itemLabel: 'card', itemFields: [
+        { key: 'image_url', label: 'Card image URL', type: 'url', required: true },
+        { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
+        { key: 'title', label: 'Card title', type: 'text', required: true, maxLength: 60 },
+        { key: 'body', label: 'Card body (optional, short)', type: 'text', maxLength: 120 },
+      ]},
+      { key: 'card_colour', label: 'Card background colour', type: 'colour', defaultPreview: '#F5F5F7', placeholder: '#F5F5F7' },
+      { key: 'text_colour', label: 'Text colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: '#1B2B5B' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for transparent' },
+    ],
+  },
+  'cta-pill': {
+    label: 'CTA (pill button)',
+    description: 'Centred rounded pill button with optional italic subtext below. Daily Beacon style — orange pill, white italic label. Different shape from the rectangular cta-banner.',
+    fields: [
+      { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 40 },
+      { key: 'url', label: 'Button link URL', type: 'url', required: true },
+      { key: 'subtext', label: 'Italic subtext below button', type: 'text', maxLength: 120 },
+      { key: 'background_colour', label: 'Pill background colour', type: 'colour', defaultPreview: '#E85D1A', placeholder: '#E85D1A' },
+      { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF' },
+      { key: 'italic', label: 'Italic button text', type: 'boolean', checkboxLabel: 'Render button text in italic (Daily Beacon style)' },
+    ],
+  },
+  'image-full-bleed': {
+    label: 'Image (full-bleed)',
+    description: 'Full-width edge-to-edge image with no padding. Use for atmospheric imagery, hero photography, brand moments. Optional caption, optional thin rules above and below.',
+    fields: [
+      { key: 'image_url', label: 'Image URL', type: 'url', required: true },
+      { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
+      { key: 'link_url', label: 'Optional link URL (wraps the image)', type: 'url' },
+      { key: 'caption', label: 'Caption (italic)', type: 'text', maxLength: 200 },
+      { key: 'show_rule_above', label: 'Show rule above image', type: 'boolean', checkboxLabel: 'Show a thin rule above the image' },
+      { key: 'show_rule_below', label: 'Show rule below image', type: 'boolean', checkboxLabel: 'Show a thin rule below the image' },
+      { key: 'rule_colour', label: 'Rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
+    ],
+  },
+  'footer-icons': {
+    label: 'Footer (icon circles)',
+    description: 'Daily-Beacon-style footer with circle icons (phone/email/location/website), manage links, address, company meta and copyright. Icons auto-build from My Settings if not specified.',
+    fields: [
+      { key: 'icons', label: 'Icons (leave empty to auto-build from My Settings)', type: 'array', itemLabel: 'icon', itemFields: [
+        { key: 'type', label: 'Icon type', type: 'select', required: true, options: ['phone', 'email', 'location', 'website'] },
+        { key: 'url', label: 'Destination URL (or tel:/mailto:)', type: 'url', required: true },
+      ]},
+      { key: 'manage_links', label: 'Manage links (preferences, unsubscribe, view in browser)', type: 'array', itemLabel: 'link', itemFields: [
+        { key: 'label', label: 'Link label', type: 'text', required: true, maxLength: 40 },
+        { key: 'url', label: 'Link URL', type: 'url', required: true },
+      ]},
+      { key: 'address', label: 'Address (overrides My Settings)', type: 'text', maxLength: 200 },
+      { key: 'company_meta', label: 'Company meta line (overrides My Settings → Footer legal)', type: 'text', maxLength: 200 },
+      { key: 'copyright', label: 'Copyright line', type: 'text', maxLength: 80 },
+      { key: 'icon_colour', label: 'Icon circle colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
+      { key: 'icon_text_colour', label: 'Icon glyph colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF' },
+      { key: 'background_colour', label: 'Footer background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for transparent' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════
   // ARCHETYPE A — B2B WEEKLY (May 2026)
   // ════════════════════════════════════════════════════════════════
   'masthead': {
@@ -5742,6 +5854,32 @@ function sectionSummary(section) {
       var prefix = p.number_label ? p.number_label + ' · ' : '';
       return (prefix + (p.headline || 'Story')).slice(0, 60);
     }
+    // ── Daily-Beacon-style sections ──────────────────────────────────
+    case 'masthead-bar': return (p.wordmark || 'Masthead bar').slice(0, 40);
+    case 'headline-duotone': {
+      var l1 = p.line_one || '';
+      var l2 = p.line_two || '';
+      return (l1 + ' ' + l2).trim().slice(0, 50) || 'Duotone headline';
+    }
+    case 'image-duo': {
+      if (p.image_one_url || p.image_two_url) {
+        return (p.caption || 'Two-up image').slice(0, 50);
+      }
+      return '(no images)';
+    }
+    case 'product-cards-3up': {
+      var cardCount = Array.isArray(p.cards) ? p.cards.length : 0;
+      return cardCount + ' card' + (cardCount === 1 ? '' : 's');
+    }
+    case 'cta-pill': return (p.text || 'CTA pill').slice(0, 40);
+    case 'image-full-bleed': {
+      if (p.image_url) return (p.image_alt || p.caption || 'Full-bleed image').slice(0, 50);
+      return '(no image)';
+    }
+    case 'footer-icons': {
+      var iconCount = Array.isArray(p.icons) ? p.icons.length : 0;
+      return iconCount > 0 ? iconCount + ' icon' + (iconCount === 1 ? '' : 's') : 'Icon footer (auto)';
+    }
     // ── Generated image (Stage C) ────────────────────────────────────
     case 'generated-image': {
       if (p.imageUrl) return (p.imageAlt || 'Generated image').slice(0, 50);
@@ -6027,6 +6165,10 @@ function renderField(section, basePath, field, depth) {
         h += '<button type="button" class="email-builder-img-gen-btn" onclick="window.__photoGenerateOpen(\'' + sidAttr + '\',\'' + pathAttr + '\')" title="Generate a photo with Reactive (faster, photographic)">';
         h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M7 5l1.5-2h7L17 5"/></svg>';
         h += '<span class="email-builder-img-gen-label">Photo</span>';
+        h += '</button>';
+        h += '<button type="button" class="email-builder-img-gen-btn" id="' + fid + '-upload-btn" onclick="window.__imageUploadOpen(\'' + sidAttr + '\',\'' + pathAttr + '\',\'' + fid + '\')" title="Upload an image from your computer (JPEG, PNG, GIF, WebP, max 4MB)">';
+        h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+        h += '<span class="email-builder-img-gen-label">Upload</span>';
         h += '</button>';
       }
       h += '</div>';
@@ -7425,6 +7567,75 @@ function defaultPropsForType(type) {
       cta_url: '',
       background_colour: '',
       accent_colour: '',
+    };
+    // ── Daily-Beacon-style sections (May 2026) ──────────────────────
+    case 'masthead-bar': return {
+      wordmark: 'Travelgenix',
+      wordmark_link_url: 'https://travelgenix.io',
+      background_colour: '',
+      text_colour: '',
+      rule_colour: '',
+      show_rule: true,
+    };
+    case 'headline-duotone': return {
+      line_one: 'Upgrade',
+      line_two: 'Your Subscription',
+      subhead: '',
+      accent_colour: '',
+      base_colour: '',
+      show_rule: true,
+      rule_thickness: 'thick',
+    };
+    case 'image-duo': return {
+      image_one_url: '',
+      image_one_alt: '',
+      image_two_url: '',
+      image_two_alt: '',
+      caption: '',
+      show_rule_below: true,
+      rule_colour: '',
+      background_colour: '',
+    };
+    case 'product-cards-3up': return {
+      cards: [
+        { image_url: '', image_alt: '', title: 'Card one', body: '' },
+        { image_url: '', image_alt: '', title: 'Card two', body: '' },
+        { image_url: '', image_alt: '', title: 'Card three', body: '' },
+      ],
+      card_colour: '',
+      text_colour: '',
+      background_colour: '',
+    };
+    case 'cta-pill': return {
+      text: 'Upgrade subscription',
+      url: '',
+      subtext: '',
+      background_colour: '',
+      text_colour: '',
+      italic: true,
+    };
+    case 'image-full-bleed': return {
+      image_url: '',
+      image_alt: '',
+      link_url: '',
+      caption: '',
+      show_rule_above: false,
+      show_rule_below: false,
+      rule_colour: '',
+    };
+    case 'footer-icons': return {
+      icons: [],
+      manage_links: [
+        { label: 'View email in browser', url: '' },
+        { label: 'Update your preferences', url: '' },
+        { label: 'Unsubscribe', url: '' },
+      ],
+      address: '',
+      company_meta: '',
+      copyright: '',
+      icon_colour: '',
+      icon_text_colour: '',
+      background_colour: '',
     };
     // ── Generated image (Stage C, May 2026) ────────────────────────
     case 'generated-image': return {
@@ -10086,6 +10297,112 @@ var photoModal = {
   error: null
 };
 
+// ─────────────────────────────────────────────────────────────────────
+// Image upload from local file — fitter alongside __imageGenerateOpen
+// (AI mockup) and __photoGenerateOpen (Reactive photo). User picks a
+// file from their computer, we validate it client-side, POST to
+// /api/upload-image which validates again server-side, uploads to
+// Vercel Blob, and returns the persistent URL. URL is then written
+// into the field via __builderUpdateField so it saves with the section.
+// ─────────────────────────────────────────────────────────────────────
+window.__imageUploadOpen = function(sectionId, fieldPath, fieldId) {
+  // Client-side limits — mirror server. Server enforces final auth, but
+  // catching bad files here saves the user a round-trip on obvious mistakes.
+  var MAX_BYTES = 4 * 1024 * 1024;  // 4MB
+  var ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+  // Create a hidden file input on the fly. Single-use — removed after the
+  // selection is made (or cancelled). Avoids cluttering the DOM.
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = ALLOWED_MIME.join(',');
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  input.addEventListener('change', function() {
+    var file = input.files && input.files[0];
+    document.body.removeChild(input);
+    if (!file) return;
+
+    // Client-side validation
+    if (!ALLOWED_MIME.includes(file.type)) {
+      window.toast && window.toast('Unsupported file type. Use JPEG, PNG, GIF or WebP.', 'error');
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      window.toast && window.toast('File too large (max 4MB). Compress and try again.', 'error');
+      return;
+    }
+    if (file.size === 0) {
+      window.toast && window.toast('File is empty.', 'error');
+      return;
+    }
+
+    // Find the Upload button so we can show a spinner state while uploading.
+    var btn = document.getElementById(fieldId + '-upload-btn');
+    var originalHtml = null;
+    if (btn) {
+      originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="email-builder-img-gen-spinner"></span><span class="email-builder-img-gen-label">Uploading…</span>';
+    }
+
+    // Build form data with the file
+    var formData = new FormData();
+    formData.append('file', file, file.name);
+
+    // POST to upload endpoint. Auth header matches other endpoints.
+    fetch('/api/upload-image', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer b2b-saas',
+      },
+      body: formData,
+    })
+    .then(function(r) {
+      return r.json().then(function(body) {
+        return { ok: r.ok, status: r.status, body: body };
+      });
+    })
+    .then(function(result) {
+      if (!result.ok) {
+        var msg = (result.body && result.body.error) || 'Upload failed';
+        window.toast && window.toast(msg, 'error');
+        return;
+      }
+      var url = result.body && result.body.url;
+      if (!url) {
+        window.toast && window.toast('Upload succeeded but no URL returned', 'error');
+        return;
+      }
+      // Write the URL into the input field AND into section state. Updating
+      // the input value alone doesn't trigger the input event listener, so
+      // we call __builderUpdateField directly. Then we reflect the value
+      // into the input element so the user sees it immediately.
+      window.__builderUpdateField(sectionId, fieldPath, url);
+      var inputEl = document.getElementById(fieldId);
+      if (inputEl) inputEl.value = url;
+      window.toast && window.toast('Image uploaded', 'success');
+    })
+    .catch(function(err) {
+      console.error('[image upload] error:', err);
+      window.toast && window.toast('Upload failed. Please try again.', 'error');
+    })
+    .finally(function() {
+      // Restore the button regardless of outcome
+      if (btn && originalHtml !== null) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    });
+  });
+
+  // Trigger the native file picker. Some browsers require this to be
+  // a direct result of a user gesture — which it is, since we got here
+  // from an onclick.
+  input.click();
+};
+
 window.__photoGenerateOpen = function(sectionId, fieldPath) {
   var section = (emailState.builderSections || []).find(function(s) { return s.id === sectionId; });
   if (!section) return;
@@ -10907,7 +11224,9 @@ window.isImageFieldKey = function(key) {
       || /heroimage$/.test(last)
       || /pinterest_image_url$/.test(last)
       || /^image_url$/.test(last)
-      || /^imageurl$/.test(last);
+      || /^imageurl$/.test(last)
+      // image-duo: image_one_url and image_two_url (and future image_N_url variants)
+      || /^image_(one|two|three|four|five|[0-9]+)_url$/.test(last);
 };
 // Function-style alias for the inline isImageFieldKey() call in renderField
 function isImageFieldKey(k) { return window.isImageFieldKey(k); }

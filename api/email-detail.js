@@ -99,6 +99,12 @@ function shapeEmail(rec) {
     qualityIssues: f["Quality Issues"] || null,
     rejectionReason: f["Rejection Reason"] || "",
     unsubURLToken: f["Unsub URL Token"] || "",
+    // Sections JSON — present on emails built via the section builder or
+    // AI composer (both write it). Used by the front-end to decide
+    // whether Edit opens the section builder (pre-loaded with these
+    // sections) or the legacy plain-text editor. Empty for older emails
+    // that pre-date the section system.
+    sectionsJson: f["Sections JSON"] || "",
   };
 }
 

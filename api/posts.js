@@ -85,6 +85,10 @@ module.exports = async function handler(req, res) {
           hashtags: f.Hashtags || "",
           cta_url: f["CTA URL"] || "",
           image_url: f["Image URL"] || "",
+          image_url_landscape: f["Image URL - Landscape"] || "",
+          image_url_square: f["Image URL - Square"] || "",
+          image_url_wide: f["Image URL - Wide"] || "",
+          image_url_portrait: f["Image URL - Portrait"] || "",
           image_position: f["Image Position"] || "50% 50%",
           video_url: f["Video URL"] || "",
           pinterest_image_url: f["Pinterest Image URL"] || "",
@@ -114,20 +118,26 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: "recordId is required" });
       var action = body.action;
 
-      // Update image URL
+      // Update image URL — supports legacy "Image URL" plus the four
+      // ratio-bucket fields (Landscape/Square/Wide/Portrait) used by the
+      // per-platform image generation flow.
       if (action === "update_image") {
         var imgFields = {};
         if (body.imageUrl) imgFields["Image URL"] = body.imageUrl;
+        if (body.imageUrlLandscape) imgFields["Image URL - Landscape"] = body.imageUrlLandscape;
+        if (body.imageUrlSquare)    imgFields["Image URL - Square"]    = body.imageUrlSquare;
+        if (body.imageUrlWide)      imgFields["Image URL - Wide"]      = body.imageUrlWide;
+        if (body.imageUrlPortrait)  imgFields["Image URL - Portrait"]  = body.imageUrlPortrait;
         if (body.imagePosition)
           imgFields["Image Position"] = body.imagePosition;
         if (Object.keys(imgFields).length === 0)
           return res
             .status(400)
-            .json({ error: "imageUrl or imagePosition required" });
+            .json({ error: "imageUrl, imageUrl<Bucket>, or imagePosition required" });
         await updatePost(recordId, imgFields);
         return res
           .status(200)
-          .json({ success: true, action: "update_image", recordId: recordId });
+          .json({ success: true, action: "update_image", recordId: recordId, updated: Object.keys(imgFields) });
       }
 
       // Update image position only
@@ -185,15 +195,20 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // Image URL shortcut (from image search panel)
-      if (body.imageUrl && !action) {
-        var updateFields = { "Image URL": body.imageUrl };
+      // Image URL shortcut (from image search panel and per-platform generators)
+      if ((body.imageUrl || body.imageUrlLandscape || body.imageUrlSquare || body.imageUrlWide || body.imageUrlPortrait) && !action) {
+        var updateFields = {};
+        if (body.imageUrl) updateFields["Image URL"] = body.imageUrl;
+        if (body.imageUrlLandscape) updateFields["Image URL - Landscape"] = body.imageUrlLandscape;
+        if (body.imageUrlSquare)    updateFields["Image URL - Square"]    = body.imageUrlSquare;
+        if (body.imageUrlWide)      updateFields["Image URL - Wide"]      = body.imageUrlWide;
+        if (body.imageUrlPortrait)  updateFields["Image URL - Portrait"]  = body.imageUrlPortrait;
         if (body.imagePosition)
           updateFields["Image Position"] = body.imagePosition;
         await updatePost(recordId, updateFields);
         return res
           .status(200)
-          .json({ success: true, action: "update_image", recordId: recordId });
+          .json({ success: true, action: "update_image", recordId: recordId, updated: Object.keys(updateFields) });
       }
 
       // Image position shortcut (from click-to-reposition)

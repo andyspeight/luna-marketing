@@ -1,23 +1,49 @@
-// api/image-generate.js
+// api/image-generate-v2.js
 //
-// POST /api/image-generate
+// POST /api/image-generate-v2
 // Body: {
 //   tenantId: "recXXX",
-//   brief: "Apple-style mockup of a chat widget on a travel website",
-//   style: "product-mockup" | "abstract" | "lifestyle",
-//   slot: "hero" | "hero-square" | "feature-story" | "card" | "thumbnail" | "banner",
-//   brandColours: { primary, secondary }  // optional
+//
+//   // Section spec (composer normally provides these)
+//   sectionType: "hero" | "feature-card" | "pricing-card" | "data-card"
+//              | "product-mockup" | "comparison" | "value-prop"
+//              | "destination-spotlight" | "other",
+//   sectionContent: {
+//     headline?: string,
+//     subhead?: string,
+//     bodyText?: string,
+//     productContext?: string,
+//     facts?: string[],
+//     cta?: string
+//   },
+//   slot?: "hero" | "hero-square" | "card" | "banner" | ...,
+//
+//   // Optional overrides
+//   brandTokens?: { brandName, navy, teal, audience, tone },
+//   styleReference?: { layoutPattern, typographyFeel, density, mood },  // Stage E
+//   briefOverride?: string,   // Use this brief, skip generation
+//   source?: "composer" | "lab" | "manual" | "api",  // default "composer"
+//   outputContext?: "email" | "web" | "social",      // default "web"
+//                                                    //   email triggers the E1-E4 composition
+//                                                    //   rules in brief-generator (smaller min
+//                                                    //   type sizes, single-layer shadows,
+//                                                    //   lower density, no micro-detail).
+//   emailQueueId?: string,    // Link in Airtable
+//   name?: string             // Auto-generated if absent
 // }
 //
-// Returns: { ok, pngUrl, svg, width, height, dimensions, elapsedMs }
+// Returns:
+//   { ok, pngUrl, brief, html, width, height, viewportWidth, viewportHeight,
+//     model, briefMs, htmlMs, hctiMs, totalMs,
+//     airtableRecordId, htmlSize }
 //
-// Rate limit: 20 image generations per user per hour (cost control).
-// Auth: session cookie required.
+// Auth: session cookie required. Owner can target any tenant. Others can
+// only target tenants they own.
 //
 // Author: Travelgenix
 // Date:   18 May 2026
 
-const { generateImage } = require("../lib/image-generator");
+const { generateImage } = require("../lib/image-generator-v2");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -25,9 +51,21 @@ const CLIENTS_TABLE = "tblUkzvBujc94Yali";
 const ID_HOST = "https://id.travelify.io";
 const OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
 
-const MAX_BRIEF_LENGTH = 1000;
-const VALID_STYLES = ["product-mockup", "abstract", "lifestyle"];
-const VALID_SLOTS = ["hero", "hero-square", "feature-story", "card", "thumbnail", "banner"];
+const VALID_SECTION_TYPES = [
+  "hero", "feature-card", "pricing-card", "data-card",
+  "product-mockup", "comparison", "value-prop",
+  "destination-spotlight", "other"
+];
+const VALID_SLOTS = [
+  "hero", "hero-square", "hero-tall", "hero-wide", "feature-story",
+  "card", "card-square", "thumbnail", "banner", "wide"
+];
+const VALID_SOURCES = ["composer", "lab", "manual", "api"];
+const VALID_OUTPUT_CONTEXTS = ["email", "web", "social"];
+
+const MAX_HEADLINE_LEN = 300;
+const MAX_BODY_LEN = 3000;
+const MAX_BRIEF_OVERRIDE_LEN = 5000;
 
 // ─────────────────────────────────────────────────────────────────────
 // AUTH
@@ -74,7 +112,9 @@ async function authoriseRequest(req, targetTenantId) {
   }
 
   const isOwner = tenantIds.includes(OWNER_CLIENT_ID);
-  if (isOwner) return { ok: true, email: session.email, effectiveTenantId: targetTenantId || OWNER_CLIENT_ID };
+  if (isOwner) {
+    return { ok: true, email: session.email, effectiveTenantId: targetTenantId || OWNER_CLIENT_ID };
+  }
   if (targetTenantId && !tenantIds.includes(targetTenantId)) {
     return { ok: false, status: 403, error: "Not authorised for that tenant" };
   }
@@ -92,57 +132,111 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "no-store");
+
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
   try {
     const body = req.body || {};
 
-    if (!body.tenantId || !/^rec[A-Za-z0-9]{14}$/.test(body.tenantId)) {
-      return res.status(400).json({ error: "Invalid or missing tenantId" });
+    // ─── VALIDATION ───────────────────────────────────────────
+    if (!body.sectionType || typeof body.sectionType !== "string") {
+      return res.status(400).json({ error: "sectionType is required" });
     }
-    if (!body.brief || typeof body.brief !== "string" || body.brief.trim().length === 0) {
-      return res.status(400).json({ error: "brief is required" });
-    }
-    if (body.brief.length > MAX_BRIEF_LENGTH) {
-      return res.status(400).json({ error: `brief must be under ${MAX_BRIEF_LENGTH} chars` });
-    }
-    if (body.style && !VALID_STYLES.includes(body.style)) {
-      return res.status(400).json({ error: `style must be one of: ${VALID_STYLES.join(", ")}` });
+    if (!VALID_SECTION_TYPES.includes(body.sectionType)) {
+      return res.status(400).json({ error: `sectionType must be one of: ${VALID_SECTION_TYPES.join(", ")}` });
     }
     if (body.slot && !VALID_SLOTS.includes(body.slot)) {
       return res.status(400).json({ error: `slot must be one of: ${VALID_SLOTS.join(", ")}` });
     }
+    if (body.source && !VALID_SOURCES.includes(body.source)) {
+      return res.status(400).json({ error: `source must be one of: ${VALID_SOURCES.join(", ")}` });
+    }
+    if (body.outputContext && !VALID_OUTPUT_CONTEXTS.includes(body.outputContext)) {
+      return res.status(400).json({ error: `outputContext must be one of: ${VALID_OUTPUT_CONTEXTS.join(", ")}` });
+    }
 
+    // Either sectionContent OR briefOverride must be present
+    if (!body.briefOverride && (!body.sectionContent || typeof body.sectionContent !== "object")) {
+      return res.status(400).json({ error: "sectionContent (or briefOverride) is required" });
+    }
+
+    if (body.briefOverride) {
+      if (typeof body.briefOverride !== "string") {
+        return res.status(400).json({ error: "briefOverride must be a string" });
+      }
+      if (body.briefOverride.length > MAX_BRIEF_OVERRIDE_LEN) {
+        return res.status(400).json({ error: `briefOverride too long (max ${MAX_BRIEF_OVERRIDE_LEN})` });
+      }
+    } else {
+      const sc = body.sectionContent;
+      if (sc.headline && (typeof sc.headline !== "string" || sc.headline.length > MAX_HEADLINE_LEN)) {
+        return res.status(400).json({ error: "headline must be a string <= " + MAX_HEADLINE_LEN + " chars" });
+      }
+      if (sc.subhead && (typeof sc.subhead !== "string" || sc.subhead.length > MAX_HEADLINE_LEN)) {
+        return res.status(400).json({ error: "subhead must be a string <= " + MAX_HEADLINE_LEN + " chars" });
+      }
+      if (sc.bodyText && (typeof sc.bodyText !== "string" || sc.bodyText.length > MAX_BODY_LEN)) {
+        return res.status(400).json({ error: "bodyText must be a string <= " + MAX_BODY_LEN + " chars" });
+      }
+      if (sc.facts && !Array.isArray(sc.facts)) {
+        return res.status(400).json({ error: "facts must be an array of strings" });
+      }
+    }
+
+    // ─── AUTH ─────────────────────────────────────────────────
     const auth = await authoriseRequest(req, body.tenantId);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
+    // ─── GENERATE ─────────────────────────────────────────────
     const result = await generateImage({
-      brief: body.brief,
-      style: body.style || "product-mockup",
-      slot: body.slot || "hero",
-      brandColours: body.brandColours,
-      tenantId: auth.effectiveTenantId
+      tenantId: auth.effectiveTenantId,
+      sectionType: body.sectionType,
+      sectionContent: body.sectionContent,
+      slot: body.slot,
+      brandTokens: body.brandTokens,
+      styleReference: body.styleReference,
+      briefOverride: body.briefOverride,
+      source: body.source || "composer",
+      outputContext: body.outputContext || "web",
+      emailQueueId: body.emailQueueId,
+      name: body.name
     });
 
     if (!result.ok) {
-      console.error("[image-generate] generation failed:", result.error);
-      return res.status(500).json({ error: result.error || "Generation failed" });
+      console.error("[image-generate-v2] generation failed:", result.error, "stage:", result.stage);
+      return res.status(200).json({
+        ok: false,
+        error: result.error,
+        stage: result.stage,
+        brief: result.brief,
+        briefMs: result.briefMs,
+        htmlMs: result.htmlMs,
+        hctiMs: result.hctiMs
+      });
     }
 
     return res.status(200).json({
       ok: true,
       pngUrl: result.pngUrl,
-      svg: result.svg,
+      brief: result.brief,
+      html: result.html,
       width: result.width,
       height: result.height,
-      dimensions: result.dimensions,
-      style: result.style,
-      elapsedMs: result.elapsedMs
+      viewportWidth: result.viewportWidth,
+      viewportHeight: result.viewportHeight,
+      model: result.model,
+      briefMs: result.briefMs,
+      htmlMs: result.htmlMs,
+      hctiMs: result.hctiMs,
+      totalMs: result.totalMs,
+      htmlSize: result.htmlSize,
+      airtableRecordId: result.airtableRecordId,
+      airtableError: result.airtableError
     });
 
   } catch (err) {
-    console.error("[image-generate] error:", err);
+    console.error("[image-generate-v2] error:", err);
     return res.status(500).json({ error: err.message || "Internal error" });
   }
 };

@@ -4488,17 +4488,21 @@ function drawEmailDrawer() {
     bodyHTML += '<div class="email-actions">';
     if (canEdit) bodyHTML += '<button class="email-action-edit" onclick="window.__emailEdit()">Edit</button>';
     bodyHTML += testBtn;
+    // Delete button — destructive action, styled with subtle red to signal danger
+    bodyHTML += '<button class="email-action-edit" onclick="window.__emailDelete()" title="Permanently delete this email" style="border-color:#DC2626;color:#DC2626">Delete</button>';
     bodyHTML += '<button class="email-action-reject" onclick="window.__emailReject()">Reject</button>';
     bodyHTML += '<button class="email-action-approve" onclick="window.__emailApprove()">Approve</button>';
     bodyHTML += '</div>';
   } else if (canCancel) {
     bodyHTML += '<div class="email-actions">';
     bodyHTML += testBtn;
+    bodyHTML += '<button class="email-action-edit" onclick="window.__emailDelete()" title="Permanently delete this email" style="border-color:#DC2626;color:#DC2626">Delete</button>';
     bodyHTML += '<button class="email-action-approve" onclick="window.__openAudienceSendModal(\'' + email.id + '\')" style="background:var(--tg-accent);border-color:var(--tg-accent)">Send to audience</button>';
     bodyHTML += '<button class="email-action-reject" onclick="window.__emailCancel()">Cancel send</button>';
     bodyHTML += '</div>';
   } else {
-    // Sent / Failed / other terminal states — still allow re-testing
+    // Sent / Failed / other terminal states — still allow re-testing.
+    // No Delete button: Sent emails are part of the compliance audit trail.
     bodyHTML += '<div class="email-actions">';
     bodyHTML += testBtn;
     bodyHTML += '</div>';
@@ -4686,6 +4690,40 @@ window.__emailCancel = async function() {
     loadEmails();
   } catch (e) {
     alert('Cancel failed: ' + e.message);
+  }
+};
+
+// Hard-delete an email record. Used to clean up draft duplicates left
+// over from the edit-as-duplicate flow. Server-side guardrails refuse
+// to delete Sent emails (compliance audit trail). Server writes an
+// audit log entry BEFORE the record is removed so the trail survives.
+window.__emailDelete = async function() {
+  var email = emailState.currentEmail;
+  if (!email) return;
+
+  // Double-confirm. The subject is shown so the user can sanity-check
+  // they're deleting the right one. Hard delete is non-recoverable.
+  var subjLabel = email.subject ? '"' + email.subject + '"' : 'this email';
+  if (!confirm('Permanently delete ' + subjLabel + '?\n\nThis cannot be undone. The record will be removed from Airtable. An audit log entry will be kept.')) {
+    return;
+  }
+
+  try {
+    var r = await fetch('/api/email-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: state.profile.id,
+        emailId: email.id,
+      }),
+    });
+    var d = await r.json();
+    if (!d.success) throw new Error(d.error || 'Delete failed');
+    showEmailToast('Email deleted', 'success');
+    closeEmailDrawer();
+    loadEmails();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
   }
 };
 
@@ -7654,10 +7692,15 @@ function defaultPropsForType(type) {
       logo_link_url: 'https://travelgenix.io',
       tagline: '',
       socials: [],
+      // manage_links default URLs use Brevo merge tags. {{ unsubscribe }}
+      // and {{ mirror }} resolve at send time to per-recipient URLs hosted
+      // on Brevo's compliance pages. Users can override these URLs in the
+      // editor if they want a custom unsub page. Update preferences has no
+      // default URL — leave blank unless the user supplies one.
       manage_links: [
+        { label: 'View email in browser', url: '{{ mirror }}' },
         { label: 'Update preferences', url: '' },
-        { label: 'Unsubscribe', url: '' },
-        { label: 'View in browser', url: '' },
+        { label: 'Unsubscribe', url: '{{ unsubscribe }}' },
       ],
       reason: '',
       legal: '',
@@ -7884,9 +7927,10 @@ function defaultPropsForType(type) {
       logo_link_url: 'https://travelgenix.io',
       inline_links: [],
       socials: [],
+      // See footer-light for explanation of Brevo merge tag defaults.
       manage_links: [
         { label: 'Update preferences', url: '' },
-        { label: 'Unsubscribe', url: '' },
+        { label: 'Unsubscribe', url: '{{ unsubscribe }}' },
       ],
       reason: '',
       legal: '',

@@ -224,6 +224,20 @@ module.exports = async function handler(req, res) {
       var clientId = (post.fields.Client || [])[0];
       if (!clientId) return res.status(400).json({ error: "Post has no client" });
 
+      // ── HARD REFUSAL: Quality Hold posts never publish ──
+      // Even if someone manually flipped the status from Quality Hold to
+      // Approved in Airtable, the Quality Issues field will still be set.
+      // Refuse to publish anything that the validator flagged as failing.
+      var postStatus = post.fields.Status;
+      if (typeof postStatus === "object" && postStatus !== null) postStatus = postStatus.name;
+      if (postStatus === "Quality Hold") {
+        return res.status(409).json({
+          error: "Post is on Quality Hold and cannot be published. Resolve the validation issues first.",
+          postId: postId,
+          qualityIssues: (post.fields["Quality Issues"] || "").slice(0, 2000),
+        });
+      }
+
       var client = await atGet(CLIENTS, clientId);
 
       // Resolve blogId and target platform(s) based on Target Channel
@@ -269,7 +283,26 @@ module.exports = async function handler(req, res) {
 
       var allPosts = await atList(QUEUE, "AND({Status}='Approved',RECORD_ID()!='')");
       var clientPosts = allPosts.filter(function(p) { return (p.fields.Client || [])[0] === clientId; });
-      if (!clientPosts.length) return res.status(200).json({ success: true, published: 0, message: "No approved posts" });
+      // Defensive filter: even though the formula above only returns Approved,
+      // exclude anything that still has a Quality Issues report set with FAIL
+      // markers. This means even if someone hand-edits Status from Quality
+      // Hold to Approved without resolving issues, the bulk publish skips it.
+      var qualityHeld = 0;
+      clientPosts = clientPosts.filter(function(p) {
+        var qi = p.fields["Quality Issues"] || "";
+        if (qi.indexOf("FAIL") !== -1) { qualityHeld++; return false; }
+        return true;
+      });
+      if (!clientPosts.length) {
+        return res.status(200).json({
+          success: true,
+          published: 0,
+          qualityHeld: qualityHeld,
+          message: qualityHeld > 0
+            ? qualityHeld + " posts skipped — Quality Hold issues unresolved"
+            : "No approved posts",
+        });
+      }
 
       var published = 0, errors = [];
       for (var i = 0; i < clientPosts.length; i++) {
@@ -286,7 +319,7 @@ module.exports = async function handler(req, res) {
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });
         } catch (e) { errors.push({ postId: clientPosts[i].id, error: e.message }); }
       }
-      return res.status(200).json({ success: true, published: published, errors: errors });
+      return res.status(200).json({ success: true, published: published, qualityHeld: qualityHeld, errors: errors });
     }
 
     // ── List brands (debug) ──

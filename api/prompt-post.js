@@ -1,26 +1,28 @@
 // api/prompt-post.js
-// Single post generator from a user prompt. Used by the "Create Post from Prompt"
-// flow in the client portal.
 //
-// PATCHED 1 May 2026 (Day 6.5):
-//   - Brand guardrails prepended to system prompt
-//   - Content validator wired in before saving
-//   - Auto Publish DISABLED for Travelgenix (b2b-saas) regardless of client setting
-//   - If validator fails, status flips to 'Quality Hold' instead of Approved/Queued
+// Single-post generator from a user-supplied prompt. Used by the
+// "Create Post from Prompt" UI in the client portal.
+//
+// HARDENED 21 May 2026 — fully routed through lib/generation-pipeline.js
+// for guardrails, prompt assembly, validation, and the auto-publish kill
+// switch. Previously this file used a partially-hardened inline prompt and
+// skipped validation for non-Travelgenix clients; both gaps are now closed.
 
-const Anthropic = require("@anthropic-ai/sdk").default;
-const { BRAND_GUARDRAILS } = require("./brand-guardrails.js");
-const { validatePost } = require("./validate-content.js");
+var {
+  buildSystemPrompt,
+  callModel,
+  validateAndTagPosts,
+} = require("../lib/generation-pipeline.js");
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
-const AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
-const PEXELS_KEY = process.env.PEXELS_KEY;
-
-const TRAVELGENIX_CLIENT_ID = "recFXQY7be6gMr4In";
+var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
+var AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
+var PEXELS_KEY = process.env.PEXELS_KEY;
 
 async function getClient(clientId) {
-  var res = await fetch("https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali/" + clientId, { headers: { Authorization: "Bearer " + AIRTABLE_KEY } });
+  var res = await fetch(
+    "https://api.airtable.com/v0/" + AIRTABLE_BASE + "/tblUkzvBujc94Yali/" + clientId,
+    { headers: { Authorization: "Bearer " + AIRTABLE_KEY } }
+  );
   if (!res.ok) throw new Error("Failed to fetch client: " + res.statusText);
   return res.json();
 }
@@ -28,10 +30,16 @@ async function getClient(clientId) {
 async function searchImage(query, orientation) {
   if (!PEXELS_KEY) return null;
   try {
-    var res = await fetch("https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&orientation=" + (orientation || "landscape") + "&per_page=1&size=large", { headers: { Authorization: PEXELS_KEY } });
+    var res = await fetch(
+      "https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) +
+      "&orientation=" + (orientation || "landscape") + "&per_page=1&size=large",
+      { headers: { Authorization: PEXELS_KEY } }
+    );
     if (!res.ok) return null;
     var data = await res.json();
-    return data.photos && data.photos.length > 0 ? (data.photos[0].src.large2x || data.photos[0].src.large) : null;
+    return data.photos && data.photos.length > 0
+      ? (data.photos[0].src.large2x || data.photos[0].src.large)
+      : null;
   } catch (e) { return null; }
 }
 
@@ -49,6 +57,13 @@ async function checkFCDO(country) {
   } catch (e) { return { safe: true }; }
 }
 
+function getClientType(clientRecord) {
+  var ct = clientRecord.fields["Client Type"];
+  if (!ct) return "b2c-travel";
+  var name = typeof ct === "object" ? ct.name : ct;
+  return (name || "b2c-travel").toLowerCase();
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -59,93 +74,101 @@ module.exports = async function handler(req, res) {
   try {
     var body = req.body || {};
     var clientId = body.clientId;
-    var prompt = body.prompt;
+    var userPrompt = body.prompt;
     var saveToQueue = body.saveToQueue !== false;
 
     if (!clientId) return res.status(400).json({ error: "clientId is required" });
-    if (!prompt) return res.status(400).json({ error: "prompt is required. Describe what kind of post you want." });
+    if (!userPrompt) return res.status(400).json({ error: "prompt is required. Describe what kind of post you want." });
 
     var clientRecord = await getClient(clientId);
     var f = clientRecord.fields;
-    var clientType = (f["Client Type"] || "").toLowerCase();
-    var isTravelgenix = clientId === TRAVELGENIX_CLIENT_ID || clientType === "b2b-saas";
+    var clientType = getClientType(clientRecord);
+    var isB2B = clientType === "b2b-saas";
 
-    // Auto Publish disabled for B2B SaaS clients regardless of their setting.
-    // Travelgenix's reputational risk from a fabricated post is too high to
-    // ever skip manual review. Client can still toggle Auto Publish in their
-    // settings, but for B2B it is silently overridden here.
-    var autoPublish = isTravelgenix ? false : !!f["Auto Publish"];
-
-    // Build the per-client base prompt (kept similar to original for parity)
-    var basePrompt = "You are Luna, the automated social media content engine for travel agents. Generate exactly ONE social media post based on the user's request below.\n\nYou are writing on behalf of this travel agent:\nBusiness: " + (f["Business Name"] || "") + "\nTrading Name: " + (f["Trading Name"] || "") + "\nWebsite: " + (f["Website URL"] || "") + "\nTone: " + (f["Tone Keywords"] || "warm, professional") + "\nEmoji: " + (f["Emoji Usage"] || "Light") + "\nFormality: " + (f["Formality"] || "Balanced") + "\nSentence style: " + (f["Sentence Style"] || "Short and punchy") + "\nCTA style: " + (f["CTA Style"] || "Question-based") + "\n\nRules:\n- UK English only.\n- No political, religious, or controversial content.\n- No pricing unless the user provides specific prices in their prompt.\n- Every post must include a call-to-action.\n- Facebook caption: 50-200 words. Instagram: 50-150 words. LinkedIn: 50-250 words. Twitter/X: 200 chars max, punchy. Pinterest: 300 chars max, SEO-rich. TikTok: 100 words max, casual hook-first. GBP: 100 words max, local SEO.\n- Hashtags: 8-15 for Instagram, 3-5 for Facebook, 3-5 for LinkedIn, 3-5 for TikTok. None for Twitter, Pinterest, or GBP.\n- Be specific to the destination. Reference actual places, beaches, dishes, experiences.\n\nCTA link format: " + (f["Website URL"] || "") + "/destinations/destination-slug?utm_source=social&utm_medium=platform&utm_campaign=luna_marketing\n\nReturn ONLY valid JSON with no markdown fences. One object with these fields:\ncontent_type, destination, destination_slug, caption_facebook, caption_instagram, caption_linkedin, caption_twitter, caption_pinterest, caption_tiktok, caption_gbp, hashtags_facebook (array), hashtags_instagram (array), hashtags_linkedin (array), hashtags_tiktok (array), cta_url_facebook, image_tags (array of 3 specific search terms), image_orientation, suggested_day, suggested_time";
-
-    // Travelgenix gets the full brand guardrails prepended.
-    // B2C clients still keep their original lighter ruleset for now (per scope
-    // decision: Just Travelgenix in Day 6.5). When scope expands, add guardrails
-    // to all clients.
-    var systemPrompt = isTravelgenix
-      ? BRAND_GUARDRAILS + "\n\n" + basePrompt
-      : basePrompt;
-
-    var response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
-      temperature: 0.7,
-      system: systemPrompt,
-      messages: [{ role: "user", content: prompt }]
+    // Build the FULL hardened system prompt via the shared pipeline. The
+    // user prompt is appended as the user message so the model knows what
+    // specific post to write, but the guardrails / brand voice / anti-
+    // fabrication rules all come from the canonical source.
+    var systemPrompt = buildSystemPrompt({
+      clientFields: f,
+      clientType: clientType,
+      events: [],
+      sparks: [],
     });
 
-    var text = response.content.map(function(c) { return c.type === "text" ? c.text : ""; }).filter(Boolean).join("");
-    var cleaned = text.replace(/```json|```/g, "").trim();
+    // Append a single-post override to the system prompt so the model returns
+    // ONE object, not an array. Kept short to avoid drowning the guardrails.
+    var singlePostSuffix = "\n\n## SINGLE POST MODE\n\nThis request asks for ONE post, not a weekly batch. The user's specific request is in the user message. Generate exactly ONE post object. Return it as a JSON ARRAY containing that one object — same schema as the weekly batch, just one element. Do NOT return a bare object. The downstream pipeline expects a one-element array.\n";
+
+    var userMessage = "User request: " + String(userPrompt).slice(0, 2000) +
+      "\n\nGenerate ONE post matching that request. Return a JSON array containing exactly one post object. " +
+      "Anti-fabrication rules in the system prompt still apply: no invented names, no invented stats, no invented quotes.";
+
+    // Call the model through the pipeline (guardrail sentinel asserted inside)
+    var rawText = await callModel({
+      systemPrompt: systemPrompt + singlePostSuffix,
+      userMessage: userMessage,
+      maxTokens: 2048,
+      temperature: 0.7,
+    });
+
+    // Parse — accept either a single object or a one-element array
+    var cleaned = (rawText || "").replace(/```json|```/g, "").trim();
     var post;
-    try { post = JSON.parse(cleaned); } catch (e) {
-      return res.status(500).json({ error: "Failed to parse response", raw: cleaned.substring(0, 500) });
+    try {
+      var parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) {
+        if (!parsed.length) throw new Error("Model returned empty array");
+        post = parsed[0];
+      } else if (parsed && typeof parsed === "object") {
+        post = parsed;
+      } else {
+        throw new Error("Unexpected JSON shape");
+      }
+    } catch (e) {
+      return res.status(500).json({ error: "Failed to parse response: " + e.message, raw: cleaned.substring(0, 500) });
     }
 
-    // Get image
+    // Run through the same validator (single-post = one-element array)
+    var taggedArr = validateAndTagPosts([post]);
+    var tagged = taggedArr[0];
+    var validation = tagged.validation;
+    var qualityIssues = tagged.qualityIssues || "";
+
+    if (validation.severity === "fail") {
+      console.warn("[prompt-post] Validator blocked: " + qualityIssues);
+    }
+
+    // Image search
     var tags = post.image_tags || [];
     var dest = post.destination || "";
-    var imageQuery = dest && dest !== "General" ? (tags.length > 0 ? dest + " " + tags[0] : dest + " travel") : (tags.length > 0 ? tags[0] + " travel" : "travel holiday");
+    var imageQuery = (dest && dest !== "General")
+      ? (tags.length > 0 ? dest + " " + tags[0] : dest + " travel")
+      : (tags.length > 0 ? tags[0] + " travel" : "travel holiday");
     var imageUrl = await searchImage(imageQuery, post.image_orientation || "landscape");
 
-    // FCDO check
-    var fcdo = await checkFCDO(post.destination);
+    // FCDO check (B2C only)
+    var fcdo = isB2B ? { safe: true } : await checkFCDO(post.destination);
 
-    // Build draft fields object for validation (mirrors what we'll save)
-    var draftFields = {
-      "Caption - Facebook": post.caption_facebook || "",
-      "Caption - Instagram": post.caption_instagram || "",
-      "Caption - LinkedIn": post.caption_linkedin || "",
-      "Caption - Twitter": post.caption_twitter || "",
-      "Caption - Pinterest": post.caption_pinterest || "",
-      "Caption - TikTok": post.caption_tiktok || "",
-      "Caption - GBP": post.caption_gbp || ""
-    };
+    // Auto-publish gating: kill switch + client setting + validator + FCDO.
+    // Validator failure and FCDO unsafe override everything else.
+    var clientAutoPublish = !!f["Auto Publish"];
+    var killSwitchOff = process.env.AUTO_PUBLISH_ENABLED !== "true";
+    var effectiveAutoPublish = clientAutoPublish && !killSwitchOff;
 
-    // VALIDATE before deciding status (Travelgenix only)
-    var validation = null;
-    var qualityIssues = "";
-    if (isTravelgenix) {
-      validation = validatePost(draftFields);
-      if (validation.severity === "fail") {
-        qualityIssues = validation.formattedReport;
-        console.warn("[VALIDATOR] Prompt-post BLOCKED: " + qualityIssues);
-      } else if (validation.severity === "warn") {
-        qualityIssues = validation.formattedReport;
-      }
-    }
-
-    // Determine final status
     var status;
-    if (!fcdo.safe) {
-      status = "Suppressed";
-    } else if (validation && validation.severity === "fail") {
-      // Validator blocks — never publish
+    if (validation.severity === "fail") {
       status = "Quality Hold";
-    } else if (autoPublish) {
+    } else if (!fcdo.safe) {
+      status = "Suppressed";
+    } else if (effectiveAutoPublish) {
       status = "Approved";
     } else {
       status = "Queued";
+    }
+
+    if (clientAutoPublish && killSwitchOff) {
+      console.warn("[prompt-post] Auto Publish set on client but AUTO_PUBLISH_ENABLED env not 'true' — forcing manual review.");
     }
 
     // Save to Airtable
@@ -155,7 +178,7 @@ module.exports = async function handler(req, res) {
         fields: {
           "Post Title": (post.destination || "Custom") + " " + (post.content_type || "Post") + " - Prompt",
           "Client": [clientId],
-          "Content Type": post.content_type || "Destination Inspiration",
+          "Content Type": post.content_type || (isB2B ? "Thought Leadership" : "Destination Spotlight"),
           "Caption - Facebook": post.caption_facebook || "",
           "Caption - Instagram": post.caption_instagram || "",
           "Caption - LinkedIn": post.caption_linkedin || "",
@@ -164,19 +187,24 @@ module.exports = async function handler(req, res) {
           "Caption - TikTok": post.caption_tiktok || "",
           "Caption - GBP": post.caption_gbp || "",
           "Hashtags": [].concat(post.hashtags_facebook || [], post.hashtags_instagram || []).filter(function(v, i, a) { return a.indexOf(v) === i; }).join(", "),
-          "CTA URL": post.cta_url_facebook || "",
+          "CTA URL": post.cta_url || post.cta_url_facebook || "",
           "Destination": post.destination || "",
           "Scheduled Time": post.suggested_time || "09:00",
           "Status": status,
           "Suppression Reason": fcdo.safe ? "" : (fcdo.reason || ""),
           "Generated Week": "PROMPT",
           "Image URL": imageUrl || "",
-          "Image Position": "50% 50%"
+          "Image Position": "50% 50%",
         }
       };
 
-      // If validator flagged issues, write them to Quality Issues field.
-      // (Field must exist on Post Queue table — added during Day 6.5 setup.)
+      // B2B extras
+      if (isB2B) {
+        if (post.target_channel) record.fields["Target Channel"] = post.target_channel;
+        if (post.content_pillar) record.fields["Content Pillar"] = post.content_pillar;
+        if (post.first_comment) record.fields["First Comment"] = post.first_comment;
+      }
+
       if (qualityIssues) {
         record.fields["Quality Issues"] = qualityIssues.slice(0, 50000);
       }
@@ -186,7 +214,12 @@ module.exports = async function handler(req, res) {
         headers: { Authorization: "Bearer " + AIRTABLE_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ records: [record], typecast: true })
       });
-      if (aRes.ok) { var aData = await aRes.json(); savedRecord = aData.records[0]; }
+      if (aRes.ok) {
+        var aData = await aRes.json();
+        savedRecord = aData.records[0];
+      } else {
+        console.error("[prompt-post] Airtable save failed:", (await aRes.text()).substring(0, 200));
+      }
     }
 
     return res.status(200).json({
@@ -195,18 +228,21 @@ module.exports = async function handler(req, res) {
       image_url: imageUrl,
       fcdo_safe: fcdo.safe,
       status: status,
-      validation: validation ? {
+      validation: {
         severity: validation.severity,
         issueCount: validation.issues.length,
         report: validation.formattedReport,
-      } : null,
+      },
+      autoPublishHonoured: effectiveAutoPublish,
+      autoPublishKillSwitch: killSwitchOff,
       saved: !!savedRecord,
       record_id: savedRecord ? savedRecord.id : null,
       client: f["Business Name"],
-      prompt: prompt
+      prompt: userPrompt,
     });
   } catch (err) {
-    console.error("Prompt post error:", err);
-    return res.status(500).json({ error: err.message });
+    console.error("[prompt-post] error:", err);
+    var msg = err && err.message ? err.message : String(err);
+    return res.status(500).json({ error: msg, guardrails_failed: msg.indexOf("GUARDRAILS_MISSING") !== -1 });
   }
 };

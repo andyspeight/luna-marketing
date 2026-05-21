@@ -106,6 +106,13 @@ const FABRICATED_STAT_PATTERNS = [
   /\b\d+%\s+(increase|improvement|uplift|boost|reduction|saving)/gi,
   // "X% of our clients" (NEW v2)
   /\b\d+%\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\b/gi,
+  // "X% of <work nouns>" (NEW 21 May 2026 — closes the "80% of inquiries handled" gap)
+  // Catches "80% of inquiries handled automatically", "75% of leads converted",
+  // "60% of queries resolved", "90% of bookings completed", etc.
+  /\b\d+%\s+of\s+(inquiries|enquiries|queries|leads|bookings|requests|emails|messages|calls|conversations|chats|tickets|searches)\b/gi,
+  // Bare "X% <verbed> automatically/automated" — covers the no-noun variant
+  // ("handled 80% automatically", "process 90% without human input")
+  /\b\d+%\s+(?:\w+\s+)?(automatically|automated|without\s+human|hands-?\s*free)\b/gi,
   // "most/many of our clients see results..." (NEW v2)
   /\b(most|majority|three\s+quarters|two\s+thirds|nine\s+out\s+of\s+ten)\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\s+\w+/gi,
   // "doubled/tripled their <thing>" (NEW v2)

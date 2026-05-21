@@ -171,9 +171,13 @@ async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B) {
       }
     }
 
-    // Build Airtable record
+    // Build Airtable record. Use model-supplied post_title when present
+    // (B2B always emits one); otherwise compose from destination/type/day.
+    var composedTitle = (post.destination || "General") + " " +
+      (post.content_type || (isB2B ? "Post" : "")) +
+      " - " + (post.suggested_day || "Mon");
     var fields = {
-      "Post Title": (post.destination || "General") + " " + (post.content_type || "") + " - " + (post.suggested_day || "Mon"),
+      "Post Title": post.post_title || composedTitle,
       "Client": [clientId],
       "Content Type": post.content_type || "",
       "Caption - Facebook": post.caption_facebook || "",
@@ -183,8 +187,8 @@ async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B) {
       "Caption - Pinterest": post.caption_pinterest || "",
       "Caption - TikTok": post.caption_tiktok || "",
       "Caption - GBP": post.caption_gbp || "",
-      "Hashtags": "",
-      "CTA URL": post.cta_url || post.cta_url_facebook || "",
+      "Hashtags": post.hashtags || "",
+      "CTA URL": post.cta_url || "",
       "Destination": dest,
       "Scheduled Time": post.suggested_time || "09:00",
       "Status": status,

@@ -1755,7 +1755,7 @@ select.of-input { cursor: pointer; height: 34px; }
 (function(){
 'use strict';
 var SK='luna_client_session',TK='luna_client_theme',MAX=4*3600000;
-var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',dragPid:null,postImage:{}};
+var state={profile:null,posts:[],allPosts:[],selected:{},calOff:0,theme:'light',dragPid:null,postImage:{},postsFilter:'Queued'};
 // Travelgenix's own client record. Only this account sees the admin
 // sub-tabs inside Events. Everyone else just sees the standard view.
 var OWNER_CLIENT_ID = 'recFXQY7be6gMr4In';
@@ -1998,7 +1998,25 @@ function schedulePostImageTickerIfNeeded() {
 
 async function loadPosts(){
   if(!state.profile)return;
-  try{var r=await fetch('/api/posts?status=Queued');var d=await r.json();if(!d.success)throw new Error(d.error);state.posts=d.posts.filter(function(p){return p.client_id===state.profile.id});var r2=await fetch('/api/posts');var d2=await r2.json();state.allPosts=(d2.posts||[]).filter(function(p){return p.client_id===state.profile.id});state.selected={};renderStats();renderPosts();var badge=$('postsTab').querySelector('.tab-badge');if(!badge){badge=document.createElement('span');badge.className='tab-badge';$('postsTab').appendChild(badge)}badge.textContent=state.posts.length;badge.style.display=state.posts.length>0?'inline':'none';$('postsTab').classList.toggle('has-badge',state.posts.length>0)}catch(e){$('view-posts').innerHTML='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-error)">'+e.message+'</div>'}
+  try{
+    var r=await fetch('/api/posts');
+    var d=await r.json();
+    if(!d.success&&!d.posts)throw new Error(d.error||'Failed to load posts');
+    state.allPosts=(d.posts||[]).filter(function(p){return p.client_id===state.profile.id});
+    state.posts=state.allPosts.filter(function(p){return p.status===state.postsFilter});
+    state.selected={};
+    renderStats();
+    renderPosts();
+    // Top-nav badge counts ONLY Queued (awaiting review), regardless of which sub-tab is open
+    var queuedCount=state.allPosts.filter(function(p){return p.status==='Queued'}).length;
+    var badge=$('postsTab').querySelector('.tab-badge');
+    if(!badge){badge=document.createElement('span');badge.className='tab-badge';$('postsTab').appendChild(badge)}
+    badge.textContent=queuedCount;
+    badge.style.display=queuedCount>0?'inline':'none';
+    $('postsTab').classList.toggle('has-badge',queuedCount>0);
+  }catch(e){
+    $('view-posts').innerHTML='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-error)">'+e.message+'</div>';
+  }
 }
 
 // Events Ticker
@@ -2006,24 +2024,66 @@ var TICKER_CAT_COLORS = { 'Sporting Event': '#3B82F6', 'Cultural Festival': '#8B
 var TICKER_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 async function loadEventsTicker(){var el=$('eventsTicker');if(!el)return;try{var res=await fetch('/api/events?months=3');var d=await res.json();if(!d.success||!d.events||!d.events.length){el.style.display='none';return}var events=d.events;var items='';events.forEach(function(ev){var color=TICKER_CAT_COLORS[ev.category]||'#64748B';var parts=ev.dateStart?ev.dateStart.split('-'):[];var dateStr=parts.length===3?parseInt(parts[2])+' '+TICKER_MONTHS[parseInt(parts[1])-1]:'';var isMajor=ev.impact&&ev.impact.includes('Major');items+='<a href="#" onclick="event.preventDefault();document.querySelector(\'[data-view=events]\').click()" style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:5px 14px;margin:0 6px;border-radius:8px;border:1px solid var(--tg-border);text-decoration:none;transition:all 0.15s;background:var(--tg-bg-primary);white-space:nowrap">';items+='<span style="font-size:11px;font-weight:700;color:var(--tg-text-tertiary);font-family:var(--tg-font-mono)">'+dateStr+'</span>';items+='<span style="width:6px;height:6px;border-radius:50%;background:'+color+';flex-shrink:0"></span>';items+='<span style="font-size:12px;font-weight:600;color:var(--tg-text-primary);white-space:nowrap">'+esc(ev.name)+'</span>';if(isMajor)items+='<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(16,185,129,0.1);color:#059669;white-space:nowrap">BOOKING DRIVER</span>';items+='</a>'});var h='<style>.client-ticker-track{display:flex;align-items:center;animation:clientTickerScroll 40s linear infinite}.client-ticker-wrap:hover .client-ticker-track{animation-play-state:paused}@keyframes clientTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}</style>';h+='<div class="client-ticker-wrap" style="display:flex;align-items:center;height:44px;overflow:hidden;position:relative">';h+='<div style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 14px;height:100%;background:var(--tg-bg-primary);z-index:2;border-right:1px solid var(--tg-border)">';h+='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';h+='<span style="font-size:11px;font-weight:700;color:var(--tg-accent);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Upcoming</span></div>';h+='<div class="client-ticker-track">'+items+items+'</div></div>';el.innerHTML=h;el.style.display='block';setTimeout(function(){var track=el.querySelector('.client-ticker-track');if(track){var speed=Math.max(20,track.scrollWidth/2/40);track.style.animationDuration=speed+'s'}},100)}catch(e){el.style.display='none'}}
 
-function renderStats(){var p=state.profile;$('statsRow').innerHTML='<div class="stat"><div class="stat-label">Queued</div><div class="stat-val">'+state.posts.length+'</div><div class="stat-sub">awaiting review</div></div><div class="stat"><div class="stat-label">Frequency</div><div class="stat-val">'+(p.posting_frequency||3)+'</div><div class="stat-sub">posts/week</div></div><div class="stat"><div class="stat-label">Platforms</div><div class="stat-val">7</div><div class="stat-sub">FB IG LI X Pin TT GBP</div></div><div class="stat"><div class="stat-label">Mode</div><div class="stat-val">'+(p.auto_publish?'Auto':'Review')+'</div><div class="stat-sub">'+(p.auto_publish?'auto-publishing':'manual review')+'</div></div>'}
+function renderStats(){
+  var p=state.profile;
+  var queuedN=state.allPosts.filter(function(x){return x.status==='Queued'}).length;
+  var approvedN=state.allPosts.filter(function(x){return x.status==='Approved'}).length;
+  $('statsRow').innerHTML=
+    '<div class="stat"><div class="stat-label">Queued</div><div class="stat-val">'+queuedN+'</div><div class="stat-sub">awaiting review</div></div>'+
+    '<div class="stat"><div class="stat-label">Approved</div><div class="stat-val">'+approvedN+'</div><div class="stat-sub">ready to publish</div></div>'+
+    '<div class="stat"><div class="stat-label">Frequency</div><div class="stat-val">'+(p.posting_frequency||3)+'</div><div class="stat-sub">posts/week</div></div>'+
+    '<div class="stat"><div class="stat-label">Platforms</div><div class="stat-val">7</div><div class="stat-sub">FB IG LI X Pin TT GBP</div></div>'+
+    '<div class="stat"><div class="stat-label">Mode</div><div class="stat-val">'+(p.auto_publish?'Auto':'Review')+'</div><div class="stat-sub">'+(p.auto_publish?'auto-publishing':'manual review')+'</div></div>';
+}
 
 /* ── REVIEW QUEUE ── */
 function renderPosts(){
   var posts=state.posts;
+  var filter=state.postsFilter||'Queued';
+  var queuedN=state.allPosts.filter(function(x){return x.status==='Queued'}).length;
+  var approvedN=state.allPosts.filter(function(x){return x.status==='Approved'}).length;
   var h='<div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap">';
   h+='<button class="btn btn-primary btn-sm" onclick="C.gen(this)">Generate Posts</button>';
   h+='<button class="btn btn-sm" style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--tg-accent-dark)" onclick="C.publishAll(this)">Publish All Approved</button>';
   h+='<span id="genFb" style="font-size:var(--text-sm);color:var(--tg-text-tertiary)"></span>';
-  if(posts.length>0){var selCount=Object.values(state.selected).filter(Boolean).length;h+='<span style="margin-left:auto;display:flex;gap:var(--space-2);align-items:center"><label style="font-size:var(--text-sm);color:var(--tg-text-tertiary);cursor:pointer;display:flex;align-items:center;gap:var(--space-1)"><input type="checkbox" onchange="C.selAll(this.checked)"> Select all</label>';if(selCount>0)h+='<button class="btn btn-approve btn-sm" onclick="C.bulkAction(\'approve\')">Approve '+selCount+'</button><button class="btn btn-reject btn-sm" onclick="C.bulkAction(\'reject\')">Reject '+selCount+'</button>';h+='</span>'}
+  if(posts.length>0&&filter==='Queued'){
+    var selCount=Object.values(state.selected).filter(Boolean).length;
+    h+='<span style="margin-left:auto;display:flex;gap:var(--space-2);align-items:center"><label style="font-size:var(--text-sm);color:var(--tg-text-tertiary);cursor:pointer;display:flex;align-items:center;gap:var(--space-1)"><input type="checkbox" onchange="C.selAll(this.checked)"> Select all</label>';
+    if(selCount>0)h+='<button class="btn btn-approve btn-sm" onclick="C.bulkAction(\'approve\')">Approve '+selCount+'</button><button class="btn btn-reject btn-sm" onclick="C.bulkAction(\'reject\')">Reject '+selCount+'</button>';
+    h+='</span>';
+  }
   h+='</div>';
-  if(!posts.length){h+='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-text-tertiary)">No posts waiting for review. '+(state.profile.auto_publish?'Auto Publish is on.':'Generate posts or wait for the next scheduled batch.')+'</div>';$('view-posts').innerHTML=h;return}
+  // Sub-tabs: Queued (awaiting review) | Approved (ready to publish)
+  var pillBase='display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:var(--text-sm);font-weight:600;cursor:pointer;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);transition:all 0.15s';
+  var pillActive='background:var(--tg-accent);border-color:var(--tg-accent);color:#fff';
+  var countPillBase='font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(0,0,0,0.08);color:inherit;font-variant-numeric:tabular-nums';
+  var countPillActive='background:rgba(255,255,255,0.25);color:#fff';
+  h+='<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4)">';
+  h+='<button type="button" style="'+pillBase+(filter==='Queued'?';'+pillActive:'')+'" onclick="C.setPostsFilter(\'Queued\')">Queued <span style="'+countPillBase+(filter==='Queued'?';'+countPillActive:'')+'">'+queuedN+'</span></button>';
+  h+='<button type="button" style="'+pillBase+(filter==='Approved'?';'+pillActive:'')+'" onclick="C.setPostsFilter(\'Approved\')">Approved <span style="'+countPillBase+(filter==='Approved'?';'+countPillActive:'')+'">'+approvedN+'</span></button>';
+  h+='</div>';
+  if(!posts.length){
+    var emptyMsg;
+    if(filter==='Approved'){
+      emptyMsg='No approved posts yet. Approve posts from the Queued tab and they\'ll appear here ready to publish.';
+    }else{
+      emptyMsg='No posts waiting for review. '+(state.profile.auto_publish?'Auto Publish is on.':'Generate posts or wait for the next scheduled batch.');
+    }
+    h+='<div class="card" style="text-align:center;padding:var(--space-10);color:var(--tg-text-tertiary)">'+emptyMsg+'</div>';
+    $('view-posts').innerHTML=h;
+    return;
+  }
   h+='<div class="post-grid">';
   var cName=esc(state.profile.trading_name||state.profile.business_name);
   posts.forEach(function(p){
     var sel=!!state.selected[p.id];
     h+='<div class="post-card" id="cp-'+p.id+'">';
-    h+='<div style="padding:var(--space-3) var(--space-3) 0;display:flex;align-items:center;gap:var(--space-2)"><input type="checkbox" '+(sel?'checked':'')+' onchange="C.sel(\''+p.id+'\',this.checked)" style="flex-shrink:0;width:16px;height:16px"><div class="plat-tabs" style="flex:1">';
+    // Header: checkbox is only meaningful for Queued (bulk approve/reject); hide on Approved
+    h+='<div style="padding:var(--space-3) var(--space-3) 0;display:flex;align-items:center;gap:var(--space-2)">';
+    if(filter==='Queued'){
+      h+='<input type="checkbox" '+(sel?'checked':'')+' onchange="C.sel(\''+p.id+'\',this.checked)" style="flex-shrink:0;width:16px;height:16px">';
+    }
+    h+='<div class="plat-tabs" style="flex:1">';
     var firstTabSet=false;
     PLATS.forEach(function(pl,i){if(!shouldShowPlat(p,pl.key))return;var isActive=!firstTabSet;if(isActive)firstTabSet=true;h+='<button class="plat-tab'+(isActive?' active':'')+'" onclick="C.showPlat(this,\''+p.id+'-'+pl.key+'\')">'+pl.icon+'</button>'});
     h+='</div></div>';
@@ -2059,7 +2119,7 @@ function renderPosts(){
       h+='</div>';
     }
     // Image generation controls: Generate (Stage B) / Photo (Replicate) / Stock (Pexels)
-    // Active platform tab determines aspect ratio: IG=1:1, FB/LI/Twitter/GBP=16:9.
+    // Active platform tab determines aspect ratio: IG=1:1, FB/LI/Twitter/GBP=1.91:1.
     h+=renderPostImageControls(p,state.postImage[p.id]||{});
     // Meta row with B2B badges (Target Channel + Content Pillar)
     h+='<div style="padding:var(--space-2) var(--space-3);display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap">';
@@ -2075,7 +2135,14 @@ function renderPosts(){
       h+='<div style="padding:14px;font-size:13px;color:var(--tg-text-primary);line-height:1.7;max-height:400px;overflow-y:auto;white-space:pre-wrap">'+esc(p.blog_content)+'</div>';
       h+='</details></div>';
     }
-    h+='<div class="post-actions"><button class="btn btn-approve btn-sm" onclick="C.action(\''+p.id+'\',\'approve\')">Approve</button><button class="btn btn-reject btn-sm" onclick="C.showReject(\''+p.id+'\')">Reject</button></div>';
+    // Card actions vary by status: Queued shows Approve/Reject; Approved shows Publish now
+    if(filter==='Approved'){
+      h+='<div class="post-actions">';
+      h+='<button class="btn btn-approve btn-sm" onclick="C.publishOne(\''+p.id+'\',this)">Publish now</button>';
+      h+='</div>';
+    }else{
+      h+='<div class="post-actions"><button class="btn btn-approve btn-sm" onclick="C.action(\''+p.id+'\',\'approve\')">Approve</button><button class="btn btn-reject btn-sm" onclick="C.showReject(\''+p.id+'\')">Reject</button></div>';
+    }
     h+='<div class="post-feedback" id="cfb-'+p.id+'"></div></div>';
   });
   h+='</div>';$('view-posts').innerHTML=h;
@@ -3553,6 +3620,8 @@ window.C={
   },
   gen:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Generating...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='This may take 30-60 seconds...';try{var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');var n=d.posts?d.posts.length:0;fb.style.color='var(--tg-success)';fb.textContent=n+' post'+(n!==1?'s':'')+' generated';await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Posts'}},
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},
+  setPostsFilter:function(f){if(f!=='Queued'&&f!=='Approved')return;state.postsFilter=f;state.posts=state.allPosts.filter(function(p){return p.status===state.postsFilter});state.selected={};renderPosts()},
+  publishOne:async function(pid,btn){var fb=$('cfb-'+pid);btn.disabled=true;btn.textContent='Publishing...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:pid})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Published to '+(d.platforms&&d.platforms.succeeded?d.platforms.succeeded+' platform'+(d.platforms.succeeded!==1?'s':''):'Metricool')+(d.platforms&&d.platforms.failed?' ('+d.platforms.failed+' failed)':'')}var c=$('cp-'+pid);if(c){c.style.opacity='0.3';c.style.pointerEvents='none'}setTimeout(loadPosts,1500)}catch(e){btn.disabled=false;btn.textContent='Publish now';if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}}},
   createPost:async function(){var txt=$('promptText');var fb=$('prompt-fb');var btn=$('promptBtn');if(!txt||!txt.value.trim())return;btn.disabled=true;btn.textContent='Generating...';fb.style.cssText='display:block;background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);color:var(--tg-text-tertiary)';fb.textContent='Creating post for all 7 platforms...';try{var r=await fetch('/api/prompt-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id,prompt:txt.value.trim()})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Post created and added to queue';txt.value='';await loadPosts()}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Post'}},
   showReject:function(pid){var reasons=['Wrong tone','Wrong destination','Too generic','Don\'t like the image','Too long','Too short','Not relevant right now','Other'];var h='<div class="reject-modal" id="rejectModal" onclick="if(event.target===this)C.closeReject()"><div class="reject-box"><div class="reject-title">Why are you rejecting this post?</div><div class="reject-sub">Your feedback helps Luna create better content for you.</div><div class="reject-reasons">';reasons.forEach(function(r){h+='<button class="reject-reason" onclick="C.selectReason(this)">'+r+'</button>'});h+='</div><input class="reject-notes" id="rejectNotes" placeholder="Tell us more (optional)..."><div class="reject-btns"><button class="btn btn-ghost btn-sm" onclick="C.closeReject()">Cancel</button><button class="btn btn-reject btn-sm" id="rejectSubmitBtn" onclick="C.submitReject(\''+pid+'\')" disabled style="opacity:0.5">Reject Post</button></div></div></div>';document.body.insertAdjacentHTML('beforeend',h)},
   selectReason:function(btn){btn.parentElement.querySelectorAll('.reject-reason').forEach(function(r){r.classList.remove('selected')});btn.classList.add('selected');var sub=$('rejectSubmitBtn');if(sub){sub.disabled=false;sub.style.opacity='1'}var notesEl=$('rejectNotes');if(notesEl)notesEl.classList.toggle('show',btn.textContent==='Other')},

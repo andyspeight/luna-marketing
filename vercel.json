@@ -23,6 +23,9 @@
   ],
   "functions": {
     "api/generate.js": {
+      "maxDuration": 300
+    },
+    "api/prompt-post.js": {
       "maxDuration": 120
     },
     "api/generate-blog.js": {

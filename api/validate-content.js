@@ -1,415 +1,346 @@
-// api/validate-content.js
-// Automated content validator. Run on every generated post BEFORE saving to Airtable.
+// lib/voice-editor.js
 //
-// Returns { passed: boolean, issues: string[], severity: 'pass'|'warn'|'fail' }
+// THE VOICE EDITOR — second-pass critic and polish for Luna Marketing posts.
 //
-// If severity === 'fail', the post MUST be saved with Status='Quality Hold' and the
-// issues written to Quality Issues field. Andy reviews manually.
+// Built 22 May 2026. The writer prompt (api/b2b-prompt.js) now produces
+// roughly 8/10 drafts in Andy's voice. This module is the second pass that
+// lifts good drafts to great — exactly the job Claude does in chat when Andy
+// pastes a post and asks "what do you think?": read it against the brief,
+// name the specific faults, and rewrite to standard while keeping the core
+// idea and every real fact.
 //
-// v2 — 2 May 2026 — Day 6.5 stress-test fix.
-// Closes 10 gaps found during adversarial testing:
-//   - First-name + verb fake testimonials ("Sarah told us...")
-//   - Anonymous-but-specific case studies ("A homeworker in Manchester doubled bookings")
-//   - "We saved them N hours" pattern (different verb order)
-//   - Award fabrication ("Won Best Travel Tech 2026")
-//   - Partnership fabrication ("Our partnership with American Express")
-//   - "As Andy Speight always says..." fabricated quotes
-//   - "X% of our clients" / "most clients" patterns
-//   - Banned openers escalated from warn to fail
-//   - Vague client outcome claims ("doubled their bookings")
-//   - Expanded competitor list
+// PHILOSOPHY
+//   - Judge first. A post that already sounds like Andy is returned UNTOUCHED.
+//     The editor must not "improve" a good post into blandness (over-sanding).
+//   - Rewrite only on NAMED faults. The editor works from a fixed checklist of
+//     the residual problems the writer still has at 8/10 — not a vague
+//     "make it better".
+//   - NEVER fabricate. The editor improves VOICE, never adds facts. It may not
+//     introduce a statistic, client name, quote, partnership or feature that
+//     was not already in the draft. This is enforced two ways: (1) the editor
+//     prompt forbids it in the strongest terms and carries the same sentinel,
+//     and (2) every edited post is routed back through validatePost by the
+//     pipeline AFTER this runs, so a fabrication introduced here is still
+//     caught and the post still lands as Quality Hold.
+//
+// WHERE IT RUNS
+//   In lib/generation-pipeline.js, between parsePostsJson() and
+//   validateAndTagPosts(). Order matters: writer → voice editor → validator.
+//   The validator always has the last word.
+//
+// KILL SWITCH
+//   process.env.VOICE_EDITOR_ENABLED must NOT be the string "false" for the
+//   editor to run. Default ON (unset = on). Set to "false" to bypass the pass
+//   entirely (e.g. to compare writer-only output, or if it ever misbehaves).
+//   This is the inverse default of AUTO_PUBLISH_ENABLED on purpose: auto-
+//   publish is dangerous so defaults off; the voice editor is safe (validator
+//   still guards everything downstream) so defaults on.
 
-// ─────────────────────────────────────────────────
-// RULE LISTS
-// ─────────────────────────────────────────────────
+const GUARDRAIL_SENTINEL = "ANTI-FABRICATION RULES";
 
-const BANNED_WORDS = [
-  "leverage", "holistic", "robust", "seamless", "game-changer", "game changer",
-  "paradigm", "delve", "delves", "delving", "tapestry", "unlock", "unlocks", "unlocking",
-  "cutting-edge", "cutting edge", "groundbreaking", "nestled", "vibrant", "profound",
-  "pivotal", "testament", "underscores", "underscore", "fostering", "foster",
-  "garner", "garners", "garnering", "showcase", "showcases", "showcasing",
-  "interplay", "intricate", "intricacies", "enduring", "utilize", "synergy", "innovative",
-];
+// The channel a post targets decides which caption field the editor judges
+// and rewrites. One post = one caption (the 2 May "one caption per post" rule).
+const CHANNEL_TO_FIELD = {
+  "LinkedIn Personal":       "caption_linkedin",
+  "LinkedIn Company":        "caption_linkedin",
+  "Facebook":                "caption_facebook",
+  "Instagram":               "caption_instagram",
+  "Google Business Profile": "caption_gbp",
+  "Twitter":                 "caption_twitter",
+  "Twitter/X":               "caption_twitter",
+};
 
-const BANNED_PHRASES = [
-  "in conclusion", "to summarise", "to summarize", "as we've seen", "as we have seen",
-  "at the end of the day", "moving the needle", "circle back", "deep dive",
-  "in today's", "in today\u2019s", "in an era of", "now more than ever",
-  "in the ever-evolving", "in the ever evolving",
-  "it's important to note", "let me explain why", "here's the thing",
-  "and that got me thinking", "let that sink in", "read that again",
-  "hot take", "unpopular opinion", "this is the way",
-  "i'll say it louder for the people in the back",
-  "picture this", "imagine if", "what if i told you",
-  "great question", "you're absolutely right", "i hope this helps",
-];
+// Per-channel length feel, mirrored from the writer prompt so the editor
+// knows when a post is too thin and should be developed (not padded).
+const CHANNEL_LENGTH_HINT = {
+  "caption_linkedin": "900-1300 characters for LinkedIn Personal, 700-1000 for LinkedIn Company. A thin 3-line post reads as low effort — develop the idea.",
+  "caption_facebook": "300-500 characters. Warm and community-facing.",
+  "caption_instagram": "150-400 characters, hook in the first line, hashtags at the end.",
+  "caption_gbp": "400-1500 characters, local and SEO-aware, include a CTA.",
+  "caption_twitter": "Under 280 characters, punchy.",
+};
 
-const COMPETITOR_NAMES = [
-  "tprofile", "t-profile", "t profile",
-  "inspiretec",
-  "dolphin dynamics", "dolphindynamics",
-  "traveltek",
-  "top dog",
-  "moonstride",
-  "tr10",
-  "travelsoft",
-  "juniper",
-  "constellation",
-  "atcore",
-  "open destinations",
-  "reservation group",
-  "comtec",
-];
+/**
+ * Build the voice-editor system prompt. Carries the guardrail sentinel so it
+ * passes the same assertion the writer does, and encodes the exact residual
+ * faults we identified at 8/10 plus the hard no-fabrication contract.
+ */
+function buildEditorSystemPrompt() {
+  return `You are the voice editor for Travelgenix. You are the second pair of eyes on a social media post that has already been drafted. Your job is exactly the job a sharp editor does: read the post against Andy's voice, decide if it is good enough, and if it is not, rewrite it to standard.
 
-// Common UK first names that AI loves to invent fake testimonials with
-const COMMON_FIRST_NAMES = [
-  "sarah", "jane", "rachel", "emma", "kate", "katie", "claire", "lucy", "rebecca", "hannah",
-  "michelle", "lauren", "amy", "becky", "helen", "sophie", "charlotte", "victoria", "anna",
-  "louise", "fiona", "karen", "linda", "tracy", "tracey", "samantha", "sam",
-  "joe", "john", "james", "david", "mark", "paul", "tom", "tony", "chris", "matt", "matthew",
-  "steve", "stephen", "andrew", "richard", "rick", "mike", "michael", "rob", "robert",
-  "dave", "phil", "philip", "simon", "ian", "alan", "neil", "gary", "kevin", "peter", "pete",
-];
+You are editing for VOICE and CRAFT only. You are NOT a fact checker and you are NOT allowed to add facts.
 
-const FABRICATED_NAME_PATTERNS = [
-  // "Sarah from Coastal Travel" / "Joe at Atlas Tours"
-  /\b[A-Z][a-z]+\s+(from|at)\s+[A-Z][A-Za-z0-9& ]{2,40}\b(?:\s+(Travel|Tours|Holidays|Agency|Co\.?))?/g,
-  // "<First> <Last> said|told us|says"
-  /\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+said|\s+told\s+us|\s+says|\s+mentioned|\s+shared|\s+commented)/g,
-];
+═══════════════════════════════════════════════════════════
+${GUARDRAIL_SENTINEL} — THE LINE YOU MUST NOT CROSS
+═══════════════════════════════════════════════════════════
 
-// First-name-only testimonials (NEW v2 — closes the "Sarah told us" gap)
-function buildFirstNameTestimonialRegex() {
-  const namesPattern = COMMON_FIRST_NAMES.join("|");
-  return new RegExp(
-    `\\b(${namesPattern})\\s+(told\\s+(us|me)|said|says|mentioned|shared|reckons|reckoned)\\b`,
-    "gi"
-  );
+When you rewrite, you may ONLY use facts that are already present in the draft
+you were given. You must NEVER add:
+- a statistic, percentage, or number that was not in the draft
+- a client name, customer name, or person's name
+- a quote
+- a partnership, award, supplier name, or product feature not in the draft
+- a destination, route, or event not in the draft
+
+If the draft is vague, your job is to make it WARMER and SHARPER in voice, not
+to make it more specific by inventing detail. Improving voice never means
+adding facts. If you find yourself wanting to add a concrete number or name to
+make it land better, STOP — that is fabrication and it is forbidden. Keep it
+generic and well-written instead.
+
+═══════════════════════════════════════════════════════════
+ANDY'S VOICE — THE STANDARD YOU EDIT TOWARD
+═══════════════════════════════════════════════════════════
+
+Travelgenix is a solution provider for the travel industry. We operate in
+travel technology but we NEVER talk like a tech company. We care about the
+business owner's bottom line, their sanity, and their growth. We never explain
+the plumbing.
+
+The temperature is relaxed, warm, friendly and supportive. A knowledgeable
+friend who has seen the problem before and quietly knows how to fix it. NOT a
+loud pub bore. No forced matey-ness, no "mate", no "look", no staged anecdotes.
+Professional with the jacket off, not professional after six pints.
+
+Technology is ALWAYS the hero that makes the human brilliant. The villain is
+admin, faff, slowness, the lost evening, the booking that slipped away. NEVER
+frame people as rejecting or escaping technology — we sell the technology.
+
+═══════════════════════════════════════════════════════════
+THE FAULT CHECKLIST — judge the post against every item
+═══════════════════════════════════════════════════════════
+
+Check the post for each of these specific, named faults:
+
+1. OPENS WITH A QUESTION. The first line must be a declarative hook, never a
+   question. "When should agents post on social?" is a fault. Rewrite the
+   opening as a statement.
+
+2. EXPLAINS THE PLUMBING. Any mention of how the tech works — APIs, feeds,
+   integrations, "one interface", "single confirmation process", supplier
+   names as mechanism, screens, inventory sources. Rewrite to describe only
+   what the person gets back: time, calm, the booking saved, the quote out
+   before the customer cools.
+
+3. WRONG VILLAIN. The thing being railed against should be admin/faff/lost
+   time, not "multiple screens" or "different systems" (those are software
+   problems, not life problems) and never technology itself. Re-aim it at the
+   human cost.
+
+4. LISTICLE OR CHECKLIST. Education posts especially must be flowing prose, not
+   a queue of tips ("Post twice a week. Keep hours current. Add photos."). Pick
+   the single strongest idea and develop it warmly. Depth over breadth.
+
+5. TELLS INSTEAD OF SHOWS. "The result? Agents can quote complex trips easily."
+   is a benefit statement off a product page. Make the reader FEEL the relief
+   instead of being told the outcome.
+
+6. SLOGAN-Y OR TOO-NEAT CLOSER. Endings that land as a marketing tagline
+   ("Early bird gets the booking, but only if your tech can keep up") are
+   slightly off. End forward on a genuine point of view, or just stop when the
+   point is made. NEVER a generic engagement question ("What's your take?",
+   "Are you seeing the same?") — those are banned outright.
+
+7. TOO SHORT / THIN. If the post is well under the length it should be for its
+   channel, it reads as low effort. Develop the idea with more substance — but
+   develop, never pad with filler. (${"${lengthHint}"})
+
+8. MISSED TRAVELGENIX BRIDGE. Where it fits naturally and is not forced, an
+   Education or Commentary post can nod to how the right tech makes the thing
+   easier. If a bridge would feel natural and is absent, add a light one — but
+   ONLY using products/capabilities already implied in the draft, never a new
+   invented feature.
+
+9. MECHANICAL RHYTHM. Four tidy paragraphs of identical shape is its own AI
+   tell. Vary sentence and paragraph length. Let a short line land.
+
+10. BANNED MECHANICS. Em dashes, Oxford commas, curly quotes, banned words
+    (leverage, seamless, robust, game-changer, unlock, navigate figuratively,
+    cutting-edge, landscape-as-metaphor, etc.), more than one exclamation mark,
+    throat-clearing openers. Fix any that slipped through.
+
+═══════════════════════════════════════════════════════════
+HOW TO DECIDE
+═══════════════════════════════════════════════════════════
+
+Score the post 1-10 against the standard above.
+
+- If it scores 8 or above AND has no fault from items 1, 2, 3, 6 or 10 (the
+  hard faults), return it UNCHANGED. Do not polish a good post into blandness.
+  Leaving a strong post alone is the correct, expected outcome much of the time.
+- If it scores below 8, OR has any hard fault, rewrite it to fix the SPECIFIC
+  faults you found. Keep the core idea. Keep every real fact. Change only what
+  is needed to clear the faults. Do not rewrite from scratch for its own sake.
+
+═══════════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════════
+
+Return ONLY valid JSON, no markdown fences, no preamble:
+
+{
+  "score": 7,
+  "verdict": "edit",            // "keep" if returned unchanged, "edit" if rewritten
+  "faults": ["opens with a question", "listicle"],   // named faults found, [] if none
+  "edited_caption": "the full rewritten caption, OR the original verbatim if verdict is keep",
+  "edited_first_comment": "rewritten LinkedIn first comment if there was one and it needed work, else the original or empty string"
 }
 
-// Anonymous case studies (NEW v2 — closes the "A homeworker in Manchester" gap)
-const ANONYMOUS_CASE_STUDY_PATTERNS = [
-  /\b(a|an)\s+(homeworker|agent|operator|owner|consultant|founder|director|manager)\s+(in|from|based\s+in)\s+[A-Z][a-z]+(?:[\s-][A-Z][a-z]+)?\s+(?:has\s+|just\s+)?(doubled|tripled|quadrupled|halved|grew|grown|saved|increased|cut|reduced|boosted|lifted|hit|smashed|exceeded|achieved|landed|secured|won|booked)/gi,
-  /\b(one\s+of\s+our|one\s+of\s+the)\s+(agents?|operators?|clients?|customers?)\s+(?:in\s+[A-Z][a-z]+\s+)?(doubled|tripled|saved\s+\d|grew\s+by|grew\s+\d|increased\s+\d|cut\s+\d|reduced\s+\d|booked\s+\d)/gi,
-];
-
-// Andy Speight fake quote (NEW v2)
-const ANDY_QUOTE_PATTERN = /\b(as\s+)?andy\s+speight\s+(always\s+)?(says|said|told|tells|likes\s+to\s+say|puts\s+it)\b/gi;
-
-const FABRICATED_STAT_PATTERNS = [
-  // "saved [them] 40 hours a month" — broader pattern (v2 fix)
-  /\bsaved\s+(?:them\s+|us\s+|me\s+|her\s+|him\s+|the(?:m|ir)\s+)?\d+\s*(\+|plus)?\s*(hours?|days?|minutes?)\s*(a|per)?\s*(week|month|day|year)?/gi,
-  // "increased X by Y%" without citation
-  /\b(increased|improved|boosted|grew|reduced|cut|saved|lifted|doubled|tripled)\s+(?:[a-z]+\s+){0,3}by\s+\d+%?/gi,
-  // "X% increase in" / "X% improvement"
-  /\b\d+%\s+(increase|improvement|uplift|boost|reduction|saving)/gi,
-  // "X% of our clients" (NEW v2)
-  /\b\d+%\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\b/gi,
-  // "X% of <work nouns>" (NEW 21 May 2026 — closes the "80% of inquiries handled" gap)
-  // Catches "80% of inquiries handled automatically", "75% of leads converted",
-  // "60% of queries resolved", "90% of bookings completed", etc.
-  /\b\d+%\s+of\s+(inquiries|enquiries|queries|leads|bookings|requests|emails|messages|calls|conversations|chats|tickets|searches)\b/gi,
-  // Bare "X% <verbed> automatically/automated" — covers the no-noun variant
-  // ("handled 80% automatically", "process 90% without human input")
-  /\b\d+%\s+(?:\w+\s+)?(automatically|automated|without\s+human|hands-?\s*free)\b/gi,
-  // "most/many of our clients see results..." (NEW v2)
-  /\b(most|majority|three\s+quarters|two\s+thirds|nine\s+out\s+of\s+ten)\s+of\s+(our|the|all)\s+(clients|customers|users|agents|operators)\s+\w+/gi,
-  // "doubled/tripled their <thing>" (NEW v2)
-  /\b(doubled|tripled|quadrupled|halved)\s+(?:their|her|his|the)\s+\w+/gi,
-];
-
-// Award fabrication (NEW v2)
-const AWARD_PATTERNS = [
-  /\b(won|winning|winner\s+of|awarded|received|named)\s+(?:the\s+)?(best|leading|top|number\s+one|#1)\s+[a-z\s]{3,40}\s+(award|prize|recognition|accolade)\b/gi,
-  /\b(best|leading)\s+[a-z\s]{3,30}\s+(20\d\d|of\s+the\s+year)\s+at\s+the\s+\w+/gi,
-];
-
-// Partnership fabrication (NEW v2)
-const PARTNERSHIP_PATTERNS = [
-  /\b(our|new|exclusive|recent)\s+partnership\s+with\s+([A-Z][\w]+(?:\s+[A-Z][\w]+)*)/gi,
-  /\btravelgenix\s+(has\s+)?(just\s+)?(partnered|teamed\s+up|joined\s+forces)\s+with\s+([A-Z][\w]+(?:\s+[A-Z][\w]+)*)/gi,
-];
-
-const BANNED_OPENER_PATTERNS = [
-  /^in today'?s/i,
-  /^in an era of/i,
-  /^now more than ever/i,
-  /^in the ever[\s-]evolving/i,
-  /^picture this/i,
-  /^imagine if/i,
-  /^what if i told you/i,
-];
-
-// Real partnerships from brand-guardrails — these are allowed
-const ALLOWED_PARTNERSHIPS = [
-  "pts", "protected trust services",
-  "tng", "the networking group",
-  "holiday extras",
-  "advantage travel",
-  "ratehawk", "webbeds", "hotelbeds",
-  "jet2", "gold medal", "aerticket",
-  "tui", "etihad",
-  "holiday taxis", "flexible autos", "faremine",
-  "agendas group",
-];
-
-// ─────────────────────────────────────────────────
-// CHECKS
-// ─────────────────────────────────────────────────
-
-function checkEmDashes(text) {
-  const matches = text.match(/[\u2014\u2013]/g);
-  return matches ? { count: matches.length } : null;
+The edited_caption must be clean plain text ready to publish. No markup, no
+citations, no notes to the reader, no "here is the rewrite". Just the post.`;
 }
 
-function checkOxfordCommas(text) {
-  const matches = text.match(/,\s+\w[\w\s'"-]{0,40},\s+and\s+/g);
-  return matches ? { count: matches.length, examples: matches.slice(0, 3) } : null;
-}
+/**
+ * Polish a single post. Returns { post, report } where post is the (possibly)
+ * edited post and report describes what happened. On any error the ORIGINAL
+ * post is returned untouched — the editor must never lose content.
+ *
+ * @param {object} post - a normalized snake_case post
+ * @param {function} callModelFn - the pipeline's callModel (so we reuse the
+ *        same client, sentinel assertion, and model config)
+ */
+async function polishPost(post, callModelFn) {
+  const channel = post.target_channel || "LinkedIn Personal";
+  const field = CHANNEL_TO_FIELD[channel] || "caption_linkedin";
+  const original = (post[field] || "").trim();
 
-function checkCurlyQuotes(text) {
-  const matches = text.match(/[\u2018\u2019\u201C\u201D]/g);
-  return matches ? { count: matches.length } : null;
-}
-
-function checkBannedWords(text) {
-  const lower = " " + text.toLowerCase() + " ";
-  const found = [];
-  for (const word of BANNED_WORDS) {
-    const regex = new RegExp(`\\b${word.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
-    if (regex.test(lower)) found.push(word);
-  }
-  return found.length ? { words: found } : null;
-}
-
-function checkBannedPhrases(text) {
-  const lower = text.toLowerCase();
-  const found = [];
-  for (const phrase of BANNED_PHRASES) {
-    if (lower.includes(phrase)) found.push(phrase);
-  }
-  return found.length ? { phrases: found } : null;
-}
-
-function checkCompetitors(text) {
-  const lower = text.toLowerCase();
-  const found = [];
-  for (const name of COMPETITOR_NAMES) {
-    const regex = new RegExp(`\\b${name.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
-    if (regex.test(lower)) found.push(name);
-  }
-  return found.length ? { competitors: found } : null;
-}
-
-function checkFabricatedNames(text) {
-  const found = [];
-  
-  // Pattern 1: "Sarah from/at Company"
-  for (const pattern of FABRICATED_NAME_PATTERNS) {
-    const matches = text.match(pattern);
-    if (matches) {
-      for (const m of matches) {
-        const lower = m.toLowerCase();
-        if (lower.includes("andy speight") || lower.includes("darren swan")) continue;
-        if (/^[A-Z][a-z]+\s+from\s+(London|Paris|Dubai|Manchester|Birmingham|Edinburgh|Bristol|Leeds|Liverpool|Glasgow|UK|US|USA)\b/.test(m)) continue;
-        found.push(m);
-      }
-    }
-  }
-  
-  // Pattern 2: First name only + testimonial verb (NEW v2)
-  const firstNameRegex = buildFirstNameTestimonialRegex();
-  const firstNameMatches = text.match(firstNameRegex);
-  if (firstNameMatches) {
-    for (const m of firstNameMatches) {
-      const lower = m.toLowerCase();
-      if (lower.startsWith("andy") || lower.startsWith("darren")) continue;
-      found.push(m);
-    }
-  }
-  
-  // Pattern 3: Andy Speight fake quote (NEW v2)
-  const andyMatches = text.match(ANDY_QUOTE_PATTERN);
-  if (andyMatches) {
-    found.push(...andyMatches);
-  }
-  
-  return found.length ? { matches: found.slice(0, 5) } : null;
-}
-
-function checkAnonymousCaseStudies(text) {
-  const found = [];
-  for (const pattern of ANONYMOUS_CASE_STUDY_PATTERNS) {
-    const matches = text.match(pattern);
-    if (matches) found.push(...matches);
-  }
-  return found.length ? { matches: found.slice(0, 5) } : null;
-}
-
-function checkFabricatedStats(text) {
-  const found = [];
-  for (const pattern of FABRICATED_STAT_PATTERNS) {
-    const matches = text.match(pattern);
-    if (matches) {
-      for (const m of matches) {
-        const lower = m.toLowerCase();
-        const idx = text.toLowerCase().indexOf(lower);
-        const context = text.slice(Math.max(0, idx - 100), idx + m.length + 100).toLowerCase();
-        if (context.match(/(according to|abta|phocuswright|skift|travolution|ttg|travel weekly|google|reuters|study by|research by|report by|atol|aito|advantage)/)) continue;
-        found.push(m);
-      }
-    }
-  }
-  return found.length ? { matches: found.slice(0, 5) } : null;
-}
-
-function checkAwards(text) {
-  const found = [];
-  for (const pattern of AWARD_PATTERNS) {
-    const matches = text.match(pattern);
-    if (matches) found.push(...matches);
-  }
-  return found.length ? { matches: found.slice(0, 3) } : null;
-}
-
-function checkPartnerships(text) {
-  const found = [];
-  for (const pattern of PARTNERSHIP_PATTERNS) {
-    const matches = text.match(pattern);
-    if (matches) {
-      for (const m of matches) {
-        const lower = m.toLowerCase();
-        // Allow real partnerships
-        if (ALLOWED_PARTNERSHIPS.some(allowed => lower.includes(allowed))) continue;
-        found.push(m);
-      }
-    }
-  }
-  return found.length ? { matches: found.slice(0, 3) } : null;
-}
-
-function checkBannedOpener(text) {
-  const trimmed = text.trim();
-  for (const pattern of BANNED_OPENER_PATTERNS) {
-    if (pattern.test(trimmed)) {
-      return { opener: trimmed.slice(0, 60) + "..." };
-    }
-  }
-  return null;
-}
-
-// ─────────────────────────────────────────────────
-// MAIN VALIDATOR
-// ─────────────────────────────────────────────────
-
-function validateContent(text, opts = {}) {
-  if (!text || typeof text !== "string" || !text.trim()) {
-    return { passed: true, issues: [], severity: "pass", summary: "(empty)" };
+  // Nothing to edit — empty caption (shouldn't happen post-normalize, but be safe)
+  if (!original) {
+    return { post, report: { channel, field, verdict: "skip", reason: "empty caption", score: null, faults: [] } };
   }
 
-  const issues = [];
+  const lengthHint = CHANNEL_LENGTH_HINT[field] || "";
+  const systemPrompt = buildEditorSystemPrompt().replace("${lengthHint}", lengthHint);
 
-  // SEVERITY: FAIL
-  const competitors = checkCompetitors(text);
-  if (competitors) issues.push({ severity: "fail", code: "COMPETITOR_NAMED", detail: `Named competitors: ${competitors.competitors.join(", ")}` });
+  const hasFirstComment = !!(post.first_comment && post.first_comment.trim());
+  const userMessage =
+    `Channel: ${channel}\n` +
+    `Content pillar: ${post.content_pillar || "(unspecified)"}\n\n` +
+    `POST TO JUDGE AND (IF NEEDED) REWRITE:\n"""\n${original}\n"""\n\n` +
+    (hasFirstComment
+      ? `LINKEDIN FIRST COMMENT (judge and rewrite only if it needs it):\n"""\n${post.first_comment.trim()}\n"""\n\n`
+      : "") +
+    `Judge it against the fault checklist. Return the JSON described in your instructions. ` +
+    `Remember: if it is already strong, return it unchanged with verdict "keep". ` +
+    `Never add a fact that is not already in the draft.`;
 
-  const fabNames = checkFabricatedNames(text);
-  if (fabNames) issues.push({ severity: "fail", code: "FABRICATED_CLIENT", detail: `Possible invented client/person reference: ${fabNames.matches.join(" / ")}` });
-
-  const anonCases = checkAnonymousCaseStudies(text);
-  if (anonCases) issues.push({ severity: "fail", code: "FABRICATED_CASE_STUDY", detail: `Specific anonymous case study (likely invented): ${anonCases.matches.join(" / ")}` });
-
-  if (!opts.allowBenchmarkStats) {
-    const fabStats = checkFabricatedStats(text);
-    if (fabStats) issues.push({ severity: "fail", code: "FABRICATED_STAT", detail: `Possible invented statistic: ${fabStats.matches.join(" / ")}` });
+  let raw;
+  try {
+    raw = await callModelFn({
+      systemPrompt,
+      userMessage,
+      maxTokens: 2048,
+      temperature: 0.5, // lower than the writer — editing is a tighter task than generating
+    });
+  } catch (e) {
+    // Model call failed — return the original untouched.
+    return { post, report: { channel, field, verdict: "error", reason: "model call failed: " + e.message, score: null, faults: [] } };
   }
 
-  const awards = checkAwards(text);
-  if (awards) issues.push({ severity: "fail", code: "FABRICATED_AWARD", detail: `Possible invented award: ${awards.matches.join(" / ")}` });
+  // Parse the editor's JSON verdict
+  let parsed;
+  try {
+    const clean = (raw || "").replace(/```json/g, "").replace(/```/g, "").trim();
+    parsed = JSON.parse(clean);
+  } catch (e) {
+    // Couldn't parse — safest to keep the original.
+    return { post, report: { channel, field, verdict: "parse_error", reason: "could not parse editor JSON", score: null, faults: [] } };
+  }
 
-  const partnerships = checkPartnerships(text);
-  if (partnerships) issues.push({ severity: "fail", code: "FABRICATED_PARTNERSHIP", detail: `Possible invented partnership: ${partnerships.matches.join(" / ")}` });
+  // If the editor chose to keep, or produced no usable edit, return original.
+  const verdict = parsed.verdict === "edit" ? "edit" : "keep";
+  const edited = (parsed.edited_caption || "").trim();
+  if (verdict === "keep" || !edited) {
+    return {
+      post,
+      report: { channel, field, verdict: "keep", score: parsed.score ?? null, faults: parsed.faults || [] },
+    };
+  }
 
-  const emDashes = checkEmDashes(text);
-  if (emDashes) issues.push({ severity: "fail", code: "EM_DASH", detail: `Em/en dashes found (${emDashes.count})` });
+  // Apply the edit. Clone the post so we never mutate the input.
+  const newPost = Object.assign({}, post);
+  newPost[field] = edited;
 
-  const opener = checkBannedOpener(text);
-  if (opener) issues.push({ severity: "fail", code: "BANNED_OPENER", detail: `Throat-clearing opener: "${opener.opener}"` });
-
-  // SEVERITY: WARN
-  const oxford = checkOxfordCommas(text);
-  if (oxford) issues.push({ severity: "warn", code: "OXFORD_COMMA", detail: `Possible Oxford comma usage (${oxford.count}): ${oxford.examples.join(", ")}` });
-
-  const curly = checkCurlyQuotes(text);
-  if (curly) issues.push({ severity: "warn", code: "CURLY_QUOTES", detail: `Curly quotes found (${curly.count}) — should be straight` });
-
-  const banned = checkBannedWords(text);
-  if (banned) issues.push({ severity: "warn", code: "BANNED_WORD", detail: `Banned words: ${banned.words.join(", ")}` });
-
-  const phrases = checkBannedPhrases(text);
-  if (phrases) issues.push({ severity: "warn", code: "BANNED_PHRASE", detail: `Banned phrases: ${phrases.phrases.join(" | ")}` });
-
-  const hasFail = issues.some(i => i.severity === "fail");
-  const hasWarn = issues.some(i => i.severity === "warn");
-  const severity = hasFail ? "fail" : hasWarn ? "warn" : "pass";
+  // Apply edited first comment only if one was returned and there was one to begin with.
+  if (hasFirstComment && parsed.edited_first_comment && parsed.edited_first_comment.trim()) {
+    newPost.first_comment = parsed.edited_first_comment.trim();
+  }
 
   return {
-    passed: severity !== "fail",
-    severity,
-    issues,
-    summary: severity === "pass"
-      ? "Content passed all checks"
-      : `${issues.filter(i => i.severity === "fail").length} fail, ${issues.filter(i => i.severity === "warn").length} warn`,
+    post: newPost,
+    report: {
+      channel,
+      field,
+      verdict: "edit",
+      score: parsed.score ?? null,
+      faults: parsed.faults || [],
+      originalLength: original.length,
+      editedLength: edited.length,
+    },
   };
 }
 
-function validatePost(fields) {
-  const checks = [
-    { name: "LinkedIn caption", text: fields["Caption - LinkedIn"] },
-    { name: "Facebook caption", text: fields["Caption - Facebook"] },
-    { name: "Instagram caption", text: fields["Caption - Instagram"] },
-    { name: "Twitter caption", text: fields["Caption - Twitter"] },
-    { name: "TikTok caption", text: fields["Caption - TikTok"] },
-    { name: "Pinterest caption", text: fields["Caption - Pinterest"] },
-    { name: "GBP caption", text: fields["Caption - GBP"] },
-    { name: "Blog content", text: fields["Blog Content"] },
-    { name: "First comment", text: fields["First Comment"] },
-  ];
-
-  const allIssues = [];
-  let highestSeverity = "pass";
-
-  for (const check of checks) {
-    if (!check.text) continue;
-    const result = validateContent(check.text);
-    for (const issue of result.issues) {
-      allIssues.push({ ...issue, field: check.name });
-    }
-    if (result.severity === "fail") highestSeverity = "fail";
-    else if (result.severity === "warn" && highestSeverity !== "fail") highestSeverity = "warn";
+/**
+ * Polish an array of posts. Runs the editor on each, sequentially to stay well
+ * within rate limits (a weekly batch is ~10 posts). Returns the polished posts
+ * and a summary report. NEVER throws — on any failure the affected post is
+ * returned untouched.
+ *
+ * The pipeline calls this AFTER parse and BEFORE validateAndTagPosts, so every
+ * edited post is still validated for fabrication afterwards.
+ *
+ * @param {object[]} posts - normalized posts from parsePostsJson
+ * @param {function} callModelFn - the pipeline's callModel
+ * @returns {Promise<{posts: object[], reports: object[], summary: object}>}
+ */
+async function polishPosts(posts, callModelFn) {
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return { posts: posts || [], reports: [], summary: { total: 0, edited: 0, kept: 0, errors: 0 } };
   }
 
-  const failIssues = allIssues.filter(i => i.severity === "fail");
-  const warnIssues = allIssues.filter(i => i.severity === "warn");
-  let report = "";
-  if (failIssues.length) {
-    report += "FAIL (blocks publishing):\n";
-    failIssues.forEach(i => report += `  • [${i.field}] ${i.code}: ${i.detail}\n`);
+  // Kill switch: default ON. Only "false" disables.
+  if (process.env.VOICE_EDITOR_ENABLED === "false") {
+    return {
+      posts,
+      reports: posts.map(() => ({ verdict: "disabled" })),
+      summary: { total: posts.length, edited: 0, kept: posts.length, errors: 0, disabled: true },
+    };
   }
-  if (warnIssues.length) {
-    if (report) report += "\n";
-    report += "WARN (review recommended):\n";
-    warnIssues.forEach(i => report += `  • [${i.field}] ${i.code}: ${i.detail}\n`);
+
+  if (typeof callModelFn !== "function") {
+    // No model function provided — cannot edit, return originals.
+    return {
+      posts,
+      reports: posts.map(() => ({ verdict: "no_model_fn" })),
+      summary: { total: posts.length, edited: 0, kept: posts.length, errors: 0 },
+    };
   }
-  if (!report) report = "All checks passed.";
+
+  const outPosts = [];
+  const reports = [];
+  let edited = 0, kept = 0, errors = 0;
+
+  for (const post of posts) {
+    const { post: result, report } = await polishPost(post, callModelFn);
+    outPosts.push(result);
+    reports.push(report);
+    if (report.verdict === "edit") edited++;
+    else if (report.verdict === "keep" || report.verdict === "skip") kept++;
+    else errors++;
+  }
 
   return {
-    passed: highestSeverity !== "fail",
-    severity: highestSeverity,
-    issues: allIssues,
-    formattedReport: report.trim(),
+    posts: outPosts,
+    reports,
+    summary: { total: posts.length, edited, kept, errors },
   };
 }
 
-module.exports = { validateContent, validatePost, BANNED_WORDS, BANNED_PHRASES, COMPETITOR_NAMES };
+module.exports = {
+  polishPosts,
+  polishPost,
+  buildEditorSystemPrompt,
+  GUARDRAIL_SENTINEL,
+  // exposed for tests
+  CHANNEL_TO_FIELD,
+};

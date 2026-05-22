@@ -627,17 +627,23 @@ Each object:
 
 ### Caption length guidance (for the channel you ARE populating)
 
-Err on the side of giving the idea ROOM. Posts have been coming back too short
-and thin. Hit the upper half of these ranges, not the floor.
+LENGTH IS A REQUIREMENT, NOT A SUGGESTION. A LinkedIn post that comes in
+short reads as low-effort and gets less reach. Develop the idea properly.
 
-LinkedIn Personal: aim for 900-1300 chars. Give the idea room to breathe and
-  land properly. Open on a real moment, develop it, end forward. Use line
-  breaks for scannability. Do not pad with filler, but do not stop after three
-  short lines either — a thin post reads as low-effort.
-LinkedIn Company: 700-1000 chars, polished but warm, never corporate.
-Facebook: 300-500 chars, friendly, can include emojis sparingly.
-Instagram: 150-400 chars, hook in first line, hashtags at end.
-Google Business Profile: 400-1500 chars, local SEO-aware, includes CTA.
+LinkedIn Personal: MUST be at least 900 characters, ideally 1000-1300. A
+  600-character LinkedIn post is a FAULT — it is too thin. If your draft is
+  under 900, do not stop. Develop it: add a second concrete example, a sharper
+  piece of context, a deeper layer to the take, or a brief "here is why this
+  matters for the agent at their desk on Monday" beat. Develop with substance
+  and angle, NEVER with filler, padding, or repetition. Open on a real moment,
+  build the argument across a few short paragraphs, end forward.
+LinkedIn Company: MUST be at least 700 characters, ideally 800-1000. Same
+  rule — a short company post is a fault. Develop it properly.
+Facebook: 300-500 characters. SHORT is correct here — do not pad. Friendly,
+  community-facing, can include emojis sparingly.
+Instagram: 150-400 characters. SHORT is correct here — hook in the first line,
+  hashtags at the end. Do not pad to hit a count.
+Google Business Profile: 400-1500 characters, local SEO-aware, includes a CTA.
 
 Generate ${fields["Posting Frequency"] || 10} posts for the week beginning ${getNextMonday()}.`;
 }

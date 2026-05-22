@@ -23,6 +23,7 @@ var {
   callModel,
   validateAndTagPosts,
   parsePostsJson,
+  polishPostsThroughEditor,
 } = require("../lib/generation-pipeline.js");
 
 var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
@@ -302,8 +303,26 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 5. Validate every generated post BEFORE writing to Airtable.
+    // 4b. VOICE EDITOR — second pass. Judges each post against Andy's voice and
+    //     rewrites only those that fall short, leaving strong posts untouched.
+    //     Runs BEFORE validation so any fabrication it might introduce is still
+    //     caught by validateAndTagPosts below. Never throws; on failure the
+    //     original posts pass through unchanged.
+    var editorSummary = { total: posts.length, edited: 0, kept: posts.length, errors: 0 };
+    try {
+      var polished = await polishPostsThroughEditor(posts);
+      posts = polished.posts;
+      editorSummary = polished.summary;
+      console.log("[generate.js] Voice editor:", JSON.stringify(editorSummary),
+        "faults:", JSON.stringify(polished.reports.map(function(r){ return r.faults || []; })));
+    } catch (e) {
+      console.error("[generate.js] Voice editor pass failed, using unedited posts:", e.message);
+    }
+
+    // 5. Validate every (possibly edited) post BEFORE writing to Airtable.
     //    validateAndTagPosts marks bad posts with statusOverride="Quality Hold".
+    //    This runs AFTER the voice editor so the validator always has the last
+    //    word — the editor can never sneak a fabrication past this gate.
     var tagged = validateAndTagPosts(posts);
 
     var blockedCount = tagged.filter(function(t) { return t.statusOverride === "Quality Hold"; }).length;
@@ -334,6 +353,7 @@ module.exports = async function handler(req, res) {
       approved: approved,
       validationWarnings: warnCount,
       validationBlocked: blockedCount,
+      voiceEditor: editorSummary,
       autoPublishHonoured: clientAutoPublish && process.env.AUTO_PUBLISH_ENABLED === "true",
       autoPublishKillSwitch: process.env.AUTO_PUBLISH_ENABLED !== "true",
       clientType: clientType,

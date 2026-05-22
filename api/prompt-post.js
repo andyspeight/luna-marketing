@@ -13,6 +13,7 @@ var {
   callModel,
   validateAndTagPosts,
   normalizePost,
+  polishPostsThroughEditor,
 } = require("../lib/generation-pipeline.js");
 
 var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
@@ -134,7 +135,19 @@ module.exports = async function handler(req, res) {
     // prompt convention the model followed (B2B emits camelCase, B2C snake_case).
     post = normalizePost(post);
 
-    // Run through the same validator (single-post = one-element array)
+    // Voice editor second pass (before validation, same as the batch path).
+    // Never throws; on failure the original post passes through.
+    try {
+      var polishedSingle = await polishPostsThroughEditor([post]);
+      if (polishedSingle && polishedSingle.posts && polishedSingle.posts[0]) {
+        post = polishedSingle.posts[0];
+        console.log("[prompt-post] Voice editor:", JSON.stringify(polishedSingle.summary));
+      }
+    } catch (e) {
+      console.error("[prompt-post] Voice editor failed, using unedited post:", e.message);
+    }
+
+    // Run through the same validator AFTER the editor (validator has last word)
     var taggedArr = validateAndTagPosts([post]);
     var tagged = taggedArr[0];
     var validation = tagged.validation;

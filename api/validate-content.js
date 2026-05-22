@@ -30,7 +30,23 @@ const BANNED_WORDS = [
   "pivotal", "testament", "underscores", "underscore", "fostering", "foster",
   "garner", "garners", "garnering", "showcase", "showcases", "showcasing",
   "interplay", "intricate", "intricacies", "enduring", "utilize", "synergy", "innovative",
+  // Added 22 May 2026 after "ecosystem" and "landscape" leaked through both
+  // passes. "landscape" and "ecosystem" are context-sensitive — they are only
+  // banned as METAPHORS, not in their literal senses. checkBannedWords handles
+  // that nuance below so we do not false-flag literal usage.
+  "ecosystem", "landscape",
 ];
+
+// Words from BANNED_WORDS that are only banned as a METAPHOR. Their literal
+// senses are fine ("the Lake District landscape", "the marine ecosystem"), so
+// we only flag them when used figuratively in a business/tech context. The
+// heuristic: flag if the word is preceded by a business/abstract qualifier
+// (digital, travel, tech, business, competitive, market, industry, distribution,
+// software, data, vendor, supplier, pricing, etc.) — that is the metaphor usage.
+const METAPHOR_ONLY_WORDS = {
+  "landscape": /\b(digital|travel|tech|technology|business|competitive|market|industry|distribution|software|data|vendor|supplier|pricing|economic|financial|media|content|regulatory|consumer|retail|commercial|booking|trade|sector)\s+landscape\b/i,
+  "ecosystem": /\b(digital|travel|tech|technology|business|software|data|vendor|supplier|partner|product|platform|booking|payment|app|content)\s+ecosystem\b/i,
+};
 
 const BANNED_PHRASES = [
   "in conclusion", "to summarise", "to summarize", "as we've seen", "as we have seen",
@@ -177,6 +193,12 @@ function checkBannedWords(text) {
   const lower = " " + text.toLowerCase() + " ";
   const found = [];
   for (const word of BANNED_WORDS) {
+    // Metaphor-only words: only flag when used figuratively (e.g. "travel
+    // landscape"), not literally ("the Lake District landscape").
+    if (METAPHOR_ONLY_WORDS[word]) {
+      if (METAPHOR_ONLY_WORDS[word].test(text)) found.push(word);
+      continue;
+    }
     const regex = new RegExp(`\\b${word.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
     if (regex.test(lower)) found.push(word);
   }

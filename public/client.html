@@ -11478,6 +11478,28 @@ window.__emailComposeAiSave = async function() {
       });
       return copy;
     });
+    // The save endpoint requires a rendered body (bodyHTML or bodyPlain).
+    // The preview pane already renders these exact sections to full email
+    // HTML via /api/email-preview-render and stores it in previewHtml.
+    // Reuse that. If the preview hasn't rendered yet (user saved fast, or it
+    // errored), render it now so we never POST an empty body.
+    if (!aiCompose.previewHtml) {
+      await window.__aiRefreshPreview();
+    }
+    if (!aiCompose.previewHtml) {
+      throw new Error('Preview could not render, so there is no email body to save. Click Refresh preview, then save again.');
+    }
+    var bodyHTML = aiCompose.previewHtml;
+    // Derive a plain-text fallback from the rendered HTML.
+    var bodyPlain = bodyHTML
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
     var r = await fetch('/api/email-compose', {
       method: 'POST',
       credentials: 'include',
@@ -11486,6 +11508,8 @@ window.__emailComposeAiSave = async function() {
         clientId: state.profile.id,
         subject: aiCompose.draft.subject,
         previewText: aiCompose.draft.previewText,
+        bodyHTML: bodyHTML,
+        bodyPlain: bodyPlain,
         sectionsJson: JSON.stringify(cleanSections),
         audience: aiCompose.audience,
         status: 'Draft',

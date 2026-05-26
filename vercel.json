@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/", "destination": "/client.html" }
+  ],
   "crons": [
     {
       "path": "/api/cron-generate",
@@ -22,68 +25,26 @@
     }
   ],
   "functions": {
-    "api/generate.js": {
-      "maxDuration": 300
-    },
-    "api/prompt-post.js": {
-      "maxDuration": 120
-    },
-    "api/generate-blog.js": {
-      "maxDuration": 120
-    },
-    "api/cron-generate.js": {
-      "maxDuration": 300
-    },
-    "api/research-feed.js": {
-      "maxDuration": 120
-    },
-    "api/email-drip.js": {
-      "maxDuration": 120
-    },
-    "api/events-verify-batch.js": {
-      "maxDuration": 300
-    },
-    "api/events-verify-cron.js": {
-      "maxDuration": 300
-    },
-    "api/events-discover.js": {
-      "maxDuration": 300
-    },
-    "api/cron-draft-comments.js": {
-      "maxDuration": 300
-    },
-    "api/quality-admin.js": {
-      "maxDuration": 120
-    },
-    "api/publish.js": {
-      "maxDuration": 120
-    },
-    "api/events-topup.js": {
-      "maxDuration": 120
-    },
-    "api/image-generate.js": {
-      "maxDuration": 120
-    },
-    "api/image-refine.js": {
-      "maxDuration": 120
-    },
-    "api/image-lab-generate.js": {
-      "maxDuration": 300
-    },
-    "api/image-lab-flux.js": {
-      "maxDuration": 120
-    },
-    "api/image-lab-html.js": {
-      "maxDuration": 300
-    },
-    "api/image-generate-v2.js": {
-      "maxDuration": 300
-    },
-    "api/replicate-generate.js": {
-      "maxDuration": 120
-    },
-    "api/route-image-brief.js": {
-      "maxDuration": 30
-    }
+    "api/generate.js": { "maxDuration": 300 },
+    "api/prompt-post.js": { "maxDuration": 120 },
+    "api/generate-blog.js": { "maxDuration": 120 },
+    "api/cron-generate.js": { "maxDuration": 300 },
+    "api/research-feed.js": { "maxDuration": 120 },
+    "api/email-drip.js": { "maxDuration": 120 },
+    "api/events-verify-batch.js": { "maxDuration": 300 },
+    "api/events-verify-cron.js": { "maxDuration": 300 },
+    "api/events-discover.js": { "maxDuration": 300 },
+    "api/cron-draft-comments.js": { "maxDuration": 300 },
+    "api/quality-admin.js": { "maxDuration": 120 },
+    "api/publish.js": { "maxDuration": 120 },
+    "api/events-topup.js": { "maxDuration": 120 },
+    "api/image-generate.js": { "maxDuration": 120 },
+    "api/image-refine.js": { "maxDuration": 120 },
+    "api/image-lab-generate.js": { "maxDuration": 300 },
+    "api/image-lab-flux.js": { "maxDuration": 120 },
+    "api/image-lab-html.js": { "maxDuration": 300 },
+    "api/image-generate-v2.js": { "maxDuration": 300 },
+    "api/replicate-generate.js": { "maxDuration": 120 },
+    "api/route-image-brief.js": { "maxDuration": 30 }
   }
 }

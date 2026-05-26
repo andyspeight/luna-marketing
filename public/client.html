@@ -11201,21 +11201,21 @@ window.__aiOpenInboxPreview = function() {
 // preview makes) and open the inbox-size modal with the result.
 window.__builderOpenInboxPreview = async function() {
   try {
-    var iframe = document.getElementById('builderPreviewFrame');
     var html = null;
-    // The builder iframe's srcdoc holds the most recently rendered email.
-    // If the iframe has content, prefer that over a fresh fetch — avoids
-    // re-fetching when the live preview is already up to date.
-    if (iframe && iframe.srcdoc) {
-      html = iframe.srcdoc;
+    // The live preview render stores its result in emailState.previewHTML
+    // (see __builderRenderPreview). Prefer that — it's the value that's
+    // actually populated on a successful render. (The iframe is filled via
+    // document.write, not srcdoc, so reading iframe.srcdoc never works.)
+    if (emailState.previewHTML) {
+      html = emailState.previewHTML;
     }
     if (!html) {
-      // Trigger a fresh render via existing path. If drawEmails is the
-      // builder's render entry it'll repaint the iframe; we then read it.
-      if (typeof drawEmails === 'function') drawEmails();
-      await new Promise(function(r) { setTimeout(r, 200); });
-      iframe = document.getElementById('builderPreviewFrame');
-      if (iframe) html = iframe.srcdoc;
+      // No render yet — trigger one via the real builder render path,
+      // wait for it to finish, then read the stored HTML.
+      if (typeof window.__builderRenderPreview === 'function') {
+        await window.__builderRenderPreview();
+      }
+      html = emailState.previewHTML || null;
     }
     if (!html) {
       alert('Preview not yet rendered. Click around in the builder once and try again.');

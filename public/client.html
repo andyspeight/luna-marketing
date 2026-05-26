@@ -5225,6 +5225,9 @@ function drawComposeForm() {
     // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
     { type: 'generated-image', icon: '<rect x="2" y="3" width="20" height="18" rx="1"/><path d="M4 16l4-4 3 3 4-5 5 7" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>' },
 
+    // ── Raw HTML (admin-only, manual paste) ────────────────────────────
+    { type: 'html', icon: '<polyline points="8 6 3 12 8 18"/><polyline points="16 6 21 12 16 18"/><line x1="13" y1="4" x2="11" y2="20"/>' },
+
     // ── B2B Weekly sections (Archetype A, May 2026) ────────────────────
     { type: 'masthead', icon: '<line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="20" x2="22" y2="20" stroke-width="2.4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.4"/>' },
     { type: 'toc', icon: '<rect x="2" y="4" width="2" height="2" rx="0.4"/><line x1="6" y1="5" x2="20" y2="5"/><rect x="2" y="9" width="2" height="2" rx="0.4"/><line x1="6" y1="10" x2="20" y2="10"/><rect x="2" y="14" width="2" height="2" rx="0.4"/><line x1="6" y1="15" x2="20" y2="15"/><rect x="2" y="19" width="2" height="2" rx="0.4"/><line x1="6" y1="20" x2="20" y2="20"/>' },
@@ -5338,6 +5341,13 @@ function defaultStarterSections() {
 
 // Section type metadata (label, description, fields)
 var SECTION_META = {
+  html: {
+    label: 'HTML (raw)',
+    description: 'Admin only. Paste raw HTML — it renders exactly as pasted, with no validation. Use for custom blocks.',
+    fields: [
+      { key: 'html', label: 'Raw HTML (renders verbatim — admin use only)', type: 'longText' },
+    ],
+  },
   header: {
     label: 'Header',
     description: 'Logo at top of email with optional nav links',
@@ -6092,6 +6102,7 @@ function sectionMeta(type) {
 function sectionSummary(section) {
   var p = section.props || {};
   switch (section.type) {
+    case 'html': return (p.html && p.html.trim()) ? 'Custom HTML (' + p.html.trim().length + ' chars)' : '(empty — paste HTML)';
     case 'header': return p.logoAlt || 'Travelgenix logo';
     case 'hero': return p.headline || '(no headline)';
     case 'text': return (p.headline || p.body || '(empty)').slice(0, 50);
@@ -7744,6 +7755,7 @@ window.__submitSaveAsTemplate = async function() {
 
 function defaultPropsForType(type) {
   switch (type) {
+    case 'html': return { html: '' };
     case 'header': return { logoAlt: 'Travelgenix', logoLinkUrl: 'https://travelgenix.io' };
     case 'hero': return { headline: 'Your headline here', subhead: 'Supporting line.', ctaText: 'Learn more', ctaUrl: 'https://travelgenix.io', accent: 'teal' };
     case 'text': return { body: 'Write your content here.', align: 'left' };

@@ -35,7 +35,14 @@ const CLIENTS_TABLE = "Clients";
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://luna-marketing.vercel.app";
 const MAX_SECTIONS = 30;
-const MAX_BODY_BYTES = 200_000; // hard cap on incoming JSON body
+// Hard cap on incoming JSON body. Raised from 200_000 (26 May 2026) to
+// accommodate the manual "html" section type, which can carry a large
+// pasted HTML block. The whole email's sections are JSON-stringified for
+// this request, and HTML inflates inside JSON (every " becomes \", every
+// newline \n), so a sizeable block can exceed the old 200KB ceiling.
+// 1MB is comfortably under Vercel's serverless body limit (~4.5MB) while
+// still bounding the payload as a guard against abusive requests.
+const MAX_BODY_BYTES = 1_000_000;
 
 async function airtableFetch(url, options = {}) {
   const r = await fetch(url, {

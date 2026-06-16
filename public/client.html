@@ -2061,6 +2061,7 @@ function renderPosts(){
   var filter=state.postsFilter||'Queued';
   var queuedN=state.allPosts.filter(function(x){return x.status==='Queued'}).length;
   var approvedN=state.allPosts.filter(function(x){return x.status==='Approved'}).length;
+  var qualityHoldN=state.allPosts.filter(function(x){return x.status==='Quality Hold'}).length;
   var h='<div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);flex-wrap:wrap">';
   h+='<button class="btn btn-primary btn-sm" onclick="C.gen(this)">Generate Posts</button>';
   h+='<button class="btn btn-sm" style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--tg-accent-dark)" onclick="C.publishAll(this)">Publish All Approved</button>';
@@ -2080,10 +2081,15 @@ function renderPosts(){
   h+='<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4)">';
   h+='<button type="button" style="'+pillBase+(filter==='Queued'?';'+pillActive:'')+'" onclick="C.setPostsFilter(\'Queued\')">Queued <span style="'+countPillBase+(filter==='Queued'?';'+countPillActive:'')+'">'+queuedN+'</span></button>';
   h+='<button type="button" style="'+pillBase+(filter==='Approved'?';'+pillActive:'')+'" onclick="C.setPostsFilter(\'Approved\')">Approved <span style="'+countPillBase+(filter==='Approved'?';'+countPillActive:'')+'">'+approvedN+'</span></button>';
+  if(qualityHoldN>0||filter==='Quality Hold'){
+    h+='<button type="button" style="'+pillBase+(filter==='Quality Hold'?';'+pillActive:'')+'" onclick="C.setPostsFilter(\'Quality Hold\')">Quality Hold <span style="'+countPillBase+(filter==='Quality Hold'?';'+countPillActive:'')+'">'+qualityHoldN+'</span></button>';
+  }
   h+='</div>';
   if(!posts.length){
     var emptyMsg;
-    if(filter==='Approved'){
+    if(filter==='Quality Hold'){
+      emptyMsg='No posts on Quality Hold. Posts land here when the validator flags a possible issue (a fabricated detail, an em dash, etc.) so they can be fixed before publishing.';
+    }else if(filter==='Approved'){
       emptyMsg='No approved posts yet. Approve posts from the Queued tab and they\'ll appear here ready to publish.';
     }else{
       emptyMsg='No posts waiting for review. '+(state.profile.auto_publish?'Auto Publish is on.':'Generate posts or wait for the next scheduled batch.');
@@ -2165,6 +2171,12 @@ function renderPosts(){
     h+='<div class="post-feedback" id="cfb-'+p.id+'"></div></div>';
   });
   h+='</div>';$('view-posts').innerHTML=h;
+  // If we arrived here from a deep link (e.g. clicking a post in Campaigns),
+  // scroll to that post and flash a highlight, then clear the flag.
+  if(state.focusPostId){
+    var fid=state.focusPostId;state.focusPostId=null;
+    setTimeout(function(){var el=$('cp-'+fid);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.transition='box-shadow 0.3s';el.style.boxShadow='0 0 0 3px var(--tg-accent)';setTimeout(function(){el.style.boxShadow=''},2200)}},120);
+  }
 }
 
 /* ── CREATE POST ── */
@@ -3700,7 +3712,7 @@ window.C={
   },
   gen:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Generating...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='This may take 30-60 seconds...';try{var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');var n=d.posts?d.posts.length:0;fb.style.color='var(--tg-success)';fb.textContent=n+' post'+(n!==1?'s':'')+' generated';await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Posts'}},
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},
-  setPostsFilter:function(f){if(f!=='Queued'&&f!=='Approved')return;state.postsFilter=f;state.posts=state.allPosts.filter(function(p){return p.status===state.postsFilter});state.selected={};renderPosts()},
+  setPostsFilter:function(f){if(f!=='Queued'&&f!=='Approved'&&f!=='Quality Hold')return;state.postsFilter=f;state.posts=state.allPosts.filter(function(p){return p.status===state.postsFilter});state.selected={};renderPosts()},
   publishOne:async function(pid,btn){var fb=$('cfb-'+pid);btn.disabled=true;btn.textContent='Publishing...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:pid})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Published to '+(d.platforms&&d.platforms.succeeded?d.platforms.succeeded+' platform'+(d.platforms.succeeded!==1?'s':''):'Metricool')+(d.platforms&&d.platforms.failed?' ('+d.platforms.failed+' failed)':'')}var c=$('cp-'+pid);if(c){c.style.opacity='0.3';c.style.pointerEvents='none'}setTimeout(loadPosts,1500)}catch(e){btn.disabled=false;btn.textContent='Publish now';if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}}},
   createPost:async function(){var txt=$('promptText');var fb=$('prompt-fb');var btn=$('promptBtn');if(!txt||!txt.value.trim())return;btn.disabled=true;btn.textContent='Generating...';fb.style.cssText='display:block;background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);color:var(--tg-text-tertiary)';fb.textContent='Creating post for all 7 platforms...';try{var r=await fetch('/api/prompt-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id,prompt:txt.value.trim()})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Post created and added to queue';txt.value='';await loadPosts()}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Post'}},
   showReject:function(pid){var reasons=['Wrong tone','Wrong destination','Too generic','Don\'t like the image','Too long','Too short','Not relevant right now','Other'];var h='<div class="reject-modal" id="rejectModal" onclick="if(event.target===this)C.closeReject()"><div class="reject-box"><div class="reject-title">Why are you rejecting this post?</div><div class="reject-sub">Your feedback helps Luna create better content for you.</div><div class="reject-reasons">';reasons.forEach(function(r){h+='<button class="reject-reason" onclick="C.selectReason(this)">'+r+'</button>'});h+='</div><input class="reject-notes" id="rejectNotes" placeholder="Tell us more (optional)..."><div class="reject-btns"><button class="btn btn-ghost btn-sm" onclick="C.closeReject()">Cancel</button><button class="btn btn-reject btn-sm" id="rejectSubmitBtn" onclick="C.submitReject(\''+pid+'\')" disabled style="opacity:0.5">Reject Post</button></div></div></div>';document.body.insertAdjacentHTML('beforeend',h)},
@@ -9982,7 +9994,7 @@ function campRender(d) {
     posts.forEach(function(p){
       var held = p.status === 'Quality Hold';
       h += '<div style="margin-bottom:var(--space-2)">';
-      h += '<div class="card camp-post" title="Open in My Posts" style="padding:var(--space-4);' + (held ? 'border-bottom-left-radius:0;border-bottom-right-radius:0;' : '') + 'display:flex;align-items:center;gap:var(--space-3);cursor:pointer">';
+      h += '<div class="card camp-post" data-pid="' + esc(p.id) + '" data-status="' + esc(p.status) + '" title="Open in My Posts" style="padding:var(--space-4);' + (held ? 'border-bottom-left-radius:0;border-bottom-right-radius:0;' : '') + 'display:flex;align-items:center;gap:var(--space-3);cursor:pointer">';
       if (p.hasImage) h += '<img src="' + esc(p.imageUrl) + '" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius-sm);flex:none">';
       else h += '<div style="width:48px;height:48px;border-radius:var(--radius-sm);flex:none;background:var(--tg-bg-tertiary);display:flex;align-items:center;justify-content:center;color:var(--tg-text-tertiary);font-size:9px;text-align:center">no image</div>';
       h += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.title) + '</div>' +
@@ -10012,7 +10024,12 @@ function campRender(d) {
   }
   body.innerHTML = h;
   body.querySelectorAll('.camp-post').forEach(function(c){
-    c.onclick = function(){ var t = document.querySelector('[data-view="posts"]'); if (t) t.click(); };
+    c.onclick = function(){
+      var st = c.dataset.status;
+      state.postsFilter = (st === 'Approved' || st === 'Quality Hold') ? st : 'Queued';
+      state.focusPostId = c.dataset.pid;
+      var t = document.querySelector('[data-view="posts"]'); if (t) t.click();
+    };
   });
   body.querySelectorAll('.camp-email').forEach(function(c){
     c.onclick = function(){ var t = document.querySelector('[data-view="emails"]'); if (t) t.click(); };

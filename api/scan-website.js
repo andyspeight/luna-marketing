@@ -153,7 +153,7 @@ async function analyseWithClaude(siteData, colours, socials, logoUrl, ogImageUrl
   contentBlocks.push({ type: "text", text: textPrompt });
 
   var response = await claude.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 2000,
     temperature: 0,
     system: systemMsg,

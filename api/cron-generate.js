@@ -378,7 +378,7 @@ async function processClient(record, events) {
   const messages = [{ role: "user", content: userMessage }];
 
   const apiParams = {
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 8000,
     temperature: 0.7,
     system: systemPrompt,

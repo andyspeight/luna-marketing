@@ -146,7 +146,7 @@ ${options.subjectHint ? `Subject hint from sender: ${options.subjectHint}` : ""}
   const systemPrompt = BRAND_GUARDRAILS + "\n\n" + newsletterPrompt;
 
   const response = await aiClient.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 4000,
     temperature: 0.7,
     system: systemPrompt,

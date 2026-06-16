@@ -6,7 +6,10 @@ var METRICOOL_KEY = process.env.METRICOOL_KEY;
 var METRICOOL_USER = process.env.METRICOOL_USER_ID || "3429319";
 
 function mcH() {
-  return { "x-api-key": METRICOOL_KEY, "Content-Type": "application/json" };
+  // Metricool authenticates with the X-Mc-Auth header (same as the publish
+  // path in publish.js). The previous "x-api-key" header was wrong (that's
+  // Anthropic's convention) and made every connection check 401.
+  return { "X-Mc-Auth": METRICOOL_KEY, "Content-Type": "application/json" };
 }
 
 async function atGet(table, id) {

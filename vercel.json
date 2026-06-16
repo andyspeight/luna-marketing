@@ -22,6 +22,10 @@
     {
       "path": "/api/events-verify-cron",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron-product-brain",
+      "schedule": "0 5 * * *"
     }
   ],
   "functions": {
@@ -45,6 +49,8 @@
     "api/image-lab-html.js": { "maxDuration": 300 },
     "api/image-generate-v2.js": { "maxDuration": 300 },
     "api/replicate-generate.js": { "maxDuration": 120 },
-    "api/route-image-brief.js": { "maxDuration": 30 }
+    "api/route-image-brief.js": { "maxDuration": 30 },
+    "api/cron-product-brain.js": { "maxDuration": 300 },
+    "api/product-brain.js": { "maxDuration": 300 }
   }
 }

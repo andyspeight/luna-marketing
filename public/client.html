@@ -1736,7 +1736,7 @@ select.of-input { cursor: pointer; height: 34px; }
   </header>
   <div class="stats" id="statsRow"></div>
   <div id="eventsTicker" style="margin-bottom:var(--space-4);overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);display:none"></div>
-  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
+  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="product-brain" id="productBrainTab" role="tab" style="display:none">Product Brain</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
   <main>
     <div id="view-dashboard" class="hide" role="tabpanel"></div>
     <div id="view-posts" class="fade-in" role="tabpanel"></div>
@@ -1745,6 +1745,7 @@ select.of-input { cursor: pointer; height: 34px; }
     <div id="view-calendar" class="hide" role="tabpanel"></div>
     <div id="view-emails" class="hide" role="tabpanel"></div>
     <div id="view-content-engine" class="hide" role="tabpanel"></div>
+    <div id="view-product-brain" class="hide" role="tabpanel"></div>
     <div id="view-platforms" class="hide" role="tabpanel"></div>
     <div id="view-settings" class="hide" role="tabpanel"></div>
   </main>
@@ -1799,10 +1800,10 @@ window.addEventListener('tg-auth-ready',async function(){
     document.body.innerHTML='<div style="font-family:system-ui;max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 6px rgba(0,0,0,.06)"><h1 style="font-size:20px;margin:0 0 12px;color:#0F172A">Could not load your portal</h1><p style="color:#64748B;line-height:1.5;margin:0 0 24px">'+e.message+'</p><a href="https://id.travelify.io" style="display:inline-block;padding:10px 20px;background:#00B4D8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Back to Apps</a></div>';
   }
 });
-function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain()};
 
 // Data
 var PLATS=[
@@ -9190,6 +9191,276 @@ function maybeAutoShowShowcase() {
     setTimeout(function () { openShowcase('auto'); }, 1500);
   }
 }// ═══════════════════════════════════════════════════════════════════════════
+// PRODUCT BRAIN — daily-refreshed product knowledge (owner only)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Surfaces the Product Library "brain": the auto-scraped Brain Summary, the
+// owner's authoritative Supplement, source URLs, freshness, and suggested
+// changes to the canonical copy. Backed by /api/product-brain.
+
+var pbState = { products: [], tenantId: null, mainWebsiteUrl: '', loading: false, expanded: null, busy: {}, lastChanges: {} };
+
+var PB_FRESH = {
+  Fresh: { bg: 'rgba(34,197,94,0.12)', fg: '#15803D', label: 'Fresh' },
+  Stale: { bg: 'rgba(234,179,8,0.14)', fg: '#A16207', label: 'Stale' },
+  Error: { bg: 'rgba(239,68,68,0.12)', fg: '#B91C1C', label: 'Error' },
+  Never: { bg: 'var(--tg-bg-tertiary)', fg: 'var(--tg-text-tertiary)', label: 'Never scanned' }
+};
+
+function pbPill(freshness) {
+  var s = PB_FRESH[freshness] || PB_FRESH.Never;
+  return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;background:' + s.bg + ';color:' + s.fg + '">' +
+    '<span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>' + s.label + '</span>';
+}
+
+function pbWhen(iso) {
+  if (!iso) return 'never';
+  var d = new Date(iso); if (isNaN(d)) return 'never';
+  var mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.round(mins / 60); if (hrs < 24) return hrs + 'h ago';
+  var days = Math.round(hrs / 24); return days + 'd ago';
+}
+
+async function renderProductBrain() {
+  var el = $('view-product-brain'); if (!el) return;
+  if (!pbState.tenantId) pbState.tenantId = state.profile.id;
+  el.innerHTML =
+    '<div style="padding:var(--space-6);max-width:1100px;margin:0 auto">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-5);flex-wrap:wrap">' +
+        '<div>' +
+          '<h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Product Brain</h2>' +
+          '<p style="margin:0;font-size:var(--text-sm);color:var(--tg-text-secondary);max-width:640px">Luna learns each product from your website every day. Add source pages and your own notes here so the marketing engine always writes with the latest, most accurate information.</p>' +
+        '</div>' +
+        '<div style="display:flex;gap:var(--space-2);align-items:center"><button class="btn btn-secondary" id="pb-refresh-all" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh all now</button></div>' +
+      '</div>' +
+      '<div id="pb-meta" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)"></div>' +
+      '<div id="pb-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading product brain&hellip;</div></div>' +
+    '</div>';
+  var rb = $('pb-refresh-all'); if (rb) rb.onclick = pbRefreshAll;
+  await pbLoad();
+}
+
+async function pbLoad() {
+  pbState.loading = true;
+  var body = $('pb-body');
+  try {
+    var r = await fetch('/api/product-brain?tenantId=' + encodeURIComponent(pbState.tenantId), { credentials: 'include' });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Load failed');
+    pbState.products = d.products || [];
+    pbState.mainWebsiteUrl = d.mainWebsiteUrl || '';
+    pbRenderList();
+  } catch (e) {
+    if (body) body.innerHTML = '<div class="card" style="padding:var(--space-6);color:var(--tg-error);text-align:center">' + esc(e.message) + '</div>';
+  } finally { pbState.loading = false; }
+}
+
+function pbRenderList() {
+  var body = $('pb-body'); if (!body) return;
+  var meta = $('pb-meta');
+  var products = pbState.products.slice();
+  var counts = { Fresh: 0, Stale: 0, Error: 0, Never: 0 };
+  products.forEach(function(p){ counts[p.freshness] = (counts[p.freshness] || 0) + 1; });
+  var noUrls = products.filter(function(p){ return p.sourceUrlCount === 0; }).length;
+  if (meta) {
+    meta.innerHTML = products.length + ' products · ' +
+      counts.Fresh + ' fresh · ' + counts.Stale + ' stale · ' + counts.Error + ' error · ' + counts.Never + ' never scanned' +
+      (noUrls ? ' · <strong style="color:var(--tg-text-secondary)">' + noUrls + ' have no source URL yet</strong>' : '') +
+      (pbState.mainWebsiteUrl ? ' · main site: ' + esc(pbState.mainWebsiteUrl) : '');
+  }
+  // Order: products needing attention first (Error, Never, Stale), then Fresh; within each by priority.
+  var rank = { Error: 0, Never: 1, Stale: 2, Fresh: 3 };
+  products.sort(function(a, b){
+    if (rank[a.freshness] !== rank[b.freshness]) return rank[a.freshness] - rank[b.freshness];
+    if ((b.priority||0) !== (a.priority||0)) return (b.priority||0) - (a.priority||0);
+    return (a.name||'').localeCompare(b.name||'');
+  });
+  if (products.length === 0) {
+    body.innerHTML = '<div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">No products found for this tenant.</div>';
+    return;
+  }
+  var h = '';
+  products.forEach(function(p){
+    var open = pbState.expanded === p.id;
+    h += '<div class="card" style="margin-bottom:var(--space-3);overflow:hidden">';
+    // Header row (clickable)
+    h += '<div class="pb-head" data-pid="' + esc(p.id) + '" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer">';
+    h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--tg-text-tertiary);transition:transform var(--duration-fast) var(--ease-out);transform:rotate(' + (open ? '90' : '0') + 'deg);flex:none"><path d="M9 18l6-6-6-6"/></svg>';
+    h += '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--tg-text-primary);font-size:var(--text-base)">' + esc(p.name) + '</div>';
+    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + p.sourceUrlCount + ' source URL' + (p.sourceUrlCount === 1 ? '' : 's') + ' · last refreshed ' + pbWhen(p.lastRefreshed) + '</div></div>';
+    h += pbPill(p.freshness);
+    h += '</div>';
+    if (open) h += '<div class="pb-detail" id="pb-detail-' + esc(p.id) + '" style="border-top:1px solid var(--tg-border);padding:var(--space-5)">' + pbDetailHtml(p) + '</div>';
+    h += '</div>';
+  });
+  body.innerHTML = h;
+  body.querySelectorAll('.pb-head').forEach(function(row){
+    row.onclick = function(){
+      var pid = row.dataset.pid;
+      pbState.expanded = (pbState.expanded === pid) ? null : pid;
+      pbRenderList();
+      if (pbState.expanded) pbWireDetail(pbState.expanded);
+    };
+  });
+  if (pbState.expanded) pbWireDetail(pbState.expanded);
+}
+
+function pbField(label, hint) {
+  return '<label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">' + esc(label) +
+    (hint ? ' <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--tg-text-tertiary)">' + hint + '</span>' : '') + '</label>';
+}
+
+function pbTextarea(id, value, rows, ph) {
+  return '<textarea id="' + id + '" rows="' + rows + '" placeholder="' + esc(ph || '') + '" style="width:100%;box-sizing:border-box;font-family:var(--tg-font-body);font-size:var(--text-sm);line-height:1.5;padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary);color:var(--tg-text-primary);resize:vertical">' + esc(value || '') + '</textarea>';
+}
+
+function pbDetailHtml(p) {
+  var busy = pbState.busy[p.id];
+  var h = '';
+  // Action bar
+  h += '<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-5);flex-wrap:wrap">';
+  h += '<button class="btn btn-primary pb-refresh-one" data-pid="' + esc(p.id) + '" style="display:flex;align-items:center;gap:6px"' + (busy ? ' disabled' : '') + '><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>' + (busy ? 'Scanning&hellip;' : 'Refresh now') + '</button>';
+  h += '<span class="pb-status-' + esc(p.id) + '" style="font-size:var(--text-xs);color:var(--tg-text-tertiary)"></span>';
+  h += '</div>';
+
+  // Two-column: left = inputs (URLs, supplement), right = brain output
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5)" class="pb-grid">';
+
+  // Left column — owner inputs
+  h += '<div>';
+  h += '<div style="margin-bottom:var(--space-5)">' + pbField('Source URLs', '— one page per line; scanned daily') +
+       pbTextarea('pb-urls-' + p.id, p.sourceUrls, 4, 'https://travelgenix.io/luna-chat\nhttps://travelify.io/features') +
+       '<button class="btn btn-secondary pb-save-urls" data-pid="' + esc(p.id) + '" style="margin-top:8px;font-size:var(--text-xs)">Save URLs</button></div>';
+  h += '<div>' + pbField('Your supplement', '— authoritative; never overwritten, always trusted first') +
+       pbTextarea('pb-supp-' + p.id, p.supplement, 6, 'Anything the website does not say but Luna must know. Pricing nuances, positioning, what not to claim, etc.') +
+       '<button class="btn btn-secondary pb-save-supp" data-pid="' + esc(p.id) + '" style="margin-top:8px;font-size:var(--text-xs)">Save supplement</button></div>';
+  h += '</div>';
+
+  // Right column — brain output
+  h += '<div>';
+  h += '<div style="margin-bottom:var(--space-5)">' + pbField('Brain summary', '— auto-scraped latest facts (read-only)') +
+       '<div style="white-space:pre-wrap;font-size:var(--text-sm);line-height:1.55;color:var(--tg-text-secondary);background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);border-radius:var(--radius-md);padding:12px;max-height:260px;overflow:auto">' + (p.brainSummary ? esc(p.brainSummary) : '<em style="color:var(--tg-text-tertiary)">Not scanned yet. Add a source URL and hit Refresh now.</em>') + '</div></div>';
+  h += '<div>' + pbField('Change log', '— suggestions vs your canonical copy') +
+       '<div style="white-space:pre-wrap;font-size:var(--text-xs);line-height:1.5;color:var(--tg-text-tertiary);background:var(--tg-bg-primary);border:1px dashed var(--tg-border);border-radius:var(--radius-md);padding:12px;max-height:180px;overflow:auto">' + (p.brainChangeLog ? esc(p.brainChangeLog) : 'No change log yet.') + '</div></div>';
+  h += '</div>';
+
+  h += '</div>'; // grid
+
+  // Canonical copy editors — applying here updates the voice-matched fields.
+  h += '<div style="margin-top:var(--space-6);border-top:1px solid var(--tg-border);padding-top:var(--space-5)">';
+  h += '<div style="font-size:var(--text-sm);font-weight:700;color:var(--tg-text-primary);margin-bottom:4px">Canonical copy</div>';
+  h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)">This is the voice-matched copy the composer leads with. The daily scan never changes it. Edit and apply here when you agree with a suggestion above.</div>';
+  [['One-liner', 'oneliner', 2], ['Problem solved', 'problem', 3], ['Proof point', 'proof', 3]].forEach(function(cf){
+    var key = cf[0];
+    h += '<div style="margin-bottom:var(--space-4)">' + pbField(key) +
+      pbTextarea('pb-canon-' + cf[1] + '-' + p.id, p.canonical[key], cf[2], '') +
+      '<button class="btn btn-secondary pb-apply-canon" data-pid="' + esc(p.id) + '" data-field="' + esc(key) + '" data-key="' + cf[1] + '" style="margin-top:8px;font-size:var(--text-xs)">Apply ' + esc(key) + '</button></div>';
+  });
+  h += '</div>';
+
+  return h;
+}
+
+function pbSetStatus(pid, msg, isError) {
+  var els = document.querySelectorAll('.pb-status-' + pid);
+  els.forEach(function(el){ el.textContent = msg || ''; el.style.color = isError ? 'var(--tg-error)' : 'var(--tg-text-tertiary)'; });
+}
+
+async function pbPost(payload) {
+  payload.tenantId = pbState.tenantId;
+  var r = await fetch('/api/product-brain', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  var d = await r.json();
+  if (!r.ok || (d && d.error && !d.ok)) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  return d;
+}
+
+function pbProduct(pid) { return pbState.products.find(function(p){ return p.id === pid; }); }
+
+function pbWireDetail(pid) {
+  var saveUrls = document.querySelector('.pb-save-urls[data-pid="' + pid + '"]');
+  if (saveUrls) saveUrls.onclick = async function(){
+    var v = $('pb-urls-' + pid).value;
+    saveUrls.disabled = true; pbSetStatus(pid, 'Saving URLs…');
+    try { var d = await pbPost({ action: 'save-source-urls', productId: pid, sourceUrls: v });
+      var p = pbProduct(pid); if (p) { p.sourceUrls = d.sourceUrls; p.sourceUrlCount = d.sourceUrlCount; }
+      pbSetStatus(pid, 'Saved ' + d.sourceUrlCount + ' URL' + (d.sourceUrlCount === 1 ? '' : 's') + '.');
+    } catch(e){ pbSetStatus(pid, e.message, true); } finally { saveUrls.disabled = false; }
+  };
+
+  var saveSupp = document.querySelector('.pb-save-supp[data-pid="' + pid + '"]');
+  if (saveSupp) saveSupp.onclick = async function(){
+    var v = $('pb-supp-' + pid).value;
+    saveSupp.disabled = true; pbSetStatus(pid, 'Saving supplement…');
+    try { await pbPost({ action: 'save-supplement', productId: pid, supplement: v });
+      var p = pbProduct(pid); if (p) p.supplement = v;
+      pbSetStatus(pid, 'Supplement saved.');
+    } catch(e){ pbSetStatus(pid, e.message, true); } finally { saveSupp.disabled = false; }
+  };
+
+  document.querySelectorAll('.pb-apply-canon[data-pid="' + pid + '"]').forEach(function(btn){
+    btn.onclick = async function(){
+      var field = btn.dataset.field, key = btn.dataset.key;
+      var v = $('pb-canon-' + key + '-' + pid).value;
+      if (!v.trim()) { pbSetStatus(pid, 'Cannot apply an empty value.', true); return; }
+      btn.disabled = true; pbSetStatus(pid, 'Applying ' + field + '…');
+      try { await pbPost({ action: 'apply-canonical', productId: pid, field: field, value: v });
+        var p = pbProduct(pid); if (p) p.canonical[field] = v;
+        pbSetStatus(pid, field + ' applied to the canonical copy.');
+      } catch(e){ pbSetStatus(pid, e.message, true); } finally { btn.disabled = false; }
+    };
+  });
+
+  var refreshOne = document.querySelector('.pb-refresh-one[data-pid="' + pid + '"]');
+  if (refreshOne) refreshOne.onclick = function(){ pbRefreshOne(pid); };
+}
+
+async function pbRefreshOne(pid) {
+  pbState.busy[pid] = true;
+  var p0 = pbProduct(pid);
+  if (p0 && p0.sourceUrlCount === 0) { pbSetStatus(pid, 'Add at least one source URL first, then save it.', true); pbState.busy[pid] = false; return; }
+  pbSetStatus(pid, 'Scanning the page(s) and updating the brain… this can take ~20s.');
+  // Re-render to show the busy button state.
+  pbRenderList(); pbWireDetail(pid);
+  try {
+    var d = await pbPost({ action: 'refresh', productId: pid });
+    if (d.product) {
+      var idx = pbState.products.findIndex(function(x){ return x.id === pid; });
+      if (idx >= 0) pbState.products[idx] = d.product;
+    }
+    pbState.busy[pid] = false;
+    pbRenderList(); pbWireDetail(pid);
+    if (d.ok) {
+      var n = (d.changes || []).length;
+      pbSetStatus(pid, 'Done. ' + (n ? n + ' suggested change' + (n === 1 ? '' : 's') + ' — see the change log.' : 'No changes to canonical copy.'));
+    } else {
+      pbSetStatus(pid, d.error || 'Refresh failed.', true);
+    }
+  } catch (e) {
+    pbState.busy[pid] = false; pbRenderList(); pbWireDetail(pid);
+    pbSetStatus(pid, e.message, true);
+  }
+}
+
+async function pbRefreshAll() {
+  var btn = $('pb-refresh-all'); if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  var meta = $('pb-meta'); if (meta) meta.innerHTML = 'Refreshing all products with source URLs… this runs server-side and can take a minute.';
+  try {
+    var d = await pbPost({ action: 'refresh' });
+    await pbLoad();
+    if (meta) meta.innerHTML = 'Refreshed ' + (d.refreshed || 0) + ' of ' + (d.total || 0) + ' products. ' + (meta.innerHTML || '');
+  } catch (e) {
+    if (meta) meta.innerHTML = '<span style="color:var(--tg-error)">' + esc(e.message) + '</span>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CONTENT ENGINE — Product Library admin view
 // ═══════════════════════════════════════════════════════════════════════════
 //

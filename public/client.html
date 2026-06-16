@@ -9897,11 +9897,14 @@ async function promoGenerate() {
   var productName = prod ? prod.name : '';
   var labels = { email: 'Email draft', social: 'Social posts', images: 'Product mockup', blog: 'Blog article' };
 
-  // Render a live row per output, then fire each as its own request in parallel
-  // so the user sees progress and any failure is isolated and explained.
+  function workingMsg(o){ return o === 'images' ? 'Rendering the mockup… this can take up to ~3 minutes.' : (o === 'blog' ? 'Writing and publishing the article… up to ~2 minutes.' : 'Working… this usually takes 20–60s.'); }
+
+  // Render a live row per output. Render them SEQUENTIALLY (one request at a
+  // time): running all four at once overloads the AI API and they time each
+  // other out. The first row starts working, the rest wait their turn.
   $('promo-results').innerHTML = '<div class="card" style="padding:var(--space-5)">' +
     '<div style="font-weight:700;color:var(--tg-text-primary);margin-bottom:var(--space-3)">Generating for ' + esc(productName) + '</div>' +
-    outputs.map(function(o){ var msg = o === 'images' ? 'Rendering the mockup… this can take up to ~3 minutes.' : (o === 'blog' ? 'Writing and publishing the article… up to ~2 minutes.' : 'Working… this usually takes 20–60s.'); return '<div id="promo-row-' + o + '">' + promoRow('working', labels[o], msg) + '</div>'; }).join('') +
+    outputs.map(function(o, i){ return '<div id="promo-row-' + o + '">' + promoRow(i === 0 ? 'working' : 'wait', labels[o], i === 0 ? workingMsg(o) : 'Waiting…') + '</div>'; }).join('') +
     '</div>';
 
   var base = {
@@ -9910,7 +9913,12 @@ async function promoGenerate() {
     socialCount: parseInt($('promo-count').value, 10) || 3
   };
 
-  await Promise.all(outputs.map(function(o){ return promoRunOne(o, base, labels[o]); }));
+  for (var i = 0; i < outputs.length; i++) {
+    var o = outputs[i];
+    var rowEl = $('promo-row-' + o);
+    if (rowEl) rowEl.innerHTML = promoRow('working', labels[o], workingMsg(o));
+    await promoRunOne(o, base, labels[o]);
+  }
 
   promoState.running = false;
   if (go) { go.disabled = false; go.style.opacity = '1'; }
@@ -9937,11 +9945,13 @@ async function promoRunOne(output, base, label) {
   }
 }
 
-// Render a status row. state = working | ok | fail.
+// Render a status row. state = working | ok | fail | wait.
 function promoRow(stateName, title, detail) {
   var icon;
   if (stateName === 'working') {
     icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+  } else if (stateName === 'wait') {
+    icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   } else if (stateName === 'ok') {
     icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
   } else {

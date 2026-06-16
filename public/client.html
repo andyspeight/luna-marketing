@@ -1736,7 +1736,7 @@ select.of-input { cursor: pointer; height: 34px; }
   </header>
   <div class="stats" id="statsRow"></div>
   <div id="eventsTicker" style="margin-bottom:var(--space-4);overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);display:none"></div>
-  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="product-brain" id="productBrainTab" role="tab" style="display:none">Product Brain</button><button class="tab" data-view="promote" id="promoteTab" role="tab" style="display:none">Promote</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
+  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="product-brain" id="productBrainTab" role="tab" style="display:none">Product Brain</button><button class="tab" data-view="promote" id="promoteTab" role="tab" style="display:none">Promote</button><button class="tab" data-view="campaigns" id="campaignsTab" role="tab" style="display:none">Campaigns</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
   <main>
     <div id="view-dashboard" class="hide" role="tabpanel"></div>
     <div id="view-posts" class="fade-in" role="tabpanel"></div>
@@ -1747,6 +1747,7 @@ select.of-input { cursor: pointer; height: 34px; }
     <div id="view-content-engine" class="hide" role="tabpanel"></div>
     <div id="view-product-brain" class="hide" role="tabpanel"></div>
     <div id="view-promote" class="hide" role="tabpanel"></div>
+    <div id="view-campaigns" class="hide" role="tabpanel"></div>
     <div id="view-platforms" class="hide" role="tabpanel"></div>
     <div id="view-settings" class="hide" role="tabpanel"></div>
   </main>
@@ -1801,10 +1802,10 @@ window.addEventListener('tg-auth-ready',async function(){
     document.body.innerHTML='<div style="font-family:system-ui;max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 6px rgba(0,0,0,.06)"><h1 style="font-size:20px;margin:0 0 12px;color:#0F172A">Could not load your portal</h1><p style="color:#64748B;line-height:1.5;margin:0 0 24px">'+e.message+'</p><a href="https://id.travelify.io" style="display:inline-block;padding:10px 20px;background:#00B4D8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Back to Apps</a></div>';
   }
 });
-function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';if(isOwner()&&$('promoteTab'))$('promoteTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';if(isOwner()&&$('promoteTab'))$('promoteTab').style.display='flex';if(isOwner()&&$('campaignsTab'))$('campaignsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','promote','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain();if(v==='promote')renderPromote()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','promote','campaigns','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain();if(v==='promote')renderPromote();if(v==='campaigns')renderCampaigns()};
 
 // Data
 var PLATS=[
@@ -9897,13 +9898,92 @@ function promoResultMarkup(output, label, res) {
     return promoRow('ok', label, 'Subject: “' + esc(res.subject || '') + '”. In the <strong>Emails</strong> tab' + warn + '.');
   }
   if (output === 'social') {
-    return promoRow('ok', label, res.count + ' post draft(s) in <strong>My Posts</strong>' + (res.held ? ' · ' + res.held + ' on Quality Hold for review' : '') + '.');
+    return promoRow('ok', label, res.count + ' post draft(s) in <strong>My Posts</strong> and the <strong>Campaigns</strong> tab' + (res.image ? ' · image attached' : ' · no image (add a hero image or check mockup setup)') + (res.held ? ' · ' + res.held + ' on Quality Hold for review' : '') + '.');
   }
   if (output === 'images') {
     return promoRow('ok', label, 'Saved to your image library.') +
       '<div style="padding:0 0 12px 26px"><img src="' + esc(res.pngUrl) + '" alt="Generated mockup" style="max-width:320px;width:100%;border:1px solid var(--tg-border);border-radius:var(--radius-md)"></div>';
   }
   return promoRow('ok', label, 'Done.');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMPAIGNS — content generated by the Promote method (owner only)
+// ═══════════════════════════════════════════════════════════════════════════
+// A clear, separate view of drafts created by Promote (Generated By =
+// "Promote"), so they're distinct from the normal cron/manual content in
+// My Posts and Emails. Backed by /api/campaign-list.
+
+function campStatusPill(status) {
+  var map = {
+    'Draft': '#A16207', 'Queued': '#1D4ED8', 'Quality Hold': '#B91C1C',
+    'Approved': '#15803D', 'Published': '#15803D', 'Sent': '#15803D',
+    'Awaiting Approval': '#A16207', 'Rejected': '#B91C1C', 'Failed': '#B91C1C'
+  };
+  var c = map[status] || 'var(--tg-text-tertiary)';
+  return '<span style="padding:2px 9px;border-radius:var(--radius-full);font-size:11px;font-weight:700;background:rgba(100,116,139,0.10);color:' + c + '">' + esc(status || '—') + '</span>';
+}
+
+async function renderCampaigns() {
+  var el = $('view-campaigns'); if (!el) return;
+  el.innerHTML =
+    '<div style="padding:var(--space-6);max-width:980px;margin:0 auto">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap">' +
+        '<div><h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Campaigns</h2>' +
+        '<p style="margin:0;font-size:var(--text-sm);color:var(--tg-text-secondary);max-width:640px">Everything created by <strong>Promote</strong>, in one place. These are the same drafts you’ll also see in Emails and My Posts, gathered here so the Promote output stays distinct from your normal content.</p></div>' +
+        '<button class="btn btn-secondary" id="camp-refresh" style="white-space:nowrap">Refresh</button>' +
+      '</div>' +
+      '<div id="camp-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading campaigns&hellip;</div></div>' +
+    '</div>';
+  var rb = $('camp-refresh'); if (rb) rb.onclick = renderCampaigns;
+  try {
+    var r = await fetch('/api/campaign-list?tenantId=' + encodeURIComponent(state.profile.id), { credentials: 'include' });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Load failed');
+    campRender(d);
+  } catch (e) {
+    var b = $('camp-body'); if (b) b.innerHTML = '<div class="card" style="padding:var(--space-6);color:var(--tg-error);text-align:center">' + esc(e.message) + '</div>';
+  }
+}
+
+function campRender(d) {
+  var body = $('camp-body'); if (!body) return;
+  var emails = d.emails || [], posts = d.posts || [];
+  if (emails.length === 0 && posts.length === 0) {
+    body.innerHTML = '<div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Nothing generated by Promote yet. Head to the <strong>Promote</strong> tab to create your first campaign.</div>';
+    return;
+  }
+  var h = '';
+  // Emails
+  h += '<div style="font-size:var(--text-sm);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-3)">Emails <span style="color:var(--tg-text-tertiary);font-weight:500">(' + emails.length + ')</span></div>';
+  if (emails.length === 0) {
+    h += '<div style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin-bottom:var(--space-5)">No Promote emails yet.</div>';
+  } else {
+    h += '<div style="margin-bottom:var(--space-6)">';
+    emails.forEach(function(e){
+      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.subject) + '</div>' +
+        '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + esc(e.emailType || 'Email') + (e.audience ? ' · ' + esc(e.audience) : '') + '</div></div>' +
+        campStatusPill(e.status) + '</div>';
+    });
+    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Open and edit these in the <strong>Emails</strong> tab.</div></div>';
+  }
+  // Social posts
+  h += '<div style="font-size:var(--text-sm);font-weight:700;color:var(--tg-text-primary);margin:0 0 var(--space-3)">Social posts <span style="color:var(--tg-text-tertiary);font-weight:500">(' + posts.length + ')</span></div>';
+  if (posts.length === 0) {
+    h += '<div style="font-size:var(--text-sm);color:var(--tg-text-tertiary)">No Promote posts yet.</div>';
+  } else {
+    posts.forEach(function(p){
+      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">';
+      if (p.hasImage) h += '<img src="' + esc(p.imageUrl) + '" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius-sm);flex:none">';
+      else h += '<div style="width:48px;height:48px;border-radius:var(--radius-sm);flex:none;background:var(--tg-bg-tertiary);display:flex;align-items:center;justify-content:center;color:var(--tg-text-tertiary);font-size:9px;text-align:center">no image</div>';
+      h += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.title) + '</div>' +
+        '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + (p.product ? esc(p.product) : 'Product') + (p.week ? ' · ' + esc(p.week) : '') + '</div></div>' +
+        campStatusPill(p.status) + '</div>';
+    });
+    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Review, edit and schedule these in <strong>My Posts</strong>.</div>';
+  }
+  body.innerHTML = h;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

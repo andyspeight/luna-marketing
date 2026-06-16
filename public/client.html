@@ -9840,7 +9840,7 @@ async function promoGenerate() {
   // so the user sees progress and any failure is isolated and explained.
   $('promo-results').innerHTML = '<div class="card" style="padding:var(--space-5)">' +
     '<div style="font-weight:700;color:var(--tg-text-primary);margin-bottom:var(--space-3)">Generating for ' + esc(productName) + '</div>' +
-    outputs.map(function(o){ return '<div id="promo-row-' + o + '">' + promoRow('working', labels[o], 'Working… this can take 15–40s.') + '</div>'; }).join('') +
+    outputs.map(function(o){ return '<div id="promo-row-' + o + '">' + promoRow('working', labels[o], o === 'images' ? 'Rendering the mockup… this can take up to ~3 minutes.' : 'Working… this usually takes 20–60s.') + '</div>'; }).join('') +
     '</div>';
 
   var base = {
@@ -9860,7 +9860,8 @@ async function promoRunOne(output, base, label) {
   // Never let the browser hang forever — abort a bit after the server's own
   // per-output timeout so the server's clearer message usually wins.
   var ctrl = new AbortController();
-  var timer = setTimeout(function(){ ctrl.abort(); }, 140000);
+  var abortMs = (output === 'images') ? 270000 : 150000;
+  var timer = setTimeout(function(){ ctrl.abort(); }, abortMs);
   try {
     var body = Object.assign({}, base, { outputs: [output] });
     var r = await fetch('/api/promo-generate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });
@@ -9898,7 +9899,11 @@ function promoResultMarkup(output, label, res) {
     return promoRow('ok', label, 'Subject: “' + esc(res.subject || '') + '”. In the <strong>Emails</strong> tab' + warn + '.');
   }
   if (output === 'social') {
-    return promoRow('ok', label, res.count + ' post draft(s) in <strong>My Posts</strong> and the <strong>Campaigns</strong> tab' + (res.image ? ' · image attached' : ' · no image (add a hero image or check mockup setup)') + (res.held ? ' · ' + res.held + ' on Quality Hold for review' : '') + '.');
+    var imgNote;
+    if (res.imageSource === 'hero') imgNote = ' · hero image attached';
+    else if (res.imageSource === 'mockup') imgNote = ' · mockup attached';
+    else imgNote = ' · no image yet (give the product a hero image, or run the Mockup output once and re-run social)';
+    return promoRow('ok', label, res.count + ' post draft(s) in <strong>My Posts</strong> and <strong>Campaigns</strong>' + imgNote + (res.held ? ' · ' + res.held + ' on Quality Hold' : '') + '.');
   }
   if (output === 'images') {
     return promoRow('ok', label, 'Saved to your image library.') +

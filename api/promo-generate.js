@@ -48,9 +48,9 @@ const VALID_OUTPUTS = ["email", "social", "images"];
 // Per-output soft timeout. Generation calls reach out to Anthropic / HCTI; if
 // one hangs we must still return a clean result rather than let the whole
 // function sit until the platform kills it (which surfaces as a "-" status and
-// an opaque spinner in the UI). The underlying work may still finish in the
-// background, so the message says so.
-const OUTPUT_TIMEOUT_MS = 110 * 1000;
+// an opaque spinner in the UI). Mockups render in ~2.5 min, so the images
+// output gets a much longer budget than the text outputs.
+const OUTPUT_TIMEOUT_MS = { email: 110 * 1000, social: 110 * 1000, images: 240 * 1000 };
 
 function withTimeout(promise, ms, label) {
   let timer;
@@ -161,17 +161,17 @@ module.exports = async function handler(req, res) {
     // Run each requested output independently so one failure doesn't sink the rest.
     if (outputs.includes("email")) {
       try {
-        results.email = { ok: true, ...(await withTimeout(generateEmailDraft({ tenantId: auth.effectiveTenantId, product, archetype, audience, actor: auth.email, ip }), OUTPUT_TIMEOUT_MS, "Email draft")) };
+        results.email = { ok: true, ...(await withTimeout(generateEmailDraft({ tenantId: auth.effectiveTenantId, product, archetype, audience, actor: auth.email, ip }), OUTPUT_TIMEOUT_MS.email, "Email draft")) };
       } catch (e) { console.error("[promo-generate] email failed:", e); results.email = { ok: false, error: e.message }; }
     }
     if (outputs.includes("social")) {
       try {
-        results.social = { ok: true, ...(await withTimeout(generateSocialDrafts({ client: client.fields || {}, clientId: auth.effectiveTenantId, product, count: socialCount, actor: auth.email }), OUTPUT_TIMEOUT_MS, "Social posts")) };
+        results.social = { ok: true, ...(await withTimeout(generateSocialDrafts({ client: client.fields || {}, clientId: auth.effectiveTenantId, product, count: socialCount, actor: auth.email }), OUTPUT_TIMEOUT_MS.social, "Social posts")) };
       } catch (e) { console.error("[promo-generate] social failed:", e); results.social = { ok: false, error: e.message }; }
     }
     if (outputs.includes("images")) {
       try {
-        results.images = await withTimeout(generateMockup({ tenantId: auth.effectiveTenantId, product }), OUTPUT_TIMEOUT_MS, "Mockup");
+        results.images = await withTimeout(generateMockup({ tenantId: auth.effectiveTenantId, product }), OUTPUT_TIMEOUT_MS.images, "Mockup");
       } catch (e) { console.error("[promo-generate] mockup failed:", e); results.images = { ok: false, error: e.message }; }
     }
 

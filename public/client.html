@@ -9961,10 +9961,11 @@ function campRender(d) {
   } else {
     h += '<div style="margin-bottom:var(--space-6)">';
     emails.forEach(function(e){
-      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">' +
+      h += '<div class="card camp-email" title="Open in the Emails tab" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3);cursor:pointer">' +
         '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.subject) + '</div>' +
         '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + esc(e.emailType || 'Email') + (e.audience ? ' · ' + esc(e.audience) : '') + '</div></div>' +
-        campStatusPill(e.status) + '</div>';
+        campStatusPill(e.status) +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="2" style="flex:none"><path d="M9 18l6-6-6-6"/></svg></div>';
     });
     h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Open and edit these in the <strong>Emails</strong> tab.</div></div>';
   }
@@ -9974,16 +9975,23 @@ function campRender(d) {
     h += '<div style="font-size:var(--text-sm);color:var(--tg-text-tertiary)">No Promote posts yet.</div>';
   } else {
     posts.forEach(function(p){
-      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">';
+      h += '<div class="card camp-post" title="Open in My Posts" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3);cursor:pointer">';
       if (p.hasImage) h += '<img src="' + esc(p.imageUrl) + '" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:var(--radius-sm);flex:none">';
       else h += '<div style="width:48px;height:48px;border-radius:var(--radius-sm);flex:none;background:var(--tg-bg-tertiary);display:flex;align-items:center;justify-content:center;color:var(--tg-text-tertiary);font-size:9px;text-align:center">no image</div>';
       h += '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.title) + '</div>' +
         '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + (p.product ? esc(p.product) : 'Product') + (p.week ? ' · ' + esc(p.week) : '') + '</div></div>' +
-        campStatusPill(p.status) + '</div>';
+        campStatusPill(p.status) +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-text-tertiary)" stroke-width="2" style="flex:none"><path d="M9 18l6-6-6-6"/></svg></div>';
     });
-    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Review, edit and schedule these in <strong>My Posts</strong>.</div>';
+    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Click a post to open it in <strong>My Posts</strong> to edit, add an image, or schedule.</div>';
   }
   body.innerHTML = h;
+  body.querySelectorAll('.camp-post').forEach(function(c){
+    c.onclick = function(){ var t = document.querySelector('[data-view="posts"]'); if (t) t.click(); };
+  });
+  body.querySelectorAll('.camp-email').forEach(function(c){
+    c.onclick = function(){ var t = document.querySelector('[data-view="emails"]'); if (t) t.click(); };
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

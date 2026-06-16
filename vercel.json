@@ -51,6 +51,7 @@
     "api/replicate-generate.js": { "maxDuration": 120 },
     "api/route-image-brief.js": { "maxDuration": 30 },
     "api/cron-product-brain.js": { "maxDuration": 300 },
-    "api/product-brain.js": { "maxDuration": 300 }
+    "api/product-brain.js": { "maxDuration": 300 },
+    "api/product-visuals.js": { "maxDuration": 120 }
   }
 }

@@ -45,6 +45,21 @@ const VALID_ARCHETYPES = ["b2b-weekly", "marketing-newsletter", "product-launch"
 const VALID_AUDIENCES = ["Cold", "Nurture", "Client", "Drip"];
 const VALID_OUTPUTS = ["email", "social", "images"];
 
+// Per-output soft timeout. Generation calls reach out to Anthropic / HCTI; if
+// one hangs we must still return a clean result rather than let the whole
+// function sit until the platform kills it (which surfaces as a "-" status and
+// an opaque spinner in the UI). The underlying work may still finish in the
+// background, so the message says so.
+const OUTPUT_TIMEOUT_MS = 110 * 1000;
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s. It may still finish in the background — check the tab, or try generating just this item.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // ── auth (mirrors product-brain.js) ──────────────────────────────────
 async function validateSession(req) {
   const cookie = req.headers.cookie || "";
@@ -146,17 +161,17 @@ module.exports = async function handler(req, res) {
     // Run each requested output independently so one failure doesn't sink the rest.
     if (outputs.includes("email")) {
       try {
-        results.email = { ok: true, ...(await generateEmailDraft({ tenantId: auth.effectiveTenantId, product, archetype, audience, actor: auth.email, ip })) };
+        results.email = { ok: true, ...(await withTimeout(generateEmailDraft({ tenantId: auth.effectiveTenantId, product, archetype, audience, actor: auth.email, ip }), OUTPUT_TIMEOUT_MS, "Email draft")) };
       } catch (e) { console.error("[promo-generate] email failed:", e); results.email = { ok: false, error: e.message }; }
     }
     if (outputs.includes("social")) {
       try {
-        results.social = { ok: true, ...(await generateSocialDrafts({ client: client.fields || {}, clientId: auth.effectiveTenantId, product, count: socialCount, actor: auth.email })) };
+        results.social = { ok: true, ...(await withTimeout(generateSocialDrafts({ client: client.fields || {}, clientId: auth.effectiveTenantId, product, count: socialCount, actor: auth.email }), OUTPUT_TIMEOUT_MS, "Social posts")) };
       } catch (e) { console.error("[promo-generate] social failed:", e); results.social = { ok: false, error: e.message }; }
     }
     if (outputs.includes("images")) {
       try {
-        results.images = await generateMockup({ tenantId: auth.effectiveTenantId, product });
+        results.images = await withTimeout(generateMockup({ tenantId: auth.effectiveTenantId, product }), OUTPUT_TIMEOUT_MS, "Mockup");
       } catch (e) { console.error("[promo-generate] mockup failed:", e); results.images = { ok: false, error: e.message }; }
     }
 

@@ -9695,6 +9695,7 @@ var promoState = { products: [], loading: false, running: false };
 async function renderPromote() {
   var el = $('view-promote'); if (!el) return;
   el.innerHTML =
+    '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>' +
     '<div style="padding:var(--space-6);max-width:860px;margin:0 auto">' +
       '<div style="margin-bottom:var(--space-4)">' +
         '<h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Promote</h2>' +
@@ -9780,6 +9781,10 @@ function promoRenderForm() {
   $('promo-go').onclick = promoGenerate;
 }
 
+function promoStatus(msg, isError) {
+  var el = $('promo-status'); if (el) { el.textContent = msg || ''; el.style.color = isError ? 'var(--tg-error)' : 'var(--tg-text-tertiary)'; }
+}
+
 async function promoGenerate() {
   if (promoState.running) return;
   var productId = $('promo-product').value;
@@ -9792,68 +9797,74 @@ async function promoGenerate() {
 
   promoState.running = true;
   var go = $('promo-go'); if (go) { go.disabled = true; go.style.opacity = '0.6'; }
-  promoStatus('Generating ' + outputs.join(', ') + '… this can take up to a minute. Please keep this tab open.');
-  $('promo-results').innerHTML = '';
+  promoStatus('');
 
+  var prod = promoState.products.find(function(p){ return p.id === productId; });
+  var productName = prod ? prod.name : '';
+  var labels = { email: 'Email draft', social: 'Social posts', images: 'Product mockup' };
+
+  // Render a live row per output, then fire each as its own request in parallel
+  // so the user sees progress and any failure is isolated and explained.
+  $('promo-results').innerHTML = '<div class="card" style="padding:var(--space-5)">' +
+    '<div style="font-weight:700;color:var(--tg-text-primary);margin-bottom:var(--space-3)">Generating for ' + esc(productName) + '</div>' +
+    outputs.map(function(o){ return '<div id="promo-row-' + o + '">' + promoRow('working', labels[o], 'Working… this can take 15–40s.') + '</div>'; }).join('') +
+    '</div>';
+
+  var base = {
+    tenantId: state.profile.id, productId: productId,
+    archetype: $('promo-archetype').value, audience: $('promo-audience').value,
+    socialCount: parseInt($('promo-count').value, 10) || 3
+  };
+
+  await Promise.all(outputs.map(function(o){ return promoRunOne(o, base, labels[o]); }));
+
+  promoState.running = false;
+  if (go) { go.disabled = false; go.style.opacity = '1'; }
+}
+
+async function promoRunOne(output, base, label) {
+  var rowEl = $('promo-row-' + output);
   try {
-    var r = await fetch('/api/promo-generate', {
-      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenantId: state.profile.id, productId: productId, outputs: outputs,
-        archetype: $('promo-archetype').value, audience: $('promo-audience').value,
-        socialCount: parseInt($('promo-count').value, 10) || 3
-      })
-    });
+    var body = Object.assign({}, base, { outputs: [output] });
+    var r = await fetch('/api/promo-generate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     var d = await r.json();
     if (!r.ok || !d.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
-    promoStatus('Done.');
-    promoRenderResults(d);
+    if (rowEl) rowEl.innerHTML = promoResultMarkup(output, label, (d.results || {})[output] || { ok: false, error: 'No result returned' });
   } catch (e) {
-    promoStatus(e.message, true);
-  } finally {
-    promoState.running = false;
-    if (go) { go.disabled = false; go.style.opacity = '1'; }
+    if (rowEl) rowEl.innerHTML = promoRow('fail', label, esc(e.message));
   }
 }
 
-function promoStatus(msg, isError) {
-  var el = $('promo-status'); if (el) { el.textContent = msg || ''; el.style.color = isError ? 'var(--tg-error)' : 'var(--tg-text-tertiary)'; }
-}
-
-function promoResultRow(ok, title, detail) {
-  var icon = ok
-    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
-    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-error)" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+// Render a status row. state = working | ok | fail.
+function promoRow(stateName, title, detail) {
+  var icon;
+  if (stateName === 'working') {
+    icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-accent)" stroke-width="2.5" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+  } else if (stateName === 'ok') {
+    icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
+  } else {
+    icon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-error)" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  }
   return '<div style="display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--tg-border)">' +
     '<span style="flex:none;margin-top:1px">' + icon + '</span>' +
-    '<div><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm)">' + title + '</div>' +
-    '<div style="font-size:var(--text-xs);color:var(--tg-text-secondary);margin-top:2px">' + detail + '</div></div></div>';
+    '<div style="flex:1"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm)">' + esc(title) + '</div>' +
+    '<div style="font-size:var(--text-xs);color:' + (stateName === 'fail' ? 'var(--tg-error)' : 'var(--tg-text-secondary)') + ';margin-top:2px">' + detail + '</div></div></div>';
 }
 
-function promoRenderResults(d) {
-  var box = $('promo-results'); if (!box) return;
-  var rows = '';
-  var rr = d.results || {};
-  if (rr.email) {
-    rows += rr.email.ok
-      ? promoResultRow(true, 'Email draft created', 'Subject: “' + esc(rr.email.subject || '') + '”. Find it in the <strong>Emails</strong> tab' + ((rr.email.validationErrors && rr.email.validationErrors.length) ? '. Note: ' + rr.email.validationErrors.length + ' validation flag(s) to review.' : '.'))
-      : promoResultRow(false, 'Email draft failed', esc(rr.email.error || ''));
+function promoResultMarkup(output, label, res) {
+  if (!res || !res.ok) return promoRow('fail', label, esc((res && res.error) || 'Failed'));
+  if (output === 'email') {
+    var warn = (res.validationErrors && res.validationErrors.length) ? ' · ' + res.validationErrors.length + ' validation flag(s) to review' : '';
+    return promoRow('ok', label, 'Subject: “' + esc(res.subject || '') + '”. In the <strong>Emails</strong> tab' + warn + '.');
   }
-  if (rr.social) {
-    rows += rr.social.ok
-      ? promoResultRow(true, rr.social.count + ' social post draft(s) created', 'In <strong>My Posts</strong>' + (rr.social.held ? '. ' + rr.social.held + ' on Quality Hold for review.' : '.'))
-      : promoResultRow(false, 'Social posts failed', esc(rr.social.error || ''));
+  if (output === 'social') {
+    return promoRow('ok', label, res.count + ' post draft(s) in <strong>My Posts</strong>' + (res.held ? ' · ' + res.held + ' on Quality Hold for review' : '') + '.');
   }
-  if (rr.images) {
-    if (rr.images.ok) {
-      rows += promoResultRow(true, 'Product mockup created', 'Saved to your image library.') +
-        '<div style="margin-top:12px"><img src="' + esc(rr.images.pngUrl) + '" alt="Generated mockup" style="max-width:100%;border:1px solid var(--tg-border);border-radius:var(--radius-md)"></div>';
-    } else {
-      rows += promoResultRow(false, 'Mockup failed', esc(rr.images.error || ''));
-    }
+  if (output === 'images') {
+    return promoRow('ok', label, 'Saved to your image library.') +
+      '<div style="padding:0 0 12px 26px"><img src="' + esc(res.pngUrl) + '" alt="Generated mockup" style="max-width:320px;width:100%;border:1px solid var(--tg-border);border-radius:var(--radius-md)"></div>';
   }
-  box.innerHTML = '<div class="card" style="padding:var(--space-5)">' +
-    '<div style="font-weight:700;color:var(--tg-text-primary);margin-bottom:var(--space-2)">Results for ' + esc(d.product || '') + '</div>' + rows + '</div>';
+  return promoRow('ok', label, 'Done.');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

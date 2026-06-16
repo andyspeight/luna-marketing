@@ -1736,7 +1736,7 @@ select.of-input { cursor: pointer; height: 34px; }
   </header>
   <div class="stats" id="statsRow"></div>
   <div id="eventsTicker" style="margin-bottom:var(--space-4);overflow:hidden;border-radius:var(--radius-md);border:1px solid var(--tg-border);background:var(--tg-bg-primary);display:none"></div>
-  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="product-brain" id="productBrainTab" role="tab" style="display:none">Product Brain</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
+  <nav class="tabs" role="tablist"><button class="tab" data-view="dashboard" id="dashboardTab" role="tab" style="display:none">Dashboard</button><button class="tab active" data-view="posts" id="postsTab" role="tab">My Posts</button><button class="tab" data-view="create" role="tab">Create Post</button><button class="tab" data-view="events" role="tab">Events</button><button class="tab" data-view="calendar" role="tab">Calendar</button><button class="tab" data-view="emails" id="emailsTab" role="tab" style="display:none">Emails</button><button class="tab" data-view="content-engine" id="contentEngineTab" role="tab" style="display:none">Content Engine</button><button class="tab" data-view="product-brain" id="productBrainTab" role="tab" style="display:none">Product Brain</button><button class="tab" data-view="promote" id="promoteTab" role="tab" style="display:none">Promote</button><button class="tab" data-view="platforms" role="tab">Platforms</button><button class="tab" data-view="settings" role="tab">My Settings</button></nav>
   <main>
     <div id="view-dashboard" class="hide" role="tabpanel"></div>
     <div id="view-posts" class="fade-in" role="tabpanel"></div>
@@ -1746,6 +1746,7 @@ select.of-input { cursor: pointer; height: 34px; }
     <div id="view-emails" class="hide" role="tabpanel"></div>
     <div id="view-content-engine" class="hide" role="tabpanel"></div>
     <div id="view-product-brain" class="hide" role="tabpanel"></div>
+    <div id="view-promote" class="hide" role="tabpanel"></div>
     <div id="view-platforms" class="hide" role="tabpanel"></div>
     <div id="view-settings" class="hide" role="tabpanel"></div>
   </main>
@@ -1800,10 +1801,10 @@ window.addEventListener('tg-auth-ready',async function(){
     document.body.innerHTML='<div style="font-family:system-ui;max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 6px rgba(0,0,0,.06)"><h1 style="font-size:20px;margin:0 0 12px;color:#0F172A">Could not load your portal</h1><p style="color:#64748B;line-height:1.5;margin:0 0 24px">'+e.message+'</p><a href="https://id.travelify.io" style="display:inline-block;padding:10px 20px;background:#00B4D8;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Back to Apps</a></div>';
   }
 });
-function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
+function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';if(isOwner()&&$('promoteTab'))$('promoteTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','promote','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain();if(v==='promote')renderPromote()};
 
 // Data
 var PLATS=[
@@ -9680,6 +9681,179 @@ function pvWireDetail(pid) {
     try { var d = await pvPost({ action: 'set-status', pvId: p.pvId, status: statusSel.value }); p.pvStatus = d.status; pvSetStatusMsg(pid, 'Status set to ' + d.status + '.'); }
     catch (e) { pvSetStatusMsg(pid, e.message, true); }
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMOTE — "this week we're promoting X" (owner only)
+// ═══════════════════════════════════════════════════════════════════════════
+// Pick a product, choose outputs, and generate email + social drafts + a
+// product mockup in one go. Everything is a DRAFT. Backed by /api/promo-generate
+// (products list comes from /api/product-visuals, which is owner-only).
+
+var promoState = { products: [], loading: false, running: false };
+
+async function renderPromote() {
+  var el = $('view-promote'); if (!el) return;
+  el.innerHTML =
+    '<div style="padding:var(--space-6);max-width:860px;margin:0 auto">' +
+      '<div style="margin-bottom:var(--space-4)">' +
+        '<h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Promote</h2>' +
+        '<p style="margin:0;font-size:var(--text-sm);color:var(--tg-text-secondary)">Pick this week’s product and Luna drafts the campaign from the Product Brain.</p>' +
+      '</div>' +
+      tgInfoCard({
+        accent: '#0ABAB5',
+        eyebrow: 'How Promote works',
+        intro: '<strong>Tell Luna what you’re promoting this week and it drafts the campaign.</strong> It writes an <strong>email</strong>, a batch of <strong>social posts</strong>, and a <strong>product mockup</strong> &mdash; all in your voice, using the facts and visuals from the Product Brain. <span style="color:var(--tg-text-tertiary)">Everything is saved as a draft for you to review: emails in the <strong>Emails</strong> tab, posts in <strong>My Posts</strong>, the mockup in your image library. Nothing sends or publishes automatically.</span>',
+        steps: [
+          'Choose the product below.',
+          'Tick what you want: email, social posts, mockup.',
+          'Set the style and audience, then <strong>Generate drafts</strong>.',
+          'Review and refine each draft in its tab before sending or scheduling.'
+        ],
+        footnote: 'Best results come from products with a fresh Brain (Facts tab) and a saved visual spec (Visuals tab).'
+      }) +
+      '<div class="card" style="padding:var(--space-6)" id="promo-form">' +
+        '<div style="display:flex;align-items:center;justify-content:center;padding:var(--space-8);color:var(--tg-text-tertiary)">Loading products&hellip;</div>' +
+      '</div>' +
+      '<div id="promo-results" style="margin-top:var(--space-5)"></div>' +
+    '</div>';
+  await promoLoad();
+}
+
+async function promoLoad() {
+  try {
+    var r = await fetch('/api/product-visuals', { credentials: 'include' });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Load failed');
+    promoState.products = (d.products || []).slice().sort(function(a, b){ return (b.priority||0) - (a.priority||0) || a.name.localeCompare(b.name); });
+    promoRenderForm();
+  } catch (e) {
+    var f = $('promo-form'); if (f) f.innerHTML = '<div style="color:var(--tg-error);text-align:center;padding:var(--space-6)">' + esc(e.message) + '</div>';
+  }
+}
+
+function promoSelectStyle() {
+  return 'width:100%;box-sizing:border-box;font-family:var(--tg-font-body);font-size:var(--text-sm);padding:10px 12px;border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary);color:var(--tg-text-primary)';
+}
+
+function promoRenderForm() {
+  var f = $('promo-form'); if (!f) return;
+  var opts = promoState.products.map(function(p){
+    var hints = [];
+    if (!p.hasBrain) hints.push('no brain');
+    if (!p.hasSpec) hints.push('no visual spec');
+    var suffix = hints.length ? ' — ' + hints.join(', ') : ' — brain + spec ready';
+    return '<option value="' + esc(p.id) + '">' + esc(p.name) + suffix + '</option>';
+  }).join('');
+
+  function checkbox(id, label, sub, checked) {
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--tg-border);border-radius:var(--radius-md);cursor:pointer;flex:1;min-width:200px">' +
+      '<input type="checkbox" id="' + id + '"' + (checked ? ' checked' : '') + ' style="margin-top:2px;width:16px;height:16px;accent-color:var(--tg-accent)">' +
+      '<span><span style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);display:block">' + label + '</span>' +
+      '<span style="font-size:var(--text-xs);color:var(--tg-text-tertiary)">' + sub + '</span></span></label>';
+  }
+
+  f.innerHTML =
+    '<label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">This week we’re promoting</label>' +
+    '<select id="promo-product" style="' + promoSelectStyle() + ';margin-bottom:var(--space-5)">' + opts + '</select>' +
+    '<label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">Generate</label>' +
+    '<div style="display:flex;gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-5)">' +
+      checkbox('promo-out-email', 'Email draft', 'Into the Emails tab', true) +
+      checkbox('promo-out-social', 'Social posts', 'Into My Posts', true) +
+      checkbox('promo-out-images', 'Product mockup', 'Into your image library', true) +
+    '</div>' +
+    '<div style="display:flex;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-5)">' +
+      '<div style="flex:1;min-width:160px"><label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">Email style</label>' +
+        '<select id="promo-archetype" style="' + promoSelectStyle() + '">' +
+          '<option value="product-launch">Product launch</option><option value="marketing-newsletter">Marketing newsletter</option><option value="b2b-weekly">B2B weekly</option><option value="transactional">Transactional</option>' +
+        '</select></div>' +
+      '<div style="flex:1;min-width:140px"><label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">Audience</label>' +
+        '<select id="promo-audience" style="' + promoSelectStyle() + '">' +
+          '<option value="Nurture">Nurture</option><option value="Client">Client</option><option value="Cold">Cold</option><option value="Drip">Drip</option>' +
+        '</select></div>' +
+      '<div style="flex:1;min-width:120px"><label style="display:block;font-size:var(--text-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--tg-text-tertiary);margin-bottom:6px">Social posts</label>' +
+        '<select id="promo-count" style="' + promoSelectStyle() + '"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>' +
+    '</div>' +
+    '<button class="btn btn-primary" id="promo-go" style="display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>Generate drafts</button>' +
+    '<div id="promo-status" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:var(--space-3);min-height:14px"></div>';
+
+  $('promo-go').onclick = promoGenerate;
+}
+
+async function promoGenerate() {
+  if (promoState.running) return;
+  var productId = $('promo-product').value;
+  var outputs = [];
+  if ($('promo-out-email').checked) outputs.push('email');
+  if ($('promo-out-social').checked) outputs.push('social');
+  if ($('promo-out-images').checked) outputs.push('images');
+  if (!productId) { promoStatus('Pick a product first.', true); return; }
+  if (outputs.length === 0) { promoStatus('Tick at least one thing to generate.', true); return; }
+
+  promoState.running = true;
+  var go = $('promo-go'); if (go) { go.disabled = true; go.style.opacity = '0.6'; }
+  promoStatus('Generating ' + outputs.join(', ') + '… this can take up to a minute. Please keep this tab open.');
+  $('promo-results').innerHTML = '';
+
+  try {
+    var r = await fetch('/api/promo-generate', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantId: state.profile.id, productId: productId, outputs: outputs,
+        archetype: $('promo-archetype').value, audience: $('promo-audience').value,
+        socialCount: parseInt($('promo-count').value, 10) || 3
+      })
+    });
+    var d = await r.json();
+    if (!r.ok || !d.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    promoStatus('Done.');
+    promoRenderResults(d);
+  } catch (e) {
+    promoStatus(e.message, true);
+  } finally {
+    promoState.running = false;
+    if (go) { go.disabled = false; go.style.opacity = '1'; }
+  }
+}
+
+function promoStatus(msg, isError) {
+  var el = $('promo-status'); if (el) { el.textContent = msg || ''; el.style.color = isError ? 'var(--tg-error)' : 'var(--tg-text-tertiary)'; }
+}
+
+function promoResultRow(ok, title, detail) {
+  var icon = ok
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tg-error)" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+  return '<div style="display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--tg-border)">' +
+    '<span style="flex:none;margin-top:1px">' + icon + '</span>' +
+    '<div><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm)">' + title + '</div>' +
+    '<div style="font-size:var(--text-xs);color:var(--tg-text-secondary);margin-top:2px">' + detail + '</div></div></div>';
+}
+
+function promoRenderResults(d) {
+  var box = $('promo-results'); if (!box) return;
+  var rows = '';
+  var rr = d.results || {};
+  if (rr.email) {
+    rows += rr.email.ok
+      ? promoResultRow(true, 'Email draft created', 'Subject: “' + esc(rr.email.subject || '') + '”. Find it in the <strong>Emails</strong> tab' + ((rr.email.validationErrors && rr.email.validationErrors.length) ? '. Note: ' + rr.email.validationErrors.length + ' validation flag(s) to review.' : '.'))
+      : promoResultRow(false, 'Email draft failed', esc(rr.email.error || ''));
+  }
+  if (rr.social) {
+    rows += rr.social.ok
+      ? promoResultRow(true, rr.social.count + ' social post draft(s) created', 'In <strong>My Posts</strong>' + (rr.social.held ? '. ' + rr.social.held + ' on Quality Hold for review.' : '.'))
+      : promoResultRow(false, 'Social posts failed', esc(rr.social.error || ''));
+  }
+  if (rr.images) {
+    if (rr.images.ok) {
+      rows += promoResultRow(true, 'Product mockup created', 'Saved to your image library.') +
+        '<div style="margin-top:12px"><img src="' + esc(rr.images.pngUrl) + '" alt="Generated mockup" style="max-width:100%;border:1px solid var(--tg-border);border-radius:var(--radius-md)"></div>';
+    } else {
+      rows += promoResultRow(false, 'Mockup failed', esc(rr.images.error || ''));
+    }
+  }
+  box.innerHTML = '<div class="card" style="padding:var(--space-5)">' +
+    '<div style="font-weight:700;color:var(--tg-text-primary);margin-bottom:var(--space-2)">Results for ' + esc(d.product || '') + '</div>' + rows + '</div>';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

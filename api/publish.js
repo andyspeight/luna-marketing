@@ -261,6 +261,27 @@ module.exports = async function handler(req, res) {
       var succeeded = results.filter(function(r) { return r.ok; });
       var failed = results.filter(function(r) { return !r.ok; });
 
+      console.log("[publish] post " + postId + " → blog " + target.blogId +
+        " networks=" + publishNetworks.join(",") +
+        " ok=" + succeeded.length + " failed=" + failed.length +
+        (failed.length ? " | " + failed.map(function(r){return r.network+":"+r.status+" "+(r.response||"").slice(0,120);}).join(" ; ") : ""));
+
+      // Only mark Published if Metricool actually accepted at least one platform.
+      // Otherwise leave the post Approved and surface the real Metricool error
+      // so it isn't a silent false "Published".
+      if (succeeded.length === 0) {
+        var reason = failed.map(function(r){ return r.network + ": " + r.status + " " + (r.response || "").slice(0, 200); }).join(" | ");
+        try { await atPatch(QUEUE, postId, { "Error Log": ("Metricool publish failed — " + reason).slice(0, 50000) }); } catch (e) {}
+        return res.status(502).json({
+          success: false, postId: postId,
+          error: "Metricool rejected this post on every platform. Nothing was scheduled.",
+          blogId: target.blogId,
+          targetChannel: target.targetChannel || "all",
+          platforms: { total: results.length, succeeded: 0, failed: failed.length },
+          results: results
+        });
+      }
+
       await atPatch(QUEUE, postId, { Status: "Published" });
 
       return res.status(200).json({
@@ -313,9 +334,16 @@ module.exports = async function handler(req, res) {
           if (!publishNets.length) { errors.push({ postId: p.id, error: "No platforms" }); continue; }
 
           var postImgUrl = p.fields["Image URL"] || null;
-          await schedulePost(target.blogId, p, postImgUrl, publishNets);
-          await atPatch(QUEUE, p.id, { Status: "Published" });
-          published++;
+          var rs = await schedulePost(target.blogId, p, postImgUrl, publishNets);
+          var okCount = rs.filter(function(r){ return r.ok; }).length;
+          if (okCount === 0) {
+            var why = rs.map(function(r){ return r.network + ": " + r.status + " " + (r.response || "").slice(0, 150); }).join(" | ");
+            try { await atPatch(QUEUE, p.id, { "Error Log": ("Metricool publish failed — " + why).slice(0, 50000) }); } catch (e) {}
+            errors.push({ postId: p.id, error: "Metricool rejected: " + why.slice(0, 200) });
+          } else {
+            await atPatch(QUEUE, p.id, { Status: "Published" });
+            published++;
+          }
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });
         } catch (e) { errors.push({ postId: clientPosts[i].id, error: e.message }); }
       }

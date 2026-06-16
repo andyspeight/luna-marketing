@@ -106,6 +106,21 @@ function getWeekString() {
   return d.getFullYear() + "-W" + (weekNum < 10 ? "0" : "") + weekNum;
 }
 
+// Map a suggested day name (Mon..Sun) to an actual date in the UPCOMING week
+// (next Monday-based week), so generated posts get a real Scheduled Date.
+// Without this the calendar can't place them and publish defaults to "tomorrow".
+function dateForDay(dayName) {
+  var map = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+  var key = (dayName || "Mon").toString().trim().toLowerCase().slice(0, 3);
+  var target = map[key] || 1; // 1=Mon .. 7=Sun
+  var d = new Date();
+  var dow = d.getDay() || 7; // 1..7 (Sun=7)
+  var toNextMon = (8 - dow) % 7; if (toNextMon === 0) toNextMon = 7; // always next week's Monday
+  var monday = new Date(d); monday.setDate(d.getDate() + toNextMon);
+  var result = new Date(monday); result.setDate(monday.getDate() + (target - 1));
+  return result.getFullYear() + "-" + String(result.getMonth() + 1).padStart(2, "0") + "-" + String(result.getDate()).padStart(2, "0");
+}
+
 function getClientType(clientRecord) {
   var ct = clientRecord.fields["Client Type"];
   if (!ct) return "b2c-travel";
@@ -191,6 +206,7 @@ async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B) {
       "Hashtags": post.hashtags || "",
       "CTA URL": post.cta_url || "",
       "Destination": dest,
+      "Scheduled Date": dateForDay(post.suggested_day),
       "Scheduled Time": post.suggested_time || "09:00",
       "Status": status,
       "Generated Week": getWeekString(),

@@ -37,16 +37,11 @@ async function importBlogPost(siteId, post) {
     author: post.author || "Andy Speight",
   };
 
-  // Add main image if provided
+  // Add main image if provided. Duda's import API rejects an "alt" field here
+  // ("InvalidInput: Unrecognized field alt"), so send only the url.
   if (post.imageUrl) {
-    body.main_image = {
-      url: post.imageUrl,
-      alt: post.title,
-    };
-    body.thumbnail = {
-      url: post.imageUrl,
-      alt: post.title,
-    };
+    body.main_image = { url: post.imageUrl };
+    body.thumbnail = { url: post.imageUrl };
   }
 
   const url = `${DUDA_BASE_URL}/${siteId}/blog/posts/import`;

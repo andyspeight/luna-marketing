@@ -9973,7 +9973,7 @@ function promoResultMarkup(output, label, res) {
   if (output === 'blog') {
     if (res.held) return promoRow('fail', label, 'Written but <strong>held for quality</strong> — not published. Review it in Campaigns / My Posts (Quality Hold).');
     if (res.published) return promoRow('ok', label, 'Published live: ' + (res.url ? '<a href="' + esc(res.url) + '" target="_blank" rel="noopener" style="color:var(--tg-accent)">' + esc(res.url) + '</a>' : 'on your Duda blog') + '.');
-    return promoRow('ok', label, 'Article written and saved, but the Duda publish didn’t complete — check it in Campaigns.');
+    return promoRow('fail', label, 'Article written, but publishing to Duda failed: ' + esc(res.dudaError || 'unknown error') + '. Saved in Campaigns.');
   }
   return promoRow('ok', label, 'Done.');
 }
@@ -10048,10 +10048,13 @@ function campRender(d) {
     h += '<div style="margin-bottom:var(--space-6)">';
     blogs.forEach(function(b){
       var live = b.status === 'Published' && b.url;
-      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">' +
+      h += '<div class="card" style="padding:var(--space-4);margin-bottom:var(--space-2)">' +
+        '<div style="display:flex;align-items:center;gap:var(--space-3)">' +
         '<div style="flex:1;min-width:0"><div style="font-weight:600;color:var(--tg-text-primary);font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(b.title) + '</div>' +
         '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + (b.product ? esc(b.product) : 'Product') + (live ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener" style="color:var(--tg-accent)">view live</a>' : '') + '</div></div>' +
-        campStatusPill(b.status) + '</div>';
+        campStatusPill(b.status) + '</div>' +
+        (!live && b.qualityIssues ? '<div style="margin-top:8px;font-size:var(--text-xs);color:#B91C1C;white-space:pre-wrap">' + esc(b.qualityIssues.slice(0, 600)) + '</div>' : '') +
+        '</div>';
     });
     h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:6px">Published articles are live on your Duda blog. Held articles need a fix before they can go live.</div></div>';
   }

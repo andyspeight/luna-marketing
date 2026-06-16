@@ -25,6 +25,7 @@ var {
   parsePostsJson,
   polishPostsThroughEditor,
 } = require("../lib/generation-pipeline.js");
+const { nextPostingDates, defaultTime, validTime } = require("../lib/post-scheduler.js");
 
 var AIRTABLE_KEY = process.env.AIRTABLE_KEY;
 var AIRTABLE_BASE = "appSoIlSe0sNaJ4BZ";
@@ -137,7 +138,10 @@ function getClientType(clientRecord) {
 // resolves it.
 // ─────────────────────────────────────────────────────────────
 
-async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B) {
+async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B, clientFields) {
+  // Assign Scheduled Dates across the client's Posting Days so the posts land
+  // on the calendar (and publish to a sensible day). One shared scheduler.
+  var schedDates = nextPostingDates(clientFields || {}, taggedPosts.length);
   // Hard kill switch — defence in depth. Auto-publish only honoured when
   // AUTO_PUBLISH_ENABLED is the literal string "true". Default = OFF.
   var killSwitchEnabled = process.env.AUTO_PUBLISH_ENABLED !== "true";
@@ -206,8 +210,8 @@ async function queuePosts(taggedPosts, clientId, clientAutoPublish, isB2B) {
       "Hashtags": post.hashtags || "",
       "CTA URL": post.cta_url || "",
       "Destination": dest,
-      "Scheduled Date": dateForDay(post.suggested_day),
-      "Scheduled Time": post.suggested_time || "09:00",
+      "Scheduled Date": schedDates[i] || schedDates[schedDates.length - 1] || "",
+      "Scheduled Time": validTime(post.suggested_time, defaultTime(i)),
       "Status": status,
       "Generated Week": getWeekString(),
       "Image URL": imageUrl || "",
@@ -354,7 +358,7 @@ module.exports = async function handler(req, res) {
     var suppressed = 0;
     var approved = 0;
     if (!dryRun) {
-      queued = await queuePosts(tagged, clientId, clientAutoPublish, isB2B);
+      queued = await queuePosts(tagged, clientId, clientAutoPublish, isB2B, clientRecord.fields);
       qualityHold = queued.filter(function(q) { return q._qualityHold; }).length;
       suppressed = queued.filter(function(q) { return q._suppressed; }).length;
       approved = queued.filter(function(q) { return q._status === "Approved"; }).length;

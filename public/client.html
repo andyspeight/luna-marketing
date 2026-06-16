@@ -9198,7 +9198,8 @@ function maybeAutoShowShowcase() {
 // owner's authoritative Supplement, source URLs, freshness, and suggested
 // changes to the canonical copy. Backed by /api/product-brain.
 
-var pbState = { products: [], tenantId: null, mainWebsiteUrl: '', loading: false, expanded: null, busy: {}, lastChanges: {} };
+var pbState = { products: [], tenantId: null, mainWebsiteUrl: '', loading: false, expanded: null, busy: {}, lastChanges: {}, mode: 'facts' };
+var pvState = { products: [], loading: false, expanded: null, busy: {}, drafts: {} };
 
 // Shared "about this page" explainer card. Used by Product Brain and Content
 // Engine so the two tools' roles stay clearly distinguished for the user.
@@ -9242,30 +9243,51 @@ function pbWhen(iso) {
 async function renderProductBrain() {
   var el = $('view-product-brain'); if (!el) return;
   if (!pbState.tenantId) pbState.tenantId = state.profile.id;
+  function tab(mode, label) {
+    var active = pbState.mode === mode;
+    return '<button class="pb-mode" data-mode="' + mode + '" style="border:none;cursor:pointer;font-family:var(--tg-font-body);font-size:var(--text-sm);font-weight:600;padding:7px 18px;border-radius:var(--radius-full);transition:all var(--duration-fast) var(--ease-out);' +
+      (active ? 'background:var(--tg-bg-primary);color:var(--tg-text-primary);box-shadow:var(--shadow-sm)' : 'background:transparent;color:var(--tg-text-secondary)') + '">' + label + '</button>';
+  }
   el.innerHTML =
     '<div style="padding:var(--space-6);max-width:1100px;margin:0 auto">' +
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);margin-bottom:var(--space-5);flex-wrap:wrap">' +
-        '<div>' +
-          '<h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Product Brain</h2>' +
-          '<p style="margin:0;font-size:var(--text-sm);color:var(--tg-text-secondary);max-width:640px">Luna learns each product from your website every day. Add source pages and your own notes here so the marketing engine always writes with the latest, most accurate information.</p>' +
-        '</div>' +
-        '<div style="display:flex;gap:var(--space-2);align-items:center"><button class="btn btn-secondary" id="pb-refresh-all" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh all now</button></div>' +
+      '<div style="margin-bottom:var(--space-4)">' +
+        '<h2 style="margin:0 0 4px;font-size:var(--text-2xl);font-weight:700;color:var(--tg-text-primary)">Product Brain</h2>' +
+        '<p style="margin:0;font-size:var(--text-sm);color:var(--tg-text-secondary);max-width:680px">Everything Luna knows about each product: the <strong>Facts</strong> it writes from, and the <strong>Visuals</strong> it draws mockups from.</p>' +
       '</div>' +
-      tgInfoCard({
-        eyebrow: 'What is the Product Brain?',
-        intro: '<strong>The Product Brain keeps Luna’s knowledge of each product accurate and up to date.</strong> Every day it reads your website and refreshes what Luna knows, so the emails, posts and images it writes always use the latest facts. It also holds <em>your</em> authoritative notes. It never rewrites your wording on its own &mdash; it only suggests changes for you to approve. <span style="color:var(--tg-text-tertiary)">The definitive product copy itself is curated in the <strong>Content Engine</strong> tab; this page keeps that copy honest and current.</span>',
-        steps: [
-          'Expand a product below.',
-          'Paste its page URL(s) into <strong>Source URLs</strong> (one per line) and <strong>Save URLs</strong>.',
-          'Add anything the website doesn’t say in <strong>Your supplement</strong> &mdash; this is treated as gospel and is never overwritten.',
-          'Hit <strong>Refresh now</strong> (or let the daily 05:00 scan run) to update the brain.',
-          'Review the <strong>Change log</strong>; when you agree with a suggestion, edit the canonical field and <strong>Apply</strong> it.'
-        ],
-        footnote: 'Use this when a product changes, a new feature ships, or pricing moves &mdash; so the writer never works from stale information.'
-      }) +
-      '<div id="pb-meta" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)"></div>' +
-      '<div id="pb-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading product brain&hellip;</div></div>' +
+      '<div style="display:inline-flex;background:var(--tg-bg-tertiary);border-radius:var(--radius-full);padding:3px;margin-bottom:var(--space-5)">' + tab('facts', 'Facts') + tab('visuals', 'Visuals') + '</div>' +
+      '<div id="pb-shell"></div>' +
     '</div>';
+  el.querySelectorAll('.pb-mode').forEach(function(b){
+    b.onclick = function(){ if (pbState.mode === b.dataset.mode) return; pbState.mode = b.dataset.mode; renderProductBrain(); };
+  });
+  pbRenderShell();
+}
+
+function pbRenderShell() {
+  if (pbState.mode === 'visuals') return renderBrainVisuals();
+  return renderBrainFacts();
+}
+
+async function renderBrainFacts() {
+  var shell = $('pb-shell'); if (!shell) return;
+  shell.innerHTML =
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:var(--space-3)">' +
+      '<button class="btn btn-secondary" id="pb-refresh-all" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh all now</button>' +
+    '</div>' +
+    tgInfoCard({
+      eyebrow: 'What are Facts?',
+      intro: '<strong>The Facts layer keeps Luna’s knowledge of each product accurate and up to date.</strong> Every day it reads your website and refreshes what Luna knows, so the emails, posts and images it writes always use the latest facts. It also holds <em>your</em> authoritative notes. It never rewrites your wording on its own &mdash; it only suggests changes for you to approve. <span style="color:var(--tg-text-tertiary)">The definitive product copy itself is curated in the <strong>Content Engine</strong> tab; this page keeps that copy honest and current.</span>',
+      steps: [
+        'Expand a product below.',
+        'Paste its page URL(s) into <strong>Source URLs</strong> (one per line) and <strong>Save URLs</strong>.',
+        'Add anything the website doesn’t say in <strong>Your supplement</strong> &mdash; this is treated as gospel and is never overwritten.',
+        'Hit <strong>Refresh now</strong> (or let the daily 05:00 scan run) to update the brain.',
+        'Review the <strong>Change log</strong>; when you agree with a suggestion, edit the canonical field and <strong>Apply</strong> it.'
+      ],
+      footnote: 'Use this when a product changes, a new feature ships, or pricing moves &mdash; so the writer never works from stale information.'
+    }) +
+    '<div id="pb-meta" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)"></div>' +
+    '<div id="pb-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading product brain&hellip;</div></div>';
   var rb = $('pb-refresh-all'); if (rb) rb.onclick = pbRefreshAll;
   await pbLoad();
 }
@@ -9487,6 +9509,177 @@ async function pbRefreshAll() {
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
   }
+}
+
+// ── Product Brain: VISUALS view ────────────────────────────────────────────
+// How each product LOOKS, so the image engine can render faithful mockups.
+// Backed by /api/product-visuals (owner only).
+
+var PV_SPEC_FIELDS = [
+  ['oneLiner', 'One liner', 2, 'One sentence: what this product is.'],
+  ['dimensions', 'Dimensions & shape', 3, 'Overall shape, size, corner radius, shadow.'],
+  ['header', 'Header / chrome', 4, 'Top bar, avatar, logo, title, controls.'],
+  ['body', 'Body (default state)', 6, 'The main content area, default/welcome state.'],
+  ['interactive', 'Interactive elements', 4, 'Buttons, inputs, pills, cards, links.'],
+  ['footer', 'Footer', 3, 'Bottom area, branding, input bar.'],
+  ['colourSignatures', 'Colour signatures', 3, 'Exact hex codes by role.'],
+  ['typographySignatures', 'Typography signatures', 3, 'Fonts, sizes, weights, where used.'],
+  ['variations', 'Variations', 3, 'Other states/layouts (collapsed, results, error).'],
+  ['antiPatterns', 'Anti-patterns', 4, 'Do NOT … things the engine must never draw.'],
+  ['aliases', 'Aliases', 2, 'Comma-separated names, for matching briefs.']
+];
+
+async function renderBrainVisuals() {
+  var shell = $('pb-shell'); if (!shell) return;
+  shell.innerHTML =
+    tgInfoCard({
+      accent: '#EC2D8E',
+      eyebrow: 'What are Visuals?',
+      intro: '<strong>The Visuals layer tells the image engine how each product looks</strong>, so it can draw a faithful, on-brand mockup (a chat window, dashboard, widget, pricing card, etc) instead of a generic stand-in. Each product gets a visual spec: shape, header, body, colours, typography and anti-patterns. <span style="color:var(--tg-text-tertiary)">Only products with a spec produce a true-to-life mockup &mdash; the rest fall back to a generic look.</span>',
+      steps: [
+        'Find a product marked <strong>No spec</strong> below and expand it.',
+        'Click <strong>Draft with AI</strong> &mdash; Luna proposes a spec from the product’s facts (and a reference screenshot if one is attached in Airtable).',
+        'Review and edit the fields. Anything marked <strong>[confirm]</strong> is a guess to verify against the real product.',
+        'Click <strong>Save spec</strong>. Set status to <strong>Active</strong> to make it live for mockups.'
+      ],
+      footnote: 'A reference screenshot (attached to the product’s record in the Product Visuals table) makes the draft far more accurate. Best done before generating mockups in the next phase.'
+    }) +
+    '<div id="pv-meta" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)"></div>' +
+    '<div id="pv-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading product visuals&hellip;</div></div>';
+  await pvLoad();
+}
+
+async function pvLoad() {
+  pvState.loading = true;
+  var body = $('pv-body');
+  try {
+    var r = await fetch('/api/product-visuals', { credentials: 'include' });
+    var d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Load failed');
+    pvState.products = d.products || [];
+    pvRenderList();
+  } catch (e) {
+    if (body) body.innerHTML = '<div class="card" style="padding:var(--space-6);color:var(--tg-error);text-align:center">' + esc(e.message) + '</div>';
+  } finally { pvState.loading = false; }
+}
+
+function pvSpecPill(p) {
+  if (p.hasSpec) {
+    var live = (p.pvStatus === 'Active');
+    var s = live ? { bg: 'rgba(34,197,94,0.12)', fg: '#15803D', label: 'Spec live' } : { bg: 'rgba(234,179,8,0.14)', fg: '#A16207', label: 'Spec (' + (p.pvStatus || 'draft') + ')' };
+    return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;background:' + s.bg + ';color:' + s.fg + '"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>' + s.label + '</span>';
+  }
+  return '<span style="padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:700;background:var(--tg-bg-tertiary);color:var(--tg-text-tertiary)">No spec</span>';
+}
+
+function pvRenderList() {
+  var body = $('pv-body'); if (!body) return;
+  var meta = $('pv-meta');
+  var products = pvState.products.slice();
+  var withSpec = products.filter(function(p){ return p.hasSpec; }).length;
+  if (meta) meta.innerHTML = products.length + ' products · ' + withSpec + ' with a visual spec · ' + (products.length - withSpec) + ' still generic';
+  if (products.length === 0) { body.innerHTML = '<div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">No products found.</div>'; return; }
+  var h = '';
+  products.forEach(function(p){
+    var open = pvState.expanded === p.id;
+    h += '<div class="card" style="margin-bottom:var(--space-3);overflow:hidden">';
+    h += '<div class="pv-head" data-pid="' + esc(p.id) + '" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer">';
+    h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--tg-text-tertiary);transform:rotate(' + (open ? '90' : '0') + 'deg);flex:none"><path d="M9 18l6-6-6-6"/></svg>';
+    h += '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--tg-text-primary);font-size:var(--text-base)">' + esc(p.name) + '</div>';
+    h += '<div style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-top:2px">' + (p.hasScreenshot ? 'reference screenshot attached · ' : '') + (p.hasBrain ? 'brain ready' : 'no brain yet') + '</div></div>';
+    h += pvSpecPill(p);
+    h += '</div>';
+    if (open) h += '<div style="border-top:1px solid var(--tg-border);padding:var(--space-5)" id="pv-detail-' + esc(p.id) + '">' + pvDetailHtml(p) + '</div>';
+    h += '</div>';
+  });
+  body.innerHTML = h;
+  body.querySelectorAll('.pv-head').forEach(function(row){
+    row.onclick = function(){ var pid = row.dataset.pid; pvState.expanded = (pvState.expanded === pid) ? null : pid; pvRenderList(); };
+  });
+  if (pvState.expanded) pvWireDetail(pvState.expanded);
+}
+
+function pvDetailHtml(p) {
+  var busy = pvState.busy[p.id];
+  var spec = pvState.drafts[p.id] || p.spec || {};
+  var h = '';
+  h += '<div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-4);flex-wrap:wrap">';
+  h += '<button class="btn btn-primary pv-draft" data-pid="' + esc(p.id) + '"' + (busy ? ' disabled' : '') + ' style="display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>' + (busy ? 'Drafting&hellip;' : (p.hasSpec ? 'Re-draft with AI' : 'Draft with AI')) + '</button>';
+  h += '<button class="btn btn-secondary pv-save" data-pid="' + esc(p.id) + '">Save spec</button>';
+  if (p.hasSpec) {
+    h += '<label style="font-size:var(--text-xs);color:var(--tg-text-secondary);display:flex;align-items:center;gap:6px;margin-left:auto">Status' +
+      '<select class="pv-status" data-pid="' + esc(p.id) + '" style="font-family:var(--tg-font-body);font-size:var(--text-xs);padding:4px 8px;border:1px solid var(--tg-border);border-radius:var(--radius-md);background:var(--tg-bg-primary);color:var(--tg-text-primary)">' +
+      ['Active','In progress','Todo','Done'].map(function(s){ return '<option' + (p.pvStatus === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label>';
+  }
+  h += '</div>';
+  h += '<div class="pv-status-' + esc(p.id) + '" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4);min-height:14px"></div>';
+  PV_SPEC_FIELDS.forEach(function(cf){
+    var key = cf[0];
+    h += '<div style="margin-bottom:var(--space-4)">' + pbField(cf[1], '— ' + cf[3]) +
+      pbTextarea('pv-' + key + '-' + p.id, spec[key] || '', cf[2], cf[3]) + '</div>';
+  });
+  return h;
+}
+
+function pvProduct(pid) { return pvState.products.find(function(p){ return p.id === pid; }); }
+function pvSetStatusMsg(pid, msg, isError) {
+  document.querySelectorAll('.pv-status-' + pid).forEach(function(el){ el.textContent = msg || ''; el.style.color = isError ? 'var(--tg-error)' : 'var(--tg-text-tertiary)'; });
+}
+function pvCollectSpec(pid) {
+  var spec = {};
+  PV_SPEC_FIELDS.forEach(function(cf){ var el = $('pv-' + cf[0] + '-' + pid); if (el) spec[cf[0]] = el.value; });
+  return spec;
+}
+
+async function pvPost(payload) {
+  var r = await fetch('/api/product-visuals', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  var d = await r.json();
+  if (!r.ok || (d && d.error && !d.ok)) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  return d;
+}
+
+function pvWireDetail(pid) {
+  var draftBtn = document.querySelector('.pv-draft[data-pid="' + pid + '"]');
+  if (draftBtn) draftBtn.onclick = async function(){
+    pvState.busy[pid] = true; pvRenderList();
+    pvSetStatusMsg(pid, 'Drafting a spec from the product brain… this can take ~30s.');
+    try {
+      var d = await pvPost({ action: 'draft', productId: pid });
+      pvState.busy[pid] = false;
+      if (d.ok) {
+        pvState.drafts[pid] = d.spec;
+        pvRenderList();
+        var note = (d.usedScreenshot ? 'Drafted from the reference screenshot. ' : 'Drafted from the product brain (no screenshot). ') +
+          'Confidence: ' + (d.confidence || '?') + '. Review, edit, then Save.' +
+          ((d.needsConfirmation && d.needsConfirmation.length) ? ' To confirm: ' + d.needsConfirmation.slice(0, 4).join('; ') : '');
+        pvSetStatusMsg(pid, note);
+      } else {
+        pvRenderList(); pvSetStatusMsg(pid, d.error || 'Draft failed.', true);
+      }
+    } catch (e) { pvState.busy[pid] = false; pvRenderList(); pvSetStatusMsg(pid, e.message, true); }
+  };
+
+  var saveBtn = document.querySelector('.pv-save[data-pid="' + pid + '"]');
+  if (saveBtn) saveBtn.onclick = async function(){
+    var spec = pvCollectSpec(pid);
+    if (!spec.body || !spec.body.trim()) { pvSetStatusMsg(pid, 'Add a Body spec before saving (it’s the core of the mockup).', true); return; }
+    var p = pvProduct(pid);
+    saveBtn.disabled = true; pvSetStatusMsg(pid, 'Saving spec…');
+    try {
+      var d = await pvPost({ action: 'save', productId: pid, pvId: p ? p.pvId : null, spec: spec });
+      if (p) { p.pvId = d.pvId; p.pvStatus = d.status; p.hasSpec = true; p.spec = spec; }
+      delete pvState.drafts[pid];
+      pvRenderList();
+      pvSetStatusMsg(pid, 'Saved. Status: ' + d.status + (d.status === 'Active' ? ' (live for mockups).' : '.'));
+    } catch (e) { pvSetStatusMsg(pid, e.message, true); } finally { saveBtn.disabled = false; }
+  };
+
+  var statusSel = document.querySelector('.pv-status[data-pid="' + pid + '"]');
+  if (statusSel) statusSel.onchange = async function(){
+    var p = pvProduct(pid); if (!p || !p.pvId) return;
+    try { var d = await pvPost({ action: 'set-status', pvId: p.pvId, status: statusSel.value }); p.pvStatus = d.status; pvSetStatusMsg(pid, 'Status set to ' + d.status + '.'); }
+    catch (e) { pvSetStatusMsg(pid, e.message, true); }
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

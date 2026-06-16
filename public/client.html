@@ -2241,7 +2241,15 @@ var CAL_S=6,CAL_E=22,CAL_H=60;var MONTHS=['January','February','March','April','
 function getWeek(off){var n=new Date();var d=n.getDay();var mo=1-d+(d===0?-6:0);var m=new Date(n);m.setDate(n.getDate()+mo+off*7);var ds=[];for(var i=0;i<7;i++){var x=new Date(m);x.setDate(m.getDate()+i);ds.push(x)}return ds}
 function isToday(d){var n=new Date();return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear()}
 function pad2(n){return n<10?'0'+n:''+n}function timeTop(h,m){return((h-CAL_S)+m/60)*CAL_H}function parseTime(t){var p=(t||'09:00').split(':');return{h:parseInt(p[0])||9,m:parseInt(p[1])||0}}
-function matchDay(p,di){var days=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];return(p.title||'').toLowerCase().includes(days[di])}
+function matchDay(p,di){
+  // Place a post on the calendar by its Scheduled Date matching the date of
+  // calendar column di (Mon..Sun of the currently-viewed week). Previously this
+  // matched a weekday word in the post title, so nothing ever showed.
+  if(!p.scheduled_date)return false;
+  var d=getWeek(state.calOff)[di];if(!d)return false;
+  var iso=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+  return String(p.scheduled_date).slice(0,10)===iso;
+}
 function stClass(s){s=(s||'').toLowerCase();return s==='approved'?'cal-status-approved':s==='rejected'||s==='replaced'?'cal-status-rejected':s==='suppressed'?'cal-status-suppressed':'cal-status-queued'}
 
 // Events View

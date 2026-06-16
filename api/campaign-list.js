@@ -103,7 +103,10 @@ module.exports = async function handler(req, res) {
       airtableList(GENERATED_IMAGES_TABLE, `{Section Type}='product-mockup'`)
     ]);
 
-    const posts = postRecs.filter(r => inTenant(r, tenant)).map(rec => {
+    const tenantPosts = postRecs.filter(r => inTenant(r, tenant));
+    function ctName(f) { return (f["Content Type"] && f["Content Type"].name) || f["Content Type"] || ""; }
+
+    const posts = tenantPosts.filter(r => ctName(r.fields || {}) !== "Blog Article").map(rec => {
       const f = rec.fields || {};
       const prod = (f["Promoted Product"] || [])[0];
       const img = f["Image URL - Landscape"] || f["Image URL"] || "";
@@ -115,6 +118,21 @@ module.exports = async function handler(req, res) {
         week: f["Generated Week"] || "",
         hasImage: !!img,
         imageUrl: img,
+        qualityIssues: f["Quality Issues"] || "",
+        createdTime: rec.createdTime
+      };
+    }).sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+
+    // Blog articles written by Promote (Content Type "Blog Article").
+    const blogs = tenantPosts.filter(r => ctName(r.fields || {}) === "Blog Article").map(rec => {
+      const f = rec.fields || {};
+      const prod = (f["Promoted Product"] || [])[0];
+      return {
+        id: rec.id,
+        title: (f["Post Title"] || "Blog").replace(/^Blog:\s*/, ""),
+        status: (f["Status"] && f["Status"].name) || f["Status"] || "",
+        product: prod ? (names[prod] || "") : "",
+        url: f["CTA URL"] || "",
         qualityIssues: f["Quality Issues"] || "",
         createdTime: rec.createdTime
       };
@@ -145,7 +163,7 @@ module.exports = async function handler(req, res) {
       return { id: rec.id, name: f["Name"] || "Mockup", pngUrl: f["PNG URL"], createdTime: rec.createdTime };
     }).sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime)).slice(0, 24);
 
-    return res.status(200).json({ ok: true, tenantId: tenant, posts, emails, mockups });
+    return res.status(200).json({ ok: true, tenantId: tenant, posts, emails, blogs, mockups });
   } catch (err) {
     console.error("[campaign-list] error:", err);
     return res.status(500).json({ error: err.message || "Internal error" });

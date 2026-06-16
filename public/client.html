@@ -9824,14 +9824,21 @@ async function promoGenerate() {
 
 async function promoRunOne(output, base, label) {
   var rowEl = $('promo-row-' + output);
+  // Never let the browser hang forever — abort a bit after the server's own
+  // per-output timeout so the server's clearer message usually wins.
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, 140000);
   try {
     var body = Object.assign({}, base, { outputs: [output] });
-    var r = await fetch('/api/promo-generate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var r = await fetch('/api/promo-generate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });
     var d = await r.json();
     if (!r.ok || !d.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
     if (rowEl) rowEl.innerHTML = promoResultMarkup(output, label, (d.results || {})[output] || { ok: false, error: 'No result returned' });
   } catch (e) {
-    if (rowEl) rowEl.innerHTML = promoRow('fail', label, esc(e.message));
+    var msg = (e && e.name === 'AbortError') ? 'Timed out in the browser. It may still finish in the background — check the tab in a minute, or try again.' : (e && e.message) || 'Failed';
+    if (rowEl) rowEl.innerHTML = promoRow('fail', label, esc(msg));
+  } finally {
+    clearTimeout(timer);
   }
 }
 

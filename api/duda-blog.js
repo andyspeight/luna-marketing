@@ -15,6 +15,14 @@ function getAuthHeader() {
   return `Basic ${encoded}`;
 }
 
+// Duda's publish endpoint (and sometimes import) returns an empty body, so
+// res.json() throws "Unexpected end of JSON input". Parse only if there's a body.
+async function safeJson(res) {
+  const text = await res.text();
+  if (!text || !text.trim()) return {};
+  try { return JSON.parse(text); } catch (e) { return { raw: text }; }
+}
+
 /**
  * Import a blog post as a DRAFT into a Duda site
  * @param {string} siteId - Duda site identifier (e.g. "89c0010b")
@@ -60,7 +68,7 @@ async function importBlogPost(siteId, post) {
     throw new Error(`Duda import failed (${res.status}): ${errText}`);
   }
 
-  return res.json();
+  return safeJson(res);
 }
 
 /**
@@ -85,7 +93,7 @@ async function publishBlogPost(siteId, postSlug) {
     throw new Error(`Duda publish failed (${res.status}): ${errText}`);
   }
 
-  return res.json();
+  return safeJson(res);
 }
 
 /**

@@ -122,7 +122,7 @@ Use \\n\\n for paragraph breaks. Do NOT include the CTA button text in bodyMarkd
   const systemPrompt = BRAND_GUARDRAILS + "\n\n" + dripPrompt;
 
   const response = await aiClient.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 1500,
     temperature: 0.7,
     system: systemPrompt,

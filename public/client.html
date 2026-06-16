@@ -9200,6 +9200,23 @@ function maybeAutoShowShowcase() {
 
 var pbState = { products: [], tenantId: null, mainWebsiteUrl: '', loading: false, expanded: null, busy: {}, lastChanges: {} };
 
+// Shared "about this page" explainer card. Used by Product Brain and Content
+// Engine so the two tools' roles stay clearly distinguished for the user.
+function tgInfoCard(opts) {
+  var accent = opts.accent || 'var(--tg-accent)';
+  var h = '<div style="border:1px solid var(--tg-border);border-left:3px solid ' + accent + ';background:var(--tg-bg-primary);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);margin-bottom:var(--space-5)">';
+  h += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:' + accent + ';margin-bottom:6px">' + esc(opts.eyebrow || 'About this page') + '</div>';
+  h += '<div style="font-size:var(--text-sm);line-height:1.6;color:var(--tg-text-secondary)">' + opts.intro + '</div>';
+  if (opts.steps && opts.steps.length) {
+    h += '<ol style="margin:var(--space-3) 0 0;padding-left:18px;font-size:var(--text-sm);line-height:1.6;color:var(--tg-text-secondary)">';
+    opts.steps.forEach(function(s){ h += '<li style="margin-bottom:3px">' + s + '</li>'; });
+    h += '</ol>';
+  }
+  if (opts.footnote) h += '<div style="margin-top:var(--space-3);font-size:var(--text-xs);color:var(--tg-text-tertiary)">' + opts.footnote + '</div>';
+  h += '</div>';
+  return h;
+}
+
 var PB_FRESH = {
   Fresh: { bg: 'rgba(34,197,94,0.12)', fg: '#15803D', label: 'Fresh' },
   Stale: { bg: 'rgba(234,179,8,0.14)', fg: '#A16207', label: 'Stale' },
@@ -9234,6 +9251,18 @@ async function renderProductBrain() {
         '</div>' +
         '<div style="display:flex;gap:var(--space-2);align-items:center"><button class="btn btn-secondary" id="pb-refresh-all" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh all now</button></div>' +
       '</div>' +
+      tgInfoCard({
+        eyebrow: 'What is the Product Brain?',
+        intro: '<strong>The Product Brain keeps Luna’s knowledge of each product accurate and up to date.</strong> Every day it reads your website and refreshes what Luna knows, so the emails, posts and images it writes always use the latest facts. It also holds <em>your</em> authoritative notes. It never rewrites your wording on its own &mdash; it only suggests changes for you to approve. <span style="color:var(--tg-text-tertiary)">The definitive product copy itself is curated in the <strong>Content Engine</strong> tab; this page keeps that copy honest and current.</span>',
+        steps: [
+          'Expand a product below.',
+          'Paste its page URL(s) into <strong>Source URLs</strong> (one per line) and <strong>Save URLs</strong>.',
+          'Add anything the website doesn’t say in <strong>Your supplement</strong> &mdash; this is treated as gospel and is never overwritten.',
+          'Hit <strong>Refresh now</strong> (or let the daily 05:00 scan run) to update the brain.',
+          'Review the <strong>Change log</strong>; when you agree with a suggestion, edit the canonical field and <strong>Apply</strong> it.'
+        ],
+        footnote: 'Use this when a product changes, a new feature ships, or pricing moves &mdash; so the writer never works from stale information.'
+      }) +
       '<div id="pb-meta" style="font-size:var(--text-xs);color:var(--tg-text-tertiary);margin-bottom:var(--space-4)"></div>' +
       '<div id="pb-body"><div class="card" style="padding:var(--space-10);text-align:center;color:var(--tg-text-tertiary)">Loading product brain&hellip;</div></div>' +
     '</div>';
@@ -9495,6 +9524,17 @@ async function renderContentEngine() {
         '</div>' +
         '<div style="display:flex;gap:var(--space-2);align-items:center" id="ce-actions"></div>' +
       '</div>' +
+      tgInfoCard({
+        eyebrow: 'What is the Content Engine?',
+        intro: '<strong>The Content Engine is your product catalogue &mdash; the master list of what Travelgenix sells and how it gets promoted.</strong> Each product holds its definitive marketing copy (one-liner, the problem it solves, the proof point), its CTA, status, priority, spotlight month and tier match. The social, email and blog engines read from here to decide <em>what</em> to promote and <em>how prominently</em>. <span style="color:var(--tg-text-tertiary)">Keeping that copy accurate and current from your website is the <strong>Product Brain</strong> tab’s job; here you own the definitive wording.</span>',
+        steps: [
+          'Add or open a product and write its canonical copy and primary CTA.',
+          'Set <strong>Status</strong> to <strong>Active</strong> to make it mentionable (Coming Soon is held back).',
+          'Use <strong>Priority</strong> and <strong>Spotlight month</strong> to control how prominently it’s promoted.',
+          'Set <strong>Tier match</strong> and <strong>Suitable archetypes</strong> so it’s only suggested where it fits.'
+        ],
+        footnote: 'Use this to decide what Travelgenix promotes and to own the exact wording. Use the Product Brain to keep that wording up to date.'
+      }) +
       '<div style="display:flex;gap:var(--space-1);border-bottom:1px solid var(--tg-border);margin-bottom:var(--space-5)">' +
         '<button class="ce-subtab active" data-subtab="products" style="background:none;border:none;padding:var(--space-3) var(--space-4);font-size:var(--text-sm);font-weight:600;color:var(--tg-text-primary);cursor:pointer;border-bottom:2px solid var(--tg-accent);font-family:var(--tg-font-body)">Products <span style="background:var(--tg-bg-tertiary);padding:2px 8px;border-radius:var(--radius-full);font-size:11px;margin-left:6px" id="ce-products-count">&mdash;</span></button>' +
         '<button class="ce-subtab" data-subtab="topics" disabled style="background:none;border:none;padding:var(--space-3) var(--space-4);font-size:var(--text-sm);font-weight:500;color:var(--tg-text-tertiary);cursor:not-allowed;font-family:var(--tg-font-body)">Topic Mappings <span style="font-size:10px;background:var(--tg-bg-tertiary);padding:2px 6px;border-radius:var(--radius-full);margin-left:6px">soon</span></button>' +

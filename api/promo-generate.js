@@ -29,7 +29,8 @@
 const {
   generateEmailDraft,
   generateSocialDrafts,
-  generateMockup
+  generateMockup,
+  generateBlogPost
 } = require("../lib/promo-orchestrator");
 
 const AIRTABLE_KEY = process.env.AIRTABLE_KEY;
@@ -43,14 +44,14 @@ const OWNER_CLIENT_ID = "recFXQY7be6gMr4In";
 
 const VALID_ARCHETYPES = ["b2b-weekly", "marketing-newsletter", "product-launch", "transactional"];
 const VALID_AUDIENCES = ["Cold", "Nurture", "Client", "Drip"];
-const VALID_OUTPUTS = ["email", "social", "images"];
+const VALID_OUTPUTS = ["email", "social", "images", "blog"];
 
 // Per-output soft timeout. Generation calls reach out to Anthropic / HCTI; if
 // one hangs we must still return a clean result rather than let the whole
 // function sit until the platform kills it (which surfaces as a "-" status and
 // an opaque spinner in the UI). Mockups render in ~2.5 min, so the images
 // output gets a much longer budget than the text outputs.
-const OUTPUT_TIMEOUT_MS = { email: 110 * 1000, social: 110 * 1000, images: 240 * 1000 };
+const OUTPUT_TIMEOUT_MS = { email: 110 * 1000, social: 110 * 1000, images: 240 * 1000, blog: 200 * 1000 };
 
 function withTimeout(promise, ms, label) {
   let timer;
@@ -174,11 +175,16 @@ module.exports = async function handler(req, res) {
         results.images = await withTimeout(generateMockup({ tenantId: auth.effectiveTenantId, product }), OUTPUT_TIMEOUT_MS.images, "Mockup");
       } catch (e) { console.error("[promo-generate] mockup failed:", e); results.images = { ok: false, error: e.message }; }
     }
+    if (outputs.includes("blog")) {
+      try {
+        results.blog = { ok: true, ...(await withTimeout(generateBlogPost({ tenantId: auth.effectiveTenantId, product, client: client.fields || {} }), OUTPUT_TIMEOUT_MS.blog, "Blog")) };
+      } catch (e) { console.error("[promo-generate] blog failed:", e); results.blog = { ok: false, error: e.message }; }
+    }
 
     await writeAuditLog({
       actor: auth.email, productId: product.id,
       details: { type: "promo-generate", product: productName, outputs, archetype, audience, socialCount,
-        email: results.email && results.email.ok, social: results.social && results.social.ok, images: results.images && results.images.ok }
+        email: results.email && results.email.ok, social: results.social && results.social.ok, images: results.images && results.images.ok, blog: results.blog && results.blog.ok }
     });
 
     return res.status(200).json({ ok: true, product: productName, results });

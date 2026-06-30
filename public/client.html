@@ -5781,11 +5781,17 @@ var SECTION_META = {
     description: 'Bold coloured hero block with eyebrow, headline, subhead, optional CTA. Colour picker for full background customisation.',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow (small caps, top-left)', type: 'text', maxLength: 60 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'date_label', label: 'Date / right-side label', type: 'text', maxLength: 40 },
+      { key: 'date_label_size', label: 'Date label text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline (line breaks supported)', type: 'longText', required: true, maxLength: 200 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'subhead', label: 'Subhead paragraph', type: 'longText', maxLength: 240 },
+      { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
       { key: 'cta_text', label: 'CTA button text', type: 'text', maxLength: 40 },
       { key: 'cta_url', label: 'CTA button URL', type: 'url' },
+      { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to the text colour', help: 'Background colour of the CTA button. Leave empty to use the text colour.' },
+      { key: 'cta_text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to the background colour', help: 'Colour of the button label. Leave empty to use the hero background colour.' },
       { key: 'background_colour', label: 'Background colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: '#00B4D8', help: 'Leave empty to use your brand accent colour.' },
       { key: 'text_colour', label: 'Text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF', help: 'Pick a colour that contrasts strongly with the background.' },
       { key: 'eyebrow_colour', label: 'Eyebrow colour (advanced)', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to text colour at 85% opacity', help: 'Override the eyebrow/date colour. Leave empty for sensible default.' },
@@ -6512,6 +6518,24 @@ function renderField(section, basePath, field, depth) {
     h += '</select>';
   } else if (field.type === 'boolean') {
     h += '<label class="email-builder-prop-checkbox"><input type="checkbox"' + (val ? ' checked' : '') + ' onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.checked)"> ' + esc(field.checkboxLabel || field.label) + '</label>';
+  } else if (field.type === 'fontSize') {
+    // Relative text-size control. Each preset scales the field's default
+    // size, so the same option means the same thing on every text area.
+    // Empty value ('') = the field's default size. Keep these keys in sync
+    // with FONT_SCALE in lib/email-sections/hero-coloured.js.
+    var sizeOpts = [
+      { v: 'xs', l: 'Smaller' },
+      { v: 's', l: 'Small' },
+      { v: '', l: 'Default' },
+      { v: 'l', l: 'Large' },
+      { v: 'xl', l: 'Larger' },
+      { v: 'xxl', l: 'Huge' }
+    ];
+    h += '<select id="' + fid + '" class="email-builder-prop-input" onchange="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+    sizeOpts.forEach(function(o) {
+      h += '<option value="' + esc(o.v) + '"' + (val === o.v ? ' selected' : '') + '>' + esc(o.l) + '</option>';
+    });
+    h += '</select>';
   } else if (field.type === 'colour') {
     // Colour picker pair: native HTML5 picker + hex text input that stay in
     // sync. Either input updates the section prop on change. We default the

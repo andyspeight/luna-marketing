@@ -173,6 +173,55 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
 .proto .b{font-family:var(--mono);font-size:9px;letter-spacing:1px;background:var(--accent);color:#022;padding:2px 7px;border-radius:5px;font-weight:700}
 .proto a{color:var(--accent-light);text-decoration:none;font-weight:600}
 
+/* envelope / inbox meta above the email */
+.envelope{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:6px 16px;margin-bottom:16px;width:100%}
+.env-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+.env-row+.env-row{border-top:1px solid var(--border-light)}
+.env-from{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:0 0 32px}
+.env-k{font-family:var(--mono);font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3);width:58px;flex:0 0 58px}
+.env-v{flex:1;border:1px solid transparent;border-radius:6px;padding:5px 9px;margin:-5px -9px;font-size:13.5px;color:var(--ink);font-weight:600}
+.env-v:hover{background:var(--surface-2)}
+.env-v:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.env-v.sub{color:var(--ink-3);font-weight:400}
+.aud{display:inline-flex;align-items:center;gap:6px;background:rgba(0,180,216,.08);color:var(--accent-dark);border:1px solid rgba(0,180,216,.3);border-radius:var(--r-full);padding:5px 12px;font-size:12px;font-weight:600;white-space:nowrap}
+
+/* + inserter in the seam between blocks (no layout shift) */
+.inserter{position:relative;height:0;z-index:5}
+.inserter .zone{position:absolute;left:0;right:0;top:-13px;height:26px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s}
+.inserter .zone:hover,.inserter .zone.force{opacity:1}
+.inserter .zone::before{content:"";position:absolute;left:26px;right:26px;height:2px;background:rgba(0,180,216,.45);border-radius:2px}
+.inserter button{position:relative;z-index:2;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;box-shadow:var(--sh-sm)}
+
+/* quick-add menu popover */
+.addmenu{position:fixed;z-index:70;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-lg);padding:8px;display:none;width:236px}
+.addmenu.show{display:block}
+.addmenu .aiopt{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:var(--r-md);background:linear-gradient(135deg,rgba(0,180,216,.13),rgba(0,180,216,.03));border:1px solid rgba(0,180,216,.3);color:var(--accent-dark);font-weight:600;font-size:12.5px;margin-bottom:6px}
+.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.amx{display:flex;align-items:center;gap:8px;padding:8px 9px;border:none;background:none;border-radius:var(--r-md);cursor:pointer;font-size:12.5px;font-weight:500;color:var(--ink-2);text-align:left}
+.amx:hover{background:var(--surface-2);color:var(--ink)}
+.amx svg{color:var(--accent-dark);flex:0 0 auto}
+
+/* AI assist slide-over */
+.ai-panel{position:fixed;top:60px;right:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--sh-lg);z-index:65;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+.ai-panel.open{transform:none}
+.ai-head{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px}
+.ai-head .ic{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+.ai-head .t{font-weight:700;font-size:14px}.ai-head .s{font-size:11px;color:var(--ink-3)}
+.ai-head .x{margin-left:auto;border:none;background:var(--surface-3);width:30px;height:30px;border-radius:8px;color:var(--ink-2);font-size:16px}
+.ai-body{padding:16px;overflow-y:auto;flex:1}
+.ai-section{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:6px 2px 10px}
+.ai-chip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--r-md);padding:11px 12px;margin-bottom:8px;font-size:13px;color:var(--ink-2);font-weight:500}
+.ai-chip:hover{border-color:var(--accent);color:var(--ink)}
+.ai-chip svg{color:var(--accent-dark);flex:0 0 auto}
+.ai-foot{padding:14px 16px;border-top:1px solid var(--border)}
+.ai-input{width:100%;border:1px solid var(--border);border-radius:var(--r-md);padding:11px 12px;font-family:inherit;font-size:13px;resize:none;min-height:66px;background:var(--surface-2)}
+.ai-input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.ai-send{width:100%;margin-top:9px;height:40px;border:none;border-radius:var(--r-md);background:var(--primary);color:#fff;font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;gap:7px}
+
+/* keep the top block's controls from being clipped by the canvas */
+.blk:first-child .blk-label{transform:none;top:7px;left:7px;border-radius:6px}
+.blk:first-child .blk-toolbar{transform:none;top:7px;right:7px;border-radius:6px}
+
 /* ── email block visual styles (the rendered email) ── */
 .e-hero{padding:46px 40px 48px;color:#fff}
 .e-eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px;opacity:.9}
@@ -256,6 +305,14 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
     <!-- ░░ Canvas ░░ -->
     <div class="stage">
       <div class="canvas-wrap" id="canvasWrap">
+        <div class="envelope">
+          <div class="env-row"><span class="env-from">TG</span>
+            <div style="flex:1"><div style="font-weight:600;font-size:13px;color:var(--ink)">Travelgenix</div><div style="font-size:11px;color:var(--ink-3)">hello@travelgenix.io</div></div>
+            <span class="aud">▣ All clients · 2,418</span>
+          </div>
+          <div class="env-row"><span class="env-k">Subject</span><div class="env-v" contenteditable="true">40 widgets, zero code — your July briefing</div></div>
+          <div class="env-row"><span class="env-k">Preview</span><div class="env-v sub" contenteditable="true">The new embeddable widget suite is live on your site in one line…</div></div>
+        </div>
         <div class="device-label" id="devLabel">Desktop · 600px</div>
         <div class="canvas" id="canvas"></div>
       </div>
@@ -271,6 +328,32 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
 
   </div>
 </div>
+
+<!-- AI assist slide-over -->
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-head">
+    <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg></div>
+    <div><div class="t">AI assist</div><div class="s">Knows your brand, products &amp; live offers</div></div>
+    <button class="x" onclick="aiToggle(false)">×</button>
+  </div>
+  <div class="ai-body">
+    <div class="ai-section">Suggested for this email</div>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Draft the whole newsletter from a topic</button>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 5h18M3 12h18M3 19h12"/></svg>Shorten the hero copy</button>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="8" height="14" rx="1.4"/><rect x="13" y="5" width="8" height="14" rx="1.4"/></svg>Pull in this week's 3 best live offers</button>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Rewrite in a warmer, more human tone</button>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="m22 2-7 20-4-9-9-4Z"/></svg>Suggest 3 subject lines</button>
+    <div class="ai-section" style="margin-top:18px">Selected block</div>
+    <button class="ai-chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Make this hero punchier</button>
+  </div>
+  <div class="ai-foot">
+    <textarea class="ai-input" placeholder="Ask Luna to write or change anything… e.g. “add a section about our new WhatsApp widget”"></textarea>
+    <button class="ai-send"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m22 2-7 20-4-9-9-4Z"/></svg>Generate</button>
+  </div>
+</div>
+
+<!-- quick-add block menu -->
+<div class="addmenu" id="addMenu"></div>
 
 <!-- floating rich-text toolbar -->
 <div class="rtbar" id="rtbar">
@@ -376,6 +459,7 @@ function render(){
   }
   doc.forEach((b,idx)=>{
     canvas.appendChild(dropline(idx));
+    canvas.appendChild(inserter(idx));
     const el=document.createElement('div');
     el.className='blk'+(b.id===selId?' sel':'');
     el.dataset.id=b.id; el.dataset.idx=idx;
@@ -389,10 +473,35 @@ function render(){
     canvas.appendChild(el);
   });
   canvas.appendChild(dropline(doc.length));
+  canvas.appendChild(inserter(doc.length));
   wireBlocks();
   renderLayers();
 }
 function dropline(i){const d=document.createElement('div');d.className='dropline';d.dataset.drop=i;return d;}
+function inserter(i){const d=document.createElement('div');d.className='inserter';d.innerHTML=`<div class="zone"><button title="Add a block here" data-ins="${i}">+</button></div>`;return d;}
+
+/* quick-add menu */
+const addMenu=document.getElementById('addMenu');
+function openAddMenu(btn,i){
+  const opts=Object.entries(CATALOG).map(([t,c])=>`<button class="amx" data-add="${t}" data-i="${i}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg>${c.label}</button>`).join('');
+  addMenu.innerHTML=`<button class="aiopt" data-aiadd="1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>Generate with AI…</button><div class="addgrid">${opts}</div>`;
+  const r=btn.getBoundingClientRect();
+  addMenu.style.left=Math.min(window.innerWidth-250,Math.max(8,r.left-100))+'px';
+  addMenu.style.top=(r.bottom+8)+'px';
+  addMenu.classList.add('show');
+}
+function closeAddMenu(){addMenu.classList.remove('show');}
+addMenu.addEventListener('click',e=>{
+  const add=e.target.closest('[data-add]'); const ai=e.target.closest('[data-aiadd]');
+  if(add){insertAt(+add.dataset.i,add.dataset.add);closeAddMenu();}
+  else if(ai){closeAddMenu();aiToggle(true);}
+});
+canvas.addEventListener('click',e=>{const ins=e.target.closest('[data-ins]');if(ins){e.stopPropagation();openAddMenu(ins,+ins.dataset.ins);}});
+document.addEventListener('mousedown',e=>{if(!e.target.closest('#addMenu')&&!e.target.closest('[data-ins]'))closeAddMenu();});
+
+/* AI assist panel */
+function aiToggle(open){document.getElementById('aiPanel').classList.toggle('open',!!open);}
+document.querySelector('.tbtn.ai').addEventListener('click',()=>document.getElementById('aiPanel').classList.toggle('open'));
 function hexA(hex,a){const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex||'');if(!m)return hex;return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${a})`;}
 
 /* ===== selection + block toolbar + inline edit ===== */
@@ -546,14 +655,14 @@ buildPalette();render();buildInspector();
 if(location.hash.indexOf('demo')>=0){
   setTimeout(()=>{
     select(doc[0].id);
-    // open a drop indicator between hero and features to show drag-to-place
     const dls=canvas.querySelectorAll('.dropline');
     if(dls[1]){dls[1].classList.add('show');}
-    // fake a text selection on the headline and pop the rich-text toolbar
     const h1=canvas.querySelector('[data-f="h1"]');
     if(h1){const r=document.createRange();r.selectNodeContents(h1);const s=window.getSelection();s.removeAllRanges();s.addRange(r);showRT();}
   },60);
 }
+if(location.hash.indexOf('ai')>=0){setTimeout(()=>aiToggle(true),40);}
+if(location.hash.indexOf('add')>=0){setTimeout(()=>{const z=canvas.querySelectorAll('.inserter .zone')[1];if(z){z.classList.add('force');openAddMenu(z.querySelector('button'),1);}},40);}
 </script>
 </body>
 </html>

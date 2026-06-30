@@ -5311,6 +5311,7 @@ function drawComposeForm() {
     { type: 'hero-dark', icon: '<rect x="2" y="3" width="20" height="18" rx="1" fill="currentColor" opacity="0.18"/><circle cx="6" cy="7" r="1"/><line x1="3" y1="11" x2="14" y2="11" stroke-width="2.4"/><line x1="3" y1="14" x2="11" y2="14" stroke-width="2.4"/><rect x="3" y="17" width="6" height="3" rx="1.5"/>' },
     { type: 'product-mockup', icon: '<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="8" x2="21" y2="8"/><circle cx="6" cy="6" r="0.6"/><rect x="5" y="11" width="9" height="3" rx="1.2" fill="currentColor" opacity="0.25"/><rect x="11" y="15" width="8" height="3" rx="1.2" fill="currentColor" opacity="0.5"/>' },
     { type: 'features-section', icon: '<rect x="2" y="3" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="4" x2="20" y2="4"/><line x1="8" y1="6" x2="16" y2="6"/><rect x="2" y="10" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="11" x2="20" y2="11"/><line x1="8" y1="13" x2="16" y2="13"/><rect x="2" y="17" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.5"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="8" y1="20" x2="16" y2="20"/>' },
+    { type: 'feature-tiles', icon: '<rect x="2" y="3" width="5" height="5" rx="1.4" fill="currentColor" opacity="0.45"/><line x1="9.5" y1="4.5" x2="21" y2="4.5"/><line x1="9.5" y1="6.8" x2="17" y2="6.8"/><rect x="2" y="10" width="5" height="5" rx="1.4" fill="currentColor" opacity="0.3"/><line x1="9.5" y1="11.5" x2="21" y2="11.5"/><line x1="9.5" y1="13.8" x2="17" y2="13.8"/><rect x="2" y="17" width="5" height="5" rx="1.4" fill="currentColor" opacity="0.45"/><line x1="9.5" y1="18.5" x2="21" y2="18.5"/><line x1="9.5" y1="20.8" x2="17" y2="20.8"/>' },
     { type: 'stats-strip', icon: '<rect x="2" y="7" width="20" height="10" rx="1" fill="currentColor" opacity="0.06"/><line x1="5" y1="11" x2="9" y2="11" stroke-width="2.4"/><line x1="5" y1="14" x2="8" y2="14"/><line x1="10" y1="11" x2="14" y2="11" stroke-width="2.4"/><line x1="10" y1="14" x2="13" y2="14"/><line x1="15" y1="11" x2="19" y2="11" stroke-width="2.4"/><line x1="15" y1="14" x2="18" y2="14"/>' },
     { type: 'testimonial', icon: '<path d="M7 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7zM17 7h-2a2 2 0 00-2 2v3a2 2 0 002 2h2v3l3-3v-7z"/><circle cx="9" cy="20" r="1.4"/><line x1="12" y1="20" x2="18" y2="20"/>' },
     { type: 'cta-dark', icon: '<rect x="2" y="4" width="20" height="16" rx="1" fill="currentColor" opacity="0.18"/><line x1="6" y1="9" x2="18" y2="9" stroke-width="2.4"/><line x1="7" y1="12" x2="17" y2="12"/><rect x="9" y="14" width="6" height="3" rx="1.5"/>' },
@@ -5863,6 +5864,28 @@ var SECTION_META = {
     ],
   },
 
+  'feature-tiles': {
+    label: 'Features (icon tiles)',
+    description: 'Left-aligned feature list with pastel coloured rounded icon tiles, heading and description per row. Eyebrow + title + lede header with a hairline rule.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
+      { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
+      { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
+      { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
+        { key: 'icon', label: 'Icon', type: 'select', options: ['sparkles', 'star', 'mail', 'file', 'pin', 'chat', 'phone', 'calendar', 'globe', 'plane', 'search', 'tag', 'heart', 'shield', 'bolt', 'users', 'check'] },
+        { key: 'colour', label: 'Tile colour', type: 'select', options: ['teal', 'amber', 'slate', 'green', 'blue', 'purple', 'pink'] },
+        { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
+        { key: 'tile_colour', label: 'Custom tile colour (advanced)', type: 'colour', defaultPreview: '#D7F0F2', placeholder: 'Overrides the tile colour theme', help: 'Leave empty to use the chosen tile colour theme.' },
+        { key: 'icon_colour', label: 'Custom icon colour (advanced)', type: 'colour', defaultPreview: '#0E7C86', placeholder: 'Overrides the glyph colour', help: "Leave empty to use the theme's glyph colour." },
+        { key: 'heading', label: 'Feature heading', type: 'text', required: true, maxLength: 80 },
+        { key: 'text', label: 'Feature description', type: 'longText', maxLength: 240 },
+      ]},
+    ],
+  },
+
   // ════════════════════════════════════════════════════════════════
   // DAILY-BEACON-STYLE SECTIONS (May 2026) — editorial publication feel
   // for Travelgenix's own marketing/product launch emails.
@@ -6405,6 +6428,10 @@ function sectionSummary(section) {
     case 'features-section': {
       var fcount = Array.isArray(p.features) ? p.features.length : 0;
       return (p.title ? p.title.slice(0, 30) + ' · ' : '') + fcount + ' feature' + (fcount === 1 ? '' : 's');
+    }
+    case 'feature-tiles': {
+      var ftcount = Array.isArray(p.features) ? p.features.length : 0;
+      return (p.title ? p.title.slice(0, 30) + ' · ' : '') + ftcount + ' feature' + (ftcount === 1 ? '' : 's');
     }
     case 'stats-strip': {
       var sscount = Array.isArray(p.stats) ? p.stats.filter(function(s) { return s && (s.value || s.label); }).length : 0;
@@ -8256,6 +8283,19 @@ function defaultPropsForType(type) {
         { icon: 'bolt',  heading: '', text: '' },
         { icon: 'users', heading: '', text: '' },
         { icon: 'clock', heading: '', text: '' },
+      ],
+    };
+    case 'feature-tiles': return {
+      eyebrow: 'A closer look',
+      title: 'Six worth starting with',
+      lede: 'A taste of what the suite does for travel businesses specifically.',
+      features: [
+        { icon: 'sparkles', colour: 'teal',  heading: 'Travel Results AI', text: 'An AI concierge that sits on your search results and helps travellers narrow down the perfect trip.' },
+        { icon: 'star',     colour: 'amber', heading: 'Reviews', text: 'Live reviews from Google, Trustpilot, Feefo and more — blended into one trust-building wall.' },
+        { icon: 'mail',     colour: 'slate', heading: 'My Booking', text: 'Let customers view their booking and pay their balance, right there on your site.' },
+        { icon: 'file',     colour: 'slate', heading: 'Quote PDF', text: 'Turn an enquiry into a polished, branded PDF quote in a single click.' },
+        { icon: 'pin',      colour: 'teal',  heading: 'Destination Spotlight', text: 'Ready-made destination content that makes every page read like it was written by an expert.' },
+        { icon: 'chat',     colour: 'green', heading: 'WhatsApp Chat', text: 'One tap straight to your team on WhatsApp — the channel travellers actually reply on.' },
       ],
     };
     case 'stats-strip': return {

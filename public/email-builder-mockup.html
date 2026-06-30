@@ -90,7 +90,7 @@ button{font-family:inherit;cursor:pointer}
   background-size:22px 22px;display:flex;flex-direction:column;align-items:center;padding:34px 24px 120px}
 .canvas-wrap{transition:width .32s cubic-bezier(.4,0,.2,1);width:600px;max-width:100%}
 .canvas-wrap.mobile{width:380px}
-.canvas{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--sh-lg);overflow:hidden;min-height:300px}
+.canvas{background:#FFFFFF;border-radius:var(--r-lg);box-shadow:var(--sh-lg);overflow:hidden;min-height:300px}
 .device-label{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);text-align:center;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px}
 
 /* a block on the canvas */
@@ -222,6 +222,65 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
 .blk:first-child .blk-label{transform:none;top:7px;left:7px;border-radius:6px}
 .blk:first-child .blk-toolbar{transform:none;top:7px;right:7px;border-radius:6px}
 
+/* ───────── dark mode (app chrome only — the email stays light) ───────── */
+[data-theme="dark"]{
+  --bg:#0B1220;--surface:#0F172A;--surface-2:#1E293B;--surface-3:#2A3850;
+  --border:#26334A;--border-light:#1B2738;
+  --ink:#F1F5F9;--ink-2:#CBD5E1;--ink-3:#7689A3;
+  --sh-xs:0 1px 2px rgba(0,0,0,.4);--sh-sm:0 1px 3px rgba(0,0,0,.45);--sh-md:0 6px 16px rgba(0,0,0,.5);--sh-lg:0 16px 40px rgba(0,0,0,.6);
+}
+[data-theme="dark"] .stage{background:radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 0);background-size:22px 22px}
+[data-theme="dark"] .tbtn.primary{background:var(--accent-dark);border-color:var(--accent-dark)}
+[data-theme="dark"] .seg button.on,[data-theme="dark"] .segsm button.on,[data-theme="dark"] .insp-tab.on{color:#fff}
+[data-theme="dark"] .saved{color:#34D399}
+
+/* ───────── modal (schedule / test flows) ───────── */
+.overlay{position:fixed;inset:0;background:rgba(8,12,22,.55);z-index:90;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--sh-lg);width:520px;max-width:100%;max-height:calc(100vh - 60px);overflow:hidden;display:flex;flex-direction:column;animation:pop .14s ease-out}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.modal-head .t{font-weight:700;font-size:15px}
+.modal-head .x{margin-left:auto;border:none;background:var(--surface-3);width:30px;height:30px;border-radius:8px;color:var(--ink-2);font-size:16px}
+.stepper{display:flex;gap:6px;padding:16px 20px 4px}
+.step{flex:1;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--ink-3)}
+.step .n{width:22px;height:22px;border-radius:50%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:11px;flex:0 0 22px}
+.step.on{color:var(--accent-dark)}.step.on .n{background:var(--primary);color:#fff}
+[data-theme="dark"] .step.on{color:var(--accent-light)}
+.step.done .n{background:#10B981;color:#fff}
+.modal-body{padding:20px;overflow-y:auto}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.mlabel{font-size:11px;font-weight:600;color:var(--ink-2);margin:0 0 10px;letter-spacing:.2px}
+.opt{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer;margin-bottom:9px}
+.opt:hover{border-color:var(--accent)}
+.opt.sel{border-color:var(--accent);background:rgba(0,180,216,.06)}
+.opt .radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex:0 0 18px}
+.opt.sel .radio{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 4px,transparent 5px)}
+.opt .nm{font-weight:600;font-size:13.5px}
+.opt .ct{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.opt .big{margin-left:auto;font-family:var(--mono);font-weight:600;color:var(--ink-2);font-size:13px}
+.checklist{list-style:none;padding:0;margin:0 0 18px}
+.checklist li{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13px;color:var(--ink-2);border-bottom:1px solid var(--border-light)}
+.checklist .ck{width:20px;height:20px;border-radius:50%;background:#10B981;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 20px;font-size:12px}
+.success{text-align:center;padding:18px 10px}
+.success .big{width:64px;height:64px;border-radius:50%;background:rgba(16,185,129,.13);color:#10B981;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.success h3{margin:0 0 6px;font-size:18px}
+.success p{margin:0;color:var(--ink-2);font-size:13.5px;line-height:1.6}
+
+/* ───────── empty state / starter templates ───────── */
+.tpl-wrap{padding:30px 6px;text-align:center}
+.tpl-wrap .big{width:54px;height:54px;border-radius:14px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--accent-dark)}
+.tpl-wrap h3{margin:0 0 6px;font-size:19px;color:var(--ink)}
+.tpl-wrap p{margin:0 0 24px;font-size:13.5px;color:var(--ink-3)}
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.tpl{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;cursor:pointer;background:var(--surface);transition:.15s;text-align:left}
+.tpl:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--sh-md)}
+.tpl .thumb{height:104px;padding:12px;display:flex;flex-direction:column;gap:5px;background:#fff;border-bottom:1px solid var(--border)}
+.tpl .nm{padding:11px 13px;font-weight:600;font-size:13px;color:var(--ink)}
+.tpl .nm small{display:block;font-weight:400;color:var(--ink-3);font-size:11px;margin-top:2px}
+.tb{border-radius:3px}
+.tpl-blank{display:flex;align-items:center;justify-content:center;gap:9px;min-height:60px;border:1px dashed var(--border);border-radius:var(--r-lg);color:var(--ink-3);font-weight:600;font-size:13px;cursor:pointer;background:var(--surface)}
+.tpl-blank:hover{border-color:var(--accent);color:var(--accent-dark)}
+
 /* ── email block visual styles (the rendered email) ── */
 .e-hero{padding:46px 40px 48px;color:#fff}
 .e-eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px;opacity:.9}
@@ -269,14 +328,15 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
     <div class="spacer"></div>
     <button class="tbtn icon" title="Undo">&#8630;</button>
     <button class="tbtn icon" title="Redo">&#8631;</button>
+    <button class="tbtn icon" id="themeBtn" title="Toggle light / dark">🌙</button>
     <div class="seg" id="device">
       <button class="on" data-dev="desktop">▭ Desktop</button>
       <button data-dev="mobile">▯ Mobile</button>
     </div>
     <button class="tbtn ai">✦ AI assist</button>
     <button class="tbtn">Preview</button>
-    <button class="tbtn">Send test</button>
-    <button class="tbtn primary">Schedule&nbsp;→</button>
+    <button class="tbtn" id="btnTest">Send test</button>
+    <button class="tbtn primary" id="btnSchedule">Schedule&nbsp;→</button>
   </div>
 
   <div class="body">
@@ -316,6 +376,7 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
         <div class="device-label" id="devLabel">Desktop · 600px</div>
         <div class="canvas" id="canvas"></div>
       </div>
+      <div id="emptyState" style="display:none;width:780px;max-width:100%"></div>
     </div>
 
     <!-- ░░ Right rail / inspector ░░ -->
@@ -328,6 +389,9 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
 
   </div>
 </div>
+
+<!-- modal overlay (schedule / test flows) -->
+<div class="overlay" id="overlay"></div>
 
 <!-- AI assist slide-over -->
 <div class="ai-panel" id="aiPanel">
@@ -442,21 +506,22 @@ function blockInner(b){
   }
   if(b.type==='text')return `<div class="e-pad e-text"><h2 ce data-f="h2">${b.h2||'A short heading'}</h2><p ce data-f="p">${b.p||'Write a sentence or two of friendly, human copy. Click to edit — formatting appears as you select.'}</p></div>`;
   if(b.type==='btn')return `<div class="e-pad" style="text-align:${b.align||'left'}"><a class="e-btn" style="background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#fff'};margin-top:0" ce data-f="btn">${b.btn||'Get started'}</a></div>`;
-  if(b.type==='img')return `<div style="padding:0"><div style="height:200px;background:linear-gradient(135deg,#E2E8F0,#F1F5F9);display:flex;align-items:center;justify-content:center;color:#94A3B8"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg></div></div>`;
-  if(b.type==='quote')return `<div class="e-pad"><p style="font-size:21px;font-style:italic;line-height:1.5;color:#1B2B5B;margin:0;border-left:3px solid #00B4D8;padding-left:18px" ce data-f="q">${b.q||'“Our booking enquiries jumped 30% in the first month.”'}</p></div>`;
-  if(b.type==='offers')return `<div class="e-pad"><div style="display:flex;gap:14px">${[0,1].map(()=>`<div style="flex:1;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden"><div style="height:96px;background:linear-gradient(135deg,#48CAE4,#0096B7)"></div><div style="padding:12px"><div style="font-weight:700;font-size:14px;color:#0F172A">Santorini escape</div><div style="font-size:12px;color:#475569;margin:3px 0 8px">7 nights · all-inclusive</div><div style="font-weight:800;color:#1B2B5B">From £689pp</div></div></div>`).join('')}</div></div>`;
-  if(b.type==='stats')return `<div class="e-stats">${[['3.2×','more enquiries'],['+41%','time on site'],['12k','widgets live']].map(s=>`<div class="e-stat"><div class="v">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('')}</div>`;
+  if(b.type==='img'){const full=(b.width||'full')==='full';const w=b.width==='small'?'240px':b.width==='medium'?'400px':'100%';const al=b.align||'center';const rad=b.rounded?'10px':'0';
+    return `<div style="padding:${full?'0':'18px 40px'};text-align:${al};background:${b.bg||'transparent'}"><div style="display:inline-block;vertical-align:top;width:${w};max-width:100%;height:${full?220:180}px;border-radius:${rad};background:linear-gradient(135deg,#E2E8F0,#F1F5F9)"><div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg></div></div></div>`;}
+  if(b.type==='quote')return `<div class="e-pad" style="text-align:${b.align||'left'}"><p style="display:inline-block;text-align:left;max-width:480px;font-size:21px;font-style:italic;line-height:1.5;color:#1B2B5B;margin:0;border-left:3px solid ${b.accent||'#00B4D8'};padding-left:18px" ce data-f="q">${b.q||'“Our booking enquiries jumped 30% in the first month.”'}</p></div>`;
+  if(b.type==='offers'){const n=b.count||2;const acc=b.accent||'#0096B7';return `<div class="e-pad"><div style="display:flex;gap:14px">${Array.from({length:n}).map(()=>`<div style="flex:1;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden"><div style="height:96px;background:linear-gradient(135deg,${hexA(acc,.6)},${acc})"></div><div style="padding:12px"><div style="font-weight:700;font-size:14px;color:#0F172A">Santorini escape</div><div style="font-size:12px;color:#475569;margin:3px 0 8px">7 nights · all-inclusive</div><div style="font-weight:800;color:#1B2B5B">From £689pp</div></div></div>`).join('')}</div></div>`;}
+  if(b.type==='stats')return `<div class="e-stats" style="background:${b.bg||'#F8FAFC'}">${[['3.2×','more enquiries'],['+41%','time on site'],['12k','widgets live']].map(s=>`<div class="e-stat"><div class="v" style="color:${b.valColour||'#1B2B5B'}">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('')}</div>`;
   if(b.type==='divider')return `<div class="e-divider"><div class="ln"></div></div>`;
   if(b.type==='spacer')return `<div style="height:${b.h||32}px"></div>`;
   if(b.type==='foot')return `<div class="e-foot"><div class="wm" ce data-f="wm">Travelgenix</div>Fully automated marketing for travel agents.<br><a>Unsubscribe</a> · <a>View in browser</a> · <a>Preferences</a></div>`;
   return '';
 }
 function render(){
+  const empty=!doc.length;
+  document.getElementById('canvasWrap').style.display=empty?'none':'';
+  const es=document.getElementById('emptyState');es.style.display=empty?'block':'none';
+  if(empty){es.innerHTML=templateChooser();return;}
   canvas.innerHTML='';
-  if(!doc.length){
-    canvas.innerHTML=`<div class="empty"><div class="big"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg></div><h3>Start your email</h3><p>Drag a block from the left, or pick a starting layout.</p></div>`;
-    return;
-  }
   doc.forEach((b,idx)=>{
     canvas.appendChild(dropline(idx));
     canvas.appendChild(inserter(idx));
@@ -590,6 +655,10 @@ function defaults(type){
   if(type==='feat')return{...base,eyebrow:'A closer look',title:'What it does',lede:'A short intro line.',rows:[{i:0,h:'Feature one',t:'Describe the benefit in a sentence.'},{i:1,h:'Feature two',t:'Describe the benefit in a sentence.'},{i:2,h:'Feature three',t:'Describe the benefit in a sentence.'}]};
   if(type==='btn')return{...base,align:'center',btn:'Get started',btnBg:'#00B4D8',btnFg:'#FFFFFF'};
   if(type==='spacer')return{...base,h:32};
+  if(type==='quote')return{...base,align:'left',accent:'#00B4D8',q:'“Our booking enquiries jumped 30% in the first month.”'};
+  if(type==='stats')return{...base,bg:'#F8FAFC',valColour:'#1B2B5B'};
+  if(type==='img')return{...base,width:'full',align:'center',rounded:false,bg:'transparent'};
+  if(type==='offers')return{...base,count:2,accent:'#0096B7'};
   return base;
 }
 function insertAt(i,type){doc.splice(i,0,defaults(type));selId=doc[i].id;render();select(selId);}
@@ -618,6 +687,24 @@ function buildInspector(){
     f+=`<div class="field"><label>Rows</label><div class="help">${b.rows.length} features · use the row controls on the canvas to add, reorder or remove.</div></div>`;
   } else if(b.type==='spacer'){
     f+=`<div class="field"><label>Height</label><div class="slider"><input type="range" min="8" max="80" value="${b.h}" oninput="upd('h',+this.value)"><span class="val">${b.h}px</span></div></div>`;
+  } else if(b.type==='quote'){
+    f+=colorField('Accent bar colour','accent');
+    f+=`<div class="field"><label>Alignment</label><div class="segsm">${['left','center'].map(a=>`<button class="${(b.align||'left')===a?'on':''}" onclick="upd('align','${a}')">${a}</button>`).join('')}</div></div>`;
+    f+=`<div class="field"><div class="help">Edit the quote text by clicking it on the email.</div></div>`;
+  } else if(b.type==='stats'){
+    f+=colorField('Number colour','valColour');
+    f+=colorField('Background','bg');
+    f+=`<div class="field"><label>Stats</label><div class="help">3 stats · edit each value and label inline on the email.</div></div>`;
+  } else if(b.type==='img'){
+    f+=`<div class="field"><label>Width</label><div class="segsm">${['small','medium','full'].map(w=>`<button class="${(b.width||'full')===w?'on':''}" onclick="upd('width','${w}')">${w}</button>`).join('')}</div></div>`;
+    f+=`<div class="field"><label>Alignment</label><div class="segsm">${['left','center','right'].map(a=>`<button class="${(b.align||'center')===a?'on':''}" onclick="upd('align','${a}')">${a}</button>`).join('')}</div></div>`;
+    f+=`<div class="field"><label class="email-builder-prop-checkbox" style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer"><input type="checkbox" ${b.rounded?'checked':''} onchange="upd('rounded',this.checked)"> Rounded corners</label></div>`;
+    f+=colorField('Background','bg');
+    f+=`<div class="field"><label>Source</label><div class="help">Generate with AI, upload, or paste a URL — the per-slot image tools live here.</div></div>`;
+  } else if(b.type==='offers'){
+    f+=`<div class="field"><label>Cards</label><div class="segsm">${[1,2,3].map(n=>`<button class="${(b.count||2)===n?'on':''}" onclick="upd('count',${n})">${n}</button>`).join('')}</div></div>`;
+    f+=colorField('Card accent','accent');
+    f+=`<div class="field"><label>Source</label><div class="help">Live offers are pulled from your Travelify feed at send time — this just controls how many show and the styling.</div></div>`;
   } else {
     f+=`<div class="insp-empty" style="padding:18px 4px"><p>This block edits inline — click its text on the canvas. Styling controls for <b>${meta.label}</b> would appear here.</p></div>`;
   }
@@ -647,6 +734,71 @@ document.querySelectorAll('#device button').forEach(btn=>btn.addEventListener('c
 }));
 window.addEventListener('scroll',hideRT,true);
 
+/* ===== starter templates / empty state ===== */
+function tplDoc(key){
+  if(key==='newsletter')return [
+    {...defaults('hero'),bg:'#1B2B5B',fg:'#FFFFFF',btnBg:'#FFFFFF',btnFg:'#1B2B5B',eyebrow:'THE BRIEFING',date:'TODAY',h1:'Your headline here',sub:'A short standfirst that sets up this issue in a sentence or two.',btn:'Read more'},
+    defaults('feat'),
+    {...defaults('text'),h2:'A quick note',p:'Open with a friendly paragraph — keep it human and short.'},
+    defaults('foot')];
+  if(key==='launch')return [
+    {...defaults('hero'),bg:'#0A0F1F',fg:'#FFFFFF',btnBg:'#00B4D8',btnFg:'#0A0F1F',eyebrow:'NEW LAUNCH',date:'',h1:'Introducing something new',sub:'One line on what it is and why it matters to your clients.',btn:'See it in action'},
+    defaults('feat'),defaults('stats'),{...defaults('btn'),btn:'Get started'},defaults('foot')];
+  if(key==='transactional')return [
+    {...defaults('text'),h2:'Your booking is confirmed',p:'Hi there — thanks for booking with us. Your details are below.'},
+    defaults('stats'),{...defaults('btn'),btn:'View my booking'},defaults('foot')];
+  return [defaults('hero'),defaults('foot')];
+}
+function templateChooser(){
+  const bar=(c,h,w)=>`<div class="tb" style="background:${c};height:${h}px;width:${w||'100%'}"></div>`;
+  const thumb=s=>`<div class="thumb">${s}</div>`;
+  const cards=[
+    {k:'newsletter',nm:'Newsletter',sub:'Hero · features · note',th:thumb(bar('#1B2B5B',32)+bar('#E2E8F0',7,'70%')+bar('#E2E8F0',7,'88%')+bar('#F1F5F9',16))},
+    {k:'launch',nm:'Product launch',sub:'Dark hero · features · stats',th:thumb(bar('#0A0F1F',32)+bar('#E2E8F0',7,'60%')+bar('#D7F0F2',15)+bar('#00B4D8',9,'40%'))},
+    {k:'transactional',nm:'Transactional',sub:'Confirmation · details',th:thumb(bar('#E2E8F0',9,'80%')+bar('#F1F5F9',24)+bar('#00B4D8',9,'40%')+bar('#0F172A',12))}
+  ];
+  return `<div class="tpl-wrap"><div class="big"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+  <h3>Start a new email</h3><p>Pick a starting point — every block stays fully editable.</p>
+  <div class="tpl-grid">${cards.map(c=>`<button class="tpl" onclick="loadTemplate('${c.k}')">${c.th}<div class="nm">${c.nm}<small>${c.sub}</small></div></button>`).join('')}</div>
+  <div class="tpl-blank" onclick="loadTemplate('blank')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Start from blank</div></div>`;
+}
+function loadTemplate(k){doc=tplDoc(k);selId=null;render();buildInspector();}
+
+/* ===== schedule / test modal ===== */
+const overlay=document.getElementById('overlay');
+overlay.addEventListener('mousedown',e=>{if(e.target===overlay)closeModal();});
+function closeModal(){overlay.classList.remove('show');overlay.innerHTML='';}
+var sStep=0,sAud='all',sWhen='now';
+const AUD=[{k:'all',nm:'All clients',ct:'Everyone on your list',big:'2,418'},{k:'boost',nm:'Boost tier',ct:'Premium subscription clients',big:'412'},{k:'engaged',nm:'Engaged · 90 days',ct:'Opened or clicked recently',big:'1,104'}];
+function aud(){return AUD.find(a=>a.k===sAud)||AUD[0];}
+function openSchedule(){sStep=0;sWhen='now';renderSchedule();overlay.classList.add('show');}
+function renderSchedule(){
+  const steps=['Audience','Review','Schedule'];
+  const stepper=`<div class="stepper">${steps.map((s,i)=>`<div class="step ${i===sStep?'on':''} ${i<sStep?'done':''}"><span class="n">${i<sStep?'✓':i+1}</span>${s}</div>`).join('')}</div>`;
+  let body='',foot='';
+  if(sStep===0){
+    body=`<p class="mlabel">Who should receive this?</p>${AUD.map(a=>`<div class="opt ${sAud===a.k?'sel':''}" onclick="sAud='${a.k}';renderSchedule()"><span class="radio"></span><div><div class="nm">${a.nm}</div><div class="ct">${a.ct}</div></div><span class="big">${a.big}</span></div>`).join('')}`;
+    foot=`<button class="tbtn ghost" onclick="closeModal()">Cancel</button><button class="tbtn primary" onclick="sStep=1;renderSchedule()">Next →</button>`;
+  } else if(sStep===1){
+    body=`<p class="mlabel">Pre-flight checks</p><ul class="checklist"><li><span class="ck">✓</span>Subject line set</li><li><span class="ck">✓</span>Preview text set</li><li><span class="ck">✓</span>6 blocks · all links valid</li><li><span class="ck">✓</span>Mobile layout looks good</li></ul><p class="mlabel">Send a test first</p><div class="row"><input class="ip" value="andy@travelgenix.io"><button class="tbtn" onclick="this.textContent='Sent ✓'">Send test</button></div>`;
+    foot=`<button class="tbtn ghost" onclick="sStep=0;renderSchedule()">← Back</button><button class="tbtn primary" onclick="sStep=2;renderSchedule()">Next →</button>`;
+  } else if(sStep===2){
+    body=`<p class="mlabel">When should it go out?</p><div class="opt ${sWhen==='now'?'sel':''}" onclick="sWhen='now';renderSchedule()"><span class="radio"></span><div><div class="nm">Send now</div><div class="ct">Delivers to ${aud().big} recipients immediately</div></div></div><div class="opt ${sWhen==='later'?'sel':''}" onclick="sWhen='later';renderSchedule()"><span class="radio"></span><div><div class="nm">Schedule for later</div><div class="ct">Pick a date and time</div></div></div>${sWhen==='later'?`<div class="row" style="margin-top:2px"><input class="ip" type="date" value="2026-07-01"><input class="ip" type="time" value="09:00"></div>`:''}`;
+    foot=`<button class="tbtn ghost" onclick="sStep=1;renderSchedule()">← Back</button><button class="tbtn primary" onclick="sStep=3;renderSchedule()">${sWhen==='now'?'Send now':'Schedule send'}</button>`;
+  } else {
+    body=`<div class="success"><div class="big"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h3>${sWhen==='now'?'On its way!':'Scheduled'}</h3><p>“The Travelgenix Briefing — July” ${sWhen==='now'?'is sending to':'will send to'} <b>${aud().big}</b> recipients${sWhen==='later'?' on 1 Jul 2026, 09:00':''}.</p></div>`;
+    foot=`<button class="tbtn primary" onclick="closeModal()">Done</button>`;
+  }
+  const head=`<div class="modal-head"><div class="t">${sStep<3?'Schedule send':'Done'}</div><button class="x" onclick="closeModal()">×</button></div>${sStep<3?stepper:''}`;
+  overlay.innerHTML=`<div class="modal">${head}<div class="modal-body">${body}</div><div class="modal-foot">${foot}</div></div>`;
+}
+function openTest(){overlay.innerHTML=`<div class="modal" style="width:420px"><div class="modal-head"><div class="t">Send a test</div><button class="x" onclick="closeModal()">×</button></div><div class="modal-body"><p class="mlabel">We’ll send this exact email to:</p><input class="ip" value="andy@travelgenix.io"><div class="help" style="font-size:11.5px;color:var(--ink-3);margin-top:8px">Tip: test in Gmail, Outlook and Apple Mail before scheduling.</div></div><div class="modal-foot"><button class="tbtn ghost" onclick="closeModal()">Cancel</button><button class="tbtn primary" onclick="closeModal()">Send test ✓</button></div></div>`;overlay.classList.add('show');}
+document.getElementById('btnSchedule').addEventListener('click',openSchedule);
+document.getElementById('btnTest').addEventListener('click',openTest);
+
+/* ===== theme toggle ===== */
+document.getElementById('themeBtn').addEventListener('click',function(){const d=document.documentElement;const dark=d.dataset.theme==='dark';d.dataset.theme=dark?'light':'dark';this.textContent=dark?'🌙':'☀️';});
+
 /* ===== boot ===== */
 buildPalette();render();buildInspector();
 
@@ -663,6 +815,10 @@ if(location.hash.indexOf('demo')>=0){
 }
 if(location.hash.indexOf('ai')>=0){setTimeout(()=>aiToggle(true),40);}
 if(location.hash.indexOf('add')>=0){setTimeout(()=>{const z=canvas.querySelectorAll('.inserter .zone')[1];if(z){z.classList.add('force');openAddMenu(z.querySelector('button'),1);}},40);}
+if(location.hash.indexOf('empty')>=0){doc=[];render();}
+if(location.hash.indexOf('dark')>=0){document.documentElement.dataset.theme='dark';document.getElementById('themeBtn').textContent='☀️';}
+if(location.hash.indexOf('sched')>=0){setTimeout(openSchedule,40);}
+if(location.hash.indexOf('insp')>=0){setTimeout(()=>insertAt(doc.length-1,'offers'),40);}
 </script>
 </body>
 </html>

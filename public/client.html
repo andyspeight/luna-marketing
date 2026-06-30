@@ -5434,9 +5434,13 @@ var SECTION_META = {
       { key: 'imageUrl', label: 'Hero image URL', type: 'url' },
       { key: 'imageAlt', label: 'Image alt text', type: 'text' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'subhead', label: 'Subhead', type: 'longText', maxLength: 280 },
+      { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
       { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 40 },
       { key: 'ctaUrl', label: 'Button link', type: 'url' },
+      { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#0ABAB5', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+      { key: 'cta_text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       { key: 'accent', label: 'Accent bar', type: 'select', options: ['teal', 'pink', 'yellow', 'none'] },
     ],
   },
@@ -5445,8 +5449,11 @@ var SECTION_META = {
     description: 'Headline and paragraphs of body copy',
     fields: [
       { key: 'headline', label: 'Headline', type: 'text', maxLength: 100 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'subhead', label: 'Subhead', type: 'text', maxLength: 160 },
+      { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
       { key: 'body', label: 'Body', type: 'longText', required: true, maxLength: 2000 },
+      { key: 'body_size', label: 'Body text size', type: 'fontSize' },
       { key: 'align', label: 'Alignment', type: 'select', options: ['left', 'center'] },
     ],
   },
@@ -5456,14 +5463,20 @@ var SECTION_META = {
     fields: [
       { key: 'left.imageUrl', label: 'Left image URL', type: 'url' },
       { key: 'left.headline', label: 'Left headline', type: 'text', maxLength: 60 },
+      { key: 'left.headline_size', label: 'Left headline text size', type: 'fontSize' },
       { key: 'left.body', label: 'Left body', type: 'longText', maxLength: 400 },
-      { key: 'left.ctaText', label: 'Left button text', type: 'text', maxLength: 30 },
-      { key: 'left.ctaUrl', label: 'Left button link', type: 'url' },
+      { key: 'left.body_size', label: 'Left body text size', type: 'fontSize' },
+      { key: 'left.linkText', label: 'Left link text', type: 'text', maxLength: 30 },
+      { key: 'left.linkUrl', label: 'Left link URL', type: 'url' },
+      { key: 'left.cta_text_colour', label: 'Left link colour', type: 'colour', defaultPreview: '#067A75', placeholder: 'Defaults to current link colour', help: 'Colour of the link text. Leave empty to keep the default.' },
       { key: 'right.imageUrl', label: 'Right image URL', type: 'url' },
       { key: 'right.headline', label: 'Right headline', type: 'text', maxLength: 60 },
+      { key: 'right.headline_size', label: 'Right headline text size', type: 'fontSize' },
       { key: 'right.body', label: 'Right body', type: 'longText', maxLength: 400 },
-      { key: 'right.ctaText', label: 'Right button text', type: 'text', maxLength: 30 },
-      { key: 'right.ctaUrl', label: 'Right button link', type: 'url' },
+      { key: 'right.body_size', label: 'Right body text size', type: 'fontSize' },
+      { key: 'right.linkText', label: 'Right link text', type: 'text', maxLength: 30 },
+      { key: 'right.linkUrl', label: 'Right link URL', type: 'url' },
+      { key: 'right.cta_text_colour', label: 'Right link colour', type: 'colour', defaultPreview: '#067A75', placeholder: 'Defaults to current link colour', help: 'Colour of the link text. Leave empty to keep the default.' },
     ],
   },
   cta: {
@@ -5471,9 +5484,13 @@ var SECTION_META = {
     description: 'Big button with surrounding copy',
     fields: [
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 80 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 200 },
+      { key: 'body_size', label: 'Supporting copy text size', type: 'fontSize' },
       { key: 'ctaText', label: 'Button text', type: 'text', required: true, maxLength: 40 },
       { key: 'ctaUrl', label: 'Button link', type: 'url', required: true },
+      { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#0ABAB5', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+      { key: 'cta_text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       { key: 'variant', label: 'Style', type: 'select', options: ['tint', 'solid', 'plain'] },
     ],
   },
@@ -5587,8 +5604,11 @@ var SECTION_META = {
       { key: 'icon', label: 'Icon', type: 'select', options: ['check', 'clock', 'alert'] },
       { key: 'iconColour', label: 'Icon colour theme', type: 'select', options: ['success', 'info', 'warning'] },
       { key: 'eyebrow', label: 'Eyebrow text', type: 'text', required: true, maxLength: 40 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 80 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+      { key: 'text_size', label: 'Supporting copy text size', type: 'fontSize' },
     ],
   },
   'trip-card': {
@@ -5597,7 +5617,9 @@ var SECTION_META = {
     fields: [
       { key: 'image_url', label: 'Destination image URL', type: 'url' },
       { key: 'image_tag', label: 'Region tag (e.g. "Greek Islands")', type: 'text', maxLength: 30 },
+      { key: 'image_tag_size', label: 'Region tag text size', type: 'fontSize' },
       { key: 'image_name', label: 'Destination name', type: 'text', required: true, maxLength: 60 },
+      { key: 'image_name_size', label: 'Destination name text size', type: 'fontSize' },
       { key: 'details', label: 'Detail rows', type: 'array', itemLabel: 'detail', itemFields: [
         { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 30 },
         { key: 'value', label: 'Value', type: 'text', required: true, maxLength: 100 },
@@ -5642,6 +5664,7 @@ var SECTION_META = {
     description: 'Numbered checklist of things to do — descriptions support inline links',
     fields: [
       { key: 'title', label: 'Block title', type: 'text', maxLength: 80 },
+      { key: 'title_size', label: 'Block title text size', type: 'fontSize' },
       { key: 'steps', label: 'Steps', type: 'array', required: true, itemLabel: 'step', itemFields: [
         { key: 'title', label: 'Step title', type: 'text', required: true, maxLength: 80 },
         { key: 'text', label: 'Description', type: 'longText', maxLength: 280, help: 'Use [link text](url) for inline links and **bold** / *italic* for emphasis.' },
@@ -5653,7 +5676,9 @@ var SECTION_META = {
     description: 'Support contact strip with phone and email',
     fields: [
       { key: 'title', label: 'Title', type: 'text', maxLength: 60 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting text (e.g. opening hours)', type: 'text', maxLength: 120 },
+      { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
       { key: 'contacts', label: 'Contacts', type: 'array', required: true, itemLabel: 'contact', itemFields: [
         { key: 'type', label: 'Type', type: 'select', required: true, options: ['phone', 'email'] },
         { key: 'value', label: 'Value (number or email)', type: 'text', required: true, maxLength: 80 },
@@ -5683,11 +5708,16 @@ var SECTION_META = {
       { key: 'image_url', label: 'Hero image URL', type: 'url' },
       { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 100 },
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'deck', label: 'Subhead / deck', type: 'longText', maxLength: 280 },
+      { key: 'deck_size', label: 'Deck text size', type: 'fontSize' },
       { key: 'cta', label: 'CTA button (optional)', type: 'group', fields: [
         { key: 'text', label: 'Button text', type: 'text', maxLength: 40 },
         { key: 'url', label: 'Button URL', type: 'url' },
+        { key: 'colour', label: 'Button colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+        { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#0F172A', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       ]},
     ],
   },
@@ -5696,8 +5726,11 @@ var SECTION_META = {
     description: 'Three destination cards with manual content. For live offers use offers-three-up instead.',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'lede', label: 'Section lede', type: 'longText', maxLength: 200 },
+      { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
       { key: 'cards', label: 'Cards (max 3)', type: 'array', required: true, max: 3, itemLabel: 'card', itemFields: [
         { key: 'image_url', label: 'Image URL', type: 'url' },
         { key: 'tag', label: 'Tag (e.g. "Beach")', type: 'text', maxLength: 30 },
@@ -5715,12 +5748,17 @@ var SECTION_META = {
     description: 'Featured article with image, body title, excerpt, and read-more link',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'lede', label: 'Section lede', type: 'longText', maxLength: 200 },
+      { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
       { key: 'image_url', label: 'Article image URL', type: 'url' },
       { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 100 },
       { key: 'body_title', label: 'Article title (inside the card)', type: 'text', required: true, maxLength: 100 },
+      { key: 'body_title_size', label: 'Article title text size', type: 'fontSize' },
       { key: 'excerpt', label: 'Article excerpt', type: 'longText', maxLength: 300 },
+      { key: 'excerpt_size', label: 'Excerpt text size', type: 'fontSize' },
       { key: 'link', label: 'Read more link', type: 'group', required: true, fields: [
         { key: 'text', label: 'Link text', type: 'text', maxLength: 40 },
         { key: 'url', label: 'Link URL', type: 'url', required: true },
@@ -5733,7 +5771,9 @@ var SECTION_META = {
     fields: [
       { key: 'variant', label: 'Style', type: 'select', options: ['simple', 'labelled'] },
       { key: 'label', label: 'Eyebrow label (e.g. "Heard this week")', type: 'text', maxLength: 40, help: 'Only shown when style is "labelled".' },
+      { key: 'label_size', label: 'Label text size', type: 'fontSize' },
       { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 280 },
+      { key: 'quote_size', label: 'Quote text size', type: 'fontSize' },
       { key: 'attribution', label: 'Attribution (optional)', type: 'group', fields: [
         { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
         { key: 'role', label: 'Role / company', type: 'text', maxLength: 100 },
@@ -5745,10 +5785,14 @@ var SECTION_META = {
     description: 'Mid-email conversion banner with title, text, and primary button on a navy gradient',
     fields: [
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 200 },
+      { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
       { key: 'cta', label: 'CTA button', type: 'group', required: true, fields: [
         { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url', required: true },
+        { key: 'colour', label: 'Button colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+        { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#0F172A', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       ]},
     ],
   },
@@ -5803,12 +5847,17 @@ var SECTION_META = {
     fields: [
       { key: 'number_label', label: 'Number / chapter label (e.g. "01")', type: 'text', maxLength: 8 },
       { key: 'eyebrow_label', label: 'Eyebrow text (e.g. "WE REBRANDED")', type: 'text', maxLength: 60 },
+      { key: 'eyebrow_label_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'body', label: 'Body (blank line between paragraphs)', type: 'longText', required: true, maxLength: 3000 },
+      { key: 'body_size', label: 'Body text size', type: 'fontSize' },
       { key: 'image_url', label: 'Image URL', type: 'url' },
       { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
       { key: 'cta_text', label: 'CTA button text', type: 'text', maxLength: 40 },
       { key: 'cta_url', label: 'CTA button URL', type: 'url' },
+      { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+      { key: 'cta_text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       { key: 'background_colour', label: 'Background tint colour', type: 'colour', defaultPreview: '#FFF7ED', placeholder: 'Leave empty for no tint', help: 'Apply a tinted background for feature-card treatment. Leave empty for plain stories.' },
       { key: 'accent_colour', label: 'Accent colour (number + button)', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Leave empty to use brand primary', help: 'Colour of the number label and CTA button. Defaults to your brand primary.' },
     ],
@@ -5823,6 +5872,7 @@ var SECTION_META = {
     description: 'Full-width coloured bar with centred italic serif wordmark and optional thin underline rule. Daily Beacon look — black bar, white text by default. Override colours for Travelgenix brand.',
     fields: [
       { key: 'wordmark', label: 'Wordmark text', type: 'text', required: true, maxLength: 60 },
+      { key: 'wordmark_size', label: 'Wordmark text size', type: 'fontSize' },
       { key: 'wordmark_link_url', label: 'Wordmark link URL', type: 'url' },
       { key: 'background_colour', label: 'Bar background colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000', help: 'Daily Beacon default is black.' },
       { key: 'text_colour', label: 'Wordmark colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF' },
@@ -5835,8 +5885,11 @@ var SECTION_META = {
     description: 'Two-stack serif headline with a coloured first line and a base-colour second line. Optional subhead with inline **bold** / *italic*. Defaults to Daily Beacon orange + black with a thick rule below.',
     fields: [
       { key: 'line_one', label: 'First line (accent colour)', type: 'text', required: true, maxLength: 60 },
+      { key: 'line_one_size', label: 'First line text size', type: 'fontSize' },
       { key: 'line_two', label: 'Second line (base colour)', type: 'text', required: true, maxLength: 80 },
+      { key: 'line_two_size', label: 'Second line text size', type: 'fontSize' },
       { key: 'subhead', label: 'Subhead (supports **bold** and *italic*)', type: 'longText', maxLength: 200 },
+      { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
       { key: 'accent_colour', label: 'First line colour', type: 'colour', defaultPreview: '#E85D1A', placeholder: '#E85D1A', help: 'Daily Beacon orange. Try your brand accent.' },
       { key: 'base_colour', label: 'Second line + rule colour', type: 'colour', defaultPreview: '#000000', placeholder: '#000000' },
       { key: 'show_rule', label: 'Show thick rule below', type: 'boolean', checkboxLabel: 'Show a thick rule under the headline' },
@@ -5865,7 +5918,9 @@ var SECTION_META = {
         { key: 'image_url', label: 'Card image URL', type: 'url', required: true },
         { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
         { key: 'title', label: 'Card title', type: 'text', required: true, maxLength: 60 },
+        { key: 'title_size', label: 'Title text size', type: 'fontSize' },
         { key: 'body', label: 'Card body (optional, short)', type: 'text', maxLength: 120 },
+        { key: 'body_size', label: 'Body text size', type: 'fontSize' },
       ]},
       { key: 'card_colour', label: 'Card background colour', type: 'colour', defaultPreview: '#F5F5F7', placeholder: '#F5F5F7' },
       { key: 'text_colour', label: 'Text colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: '#1B2B5B' },
@@ -5877,8 +5932,10 @@ var SECTION_META = {
     description: 'Centred rounded pill button with optional italic subtext below. Daily Beacon style — orange pill, white italic label. Different shape from the rectangular cta-banner.',
     fields: [
       { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 40 },
+      { key: 'text_size', label: 'Button text size', type: 'fontSize' },
       { key: 'url', label: 'Button link URL', type: 'url', required: true },
       { key: 'subtext', label: 'Italic subtext below button', type: 'text', maxLength: 120 },
+      { key: 'subtext_size', label: 'Subtext text size', type: 'fontSize' },
       { key: 'background_colour', label: 'Pill background colour', type: 'colour', defaultPreview: '#E85D1A', placeholder: '#E85D1A' },
       { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: '#FFFFFF' },
       { key: 'italic', label: 'Italic button text', type: 'boolean', checkboxLabel: 'Render button text in italic (Daily Beacon style)' },
@@ -5942,7 +5999,9 @@ var SECTION_META = {
       { key: 'issue_label', label: 'Issue label (e.g. "Vol. 02 · Issue 19")', type: 'text', maxLength: 60 },
       { key: 'date_label', label: 'Date (e.g. "Friday, 8 May 2026")', type: 'text', maxLength: 40 },
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 60 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'tagline', label: 'Tagline (italic, single line)', type: 'text', maxLength: 120 },
+      { key: 'tagline_size', label: 'Tagline text size', type: 'fontSize' },
     ],
   },
   'toc': {
@@ -5950,6 +6009,7 @@ var SECTION_META = {
     description: "Light grey strip listing this issue's articles in two columns",
     fields: [
       { key: 'label', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'label_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'items', label: 'Items (numbers auto-generated)', type: 'array', required: true, itemLabel: 'item', itemFields: [
         { key: 'text', label: 'Headline', type: 'text', required: true, maxLength: 100 },
       ]},
@@ -5960,8 +6020,11 @@ var SECTION_META = {
     description: 'Editorial centrepiece — kicker, headline, deck, image, byline, body, read-more link',
     fields: [
       { key: 'kicker', label: 'Kicker label', type: 'text', maxLength: 30 },
+      { key: 'kicker_size', label: 'Kicker text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'deck', label: 'Deck (large lede paragraph)', type: 'longText', maxLength: 280 },
+      { key: 'deck_size', label: 'Deck text size', type: 'fontSize' },
       { key: 'image_url', label: 'Lead image URL', type: 'url' },
       { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 120 },
       { key: 'byline', label: 'Byline', type: 'group', fields: [
@@ -5969,8 +6032,11 @@ var SECTION_META = {
         { key: 'meta', label: 'Meta (e.g. "4 min read · Strategy")', type: 'text', maxLength: 80 },
       ]},
       { key: 'body', label: 'Article body', type: 'longText', maxLength: 4000, help: 'Blank line = paragraph break. **bold**, *italic*, [text](url) work inline.' },
+      { key: 'body_size', label: 'Body text size', type: 'fontSize' },
       { key: 'link_text', label: 'Read-more link text', type: 'text', maxLength: 60 },
       { key: 'link_url', label: 'Read-more link URL', type: 'url' },
+      { key: 'cta_colour', label: 'Link colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current link colour', help: 'Colour of the read-more link. Leave empty to keep the default.' },
+      { key: 'cta_text_colour', label: 'Link text colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Defaults to current label colour', help: 'Colour of the read-more link label. Leave empty to keep the default.' },
     ],
   },
   'duo-grid': {
@@ -5980,16 +6046,22 @@ var SECTION_META = {
       { key: 'left', label: 'Left story', type: 'group', required: true, fields: [
         { key: 'tag', label: 'Tag (e.g. "Trend watch")', type: 'text', maxLength: 30 },
         { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+        { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
         { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+        { key: 'body_size', label: 'Supporting copy text size', type: 'fontSize' },
         { key: 'link_text', label: 'Link text', type: 'text', maxLength: 30 },
         { key: 'link_url', label: 'Link URL', type: 'url' },
+        { key: 'cta_text_colour', label: 'Link colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Defaults to current link colour', help: 'Colour of the link text. Leave empty to keep the default.' },
       ]},
       { key: 'right', label: 'Right story', type: 'group', required: true, fields: [
         { key: 'tag', label: 'Tag (e.g. "Operator update")', type: 'text', maxLength: 30 },
         { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+        { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
         { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 280 },
+        { key: 'body_size', label: 'Supporting copy text size', type: 'fontSize' },
         { key: 'link_text', label: 'Link text', type: 'text', maxLength: 30 },
         { key: 'link_url', label: 'Link URL', type: 'url' },
+        { key: 'cta_text_colour', label: 'Link colour', type: 'colour', defaultPreview: '#1B2B5B', placeholder: 'Defaults to current link colour', help: 'Colour of the link text. Leave empty to keep the default.' },
       ]},
     ],
   },
@@ -5998,7 +6070,9 @@ var SECTION_META = {
     description: 'Navy block with three big stats and a source line. Wrap part of a number in {} to teal-highlight it (e.g. "+{12}%").',
     fields: [
       { key: 'label', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'label_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'stats', label: 'Stats (exactly 3)', type: 'array', required: true, max: 3, itemLabel: 'stat', itemFields: [
         { key: 'value', label: 'Number (use {12} to teal-highlight)', type: 'text', required: true, maxLength: 30 },
         { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 100 },
@@ -6011,6 +6085,7 @@ var SECTION_META = {
     description: 'Editorial numbered list with title and optional time-meta on the header. Items use 28px navy tiles.',
     fields: [
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'meta', label: 'Header meta (e.g. "10 min total")', type: 'text', maxLength: 30 },
       { key: 'items', label: 'Items', type: 'array', required: true, itemLabel: 'item', itemFields: [
         { key: 'title', label: 'Item title', type: 'text', required: true, maxLength: 100 },
@@ -6023,7 +6098,9 @@ var SECTION_META = {
     description: 'Upcoming events list. Each item shows a month/day tile and a title plus one-line description.',
     fields: [
       { key: 'title', label: 'Section title', type: 'text', maxLength: 60 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'sub', label: 'Sub-line', type: 'text', maxLength: 120 },
+      { key: 'sub_size', label: 'Sub-line text size', type: 'fontSize' },
       { key: 'items', label: 'Items', type: 'array', required: true, itemLabel: 'event', itemFields: [
         { key: 'month', label: 'Month (e.g. "May")', type: 'text', required: true, maxLength: 4 },
         { key: 'day', label: 'Day (e.g. "14")', type: 'text', required: true, maxLength: 2 },
@@ -6046,15 +6123,22 @@ var SECTION_META = {
       { key: 'logo_link_url', label: 'Logo link URL', type: 'url' },
       { key: 'badge_text', label: 'Badge text (e.g. "New launch")', type: 'text', maxLength: 20 },
       { key: 'eyebrow', label: 'Eyebrow line', type: 'text', maxLength: 60 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline (use *word* to italic-teal one phrase)', type: 'longText', required: true, maxLength: 160 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'deck', label: 'Deck (subhead paragraph)', type: 'longText', maxLength: 280 },
+      { key: 'deck_size', label: 'Deck text size', type: 'fontSize' },
       { key: 'primary_cta', label: 'Primary CTA (solid teal)', type: 'group', fields: [
         { key: 'text', label: 'Button text', type: 'text', maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url' },
+        { key: 'colour', label: 'Button colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+        { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#0A0F1F', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       ]},
       { key: 'secondary_cta', label: 'Secondary CTA (ghost / outline)', type: 'group', fields: [
         { key: 'text', label: 'Button text', type: 'text', maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url' },
+        { key: 'colour', label: 'Button border colour', type: 'colour', defaultPreview: '#444B5C', placeholder: 'Defaults to current border colour', help: 'Border colour of the ghost button. Leave empty to keep the default.' },
+        { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       ]},
     ],
   },
@@ -6065,13 +6149,16 @@ var SECTION_META = {
       { key: 'variant', label: 'Variant', type: 'select', options: ['chat', 'dashboard'] },
       { key: 'header_initial', label: 'Chat: header avatar letter', type: 'text', maxLength: 1, help: 'Used by the chat variant.' },
       { key: 'header_name', label: 'Chat: header name', type: 'text', maxLength: 30, help: 'Used by the chat variant.' },
+      { key: 'header_name_size', label: 'Header name text size', type: 'fontSize' },
       { key: 'header_status', label: 'Chat: header status', type: 'text', maxLength: 60, help: 'Used by the chat variant.' },
       { key: 'messages', label: 'Chat messages', type: 'array', itemLabel: 'message', itemFields: [
         { key: 'from', label: 'From', type: 'select', required: true, options: ['bot', 'user'] },
         { key: 'text', label: 'Message text', type: 'longText', required: true, maxLength: 280 },
+        { key: 'text_size', label: 'Message text size', type: 'fontSize' },
       ]},
       { key: 'show_typing', label: 'Chat: show typing dots at end', type: 'boolean' },
       { key: 'dashboard_title', label: 'Dashboard: title', type: 'text', maxLength: 60, help: 'Used by the dashboard variant.' },
+      { key: 'dashboard_title_size', label: 'Dashboard title text size', type: 'fontSize' },
       { key: 'dashboard_rows', label: 'Dashboard rows', type: 'array', itemLabel: 'row', itemFields: [
         { key: 'label', label: 'Label', type: 'text', required: true, maxLength: 60 },
         { key: 'value', label: 'Value', type: 'text', required: true, maxLength: 30 },
@@ -6085,8 +6172,11 @@ var SECTION_META = {
     description: 'Centred header (eyebrow + title + lede) plus repeating feature rows with icon tiles. For product launches.',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
       { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
+      { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
       { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
         { key: 'icon', label: 'Icon', type: 'select', options: ['chat', 'bolt', 'users', 'clock', 'globe', 'star', 'shield', 'trending', 'search', 'spark'] },
         { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
@@ -6101,6 +6191,7 @@ var SECTION_META = {
     fields: [
       { key: 'stats', label: 'Stats (exactly 3)', type: 'array', required: true, max: 3, itemLabel: 'stat', itemFields: [
         { key: 'value', label: 'Number / value (e.g. "3.2x", "42%")', type: 'text', required: true, maxLength: 20 },
+        { key: 'value_size', label: 'Number text size', type: 'fontSize' },
         { key: 'label', label: 'Label (one short line)', type: 'text', required: true, maxLength: 100 },
       ]},
     ],
@@ -6110,6 +6201,7 @@ var SECTION_META = {
     description: 'Single centred italic quote with avatar and author byline underneath. One per email.',
     fields: [
       { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 400 },
+      { key: 'quote_size', label: 'Quote text size', type: 'fontSize' },
       { key: 'author', label: 'Author', type: 'group', fields: [
         { key: 'initials', label: 'Avatar initials (auto from name if blank)', type: 'text', maxLength: 2 },
         { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
@@ -6122,11 +6214,16 @@ var SECTION_META = {
     description: 'Final-conversion dark navy block with eyebrow, headline, text, and single primary button. Sits above the dark footer.',
     fields: [
       { key: 'eyebrow', label: 'Eyebrow line', type: 'text', maxLength: 40 },
+      { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'title', label: 'Headline', type: 'text', required: true, maxLength: 100 },
+      { key: 'title_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 220 },
+      { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
       { key: 'cta', label: 'Primary CTA', type: 'group', required: true, fields: [
         { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url', required: true },
+        { key: 'colour', label: 'Button colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
+        { key: 'text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#0A0F1F', placeholder: 'Defaults to current label colour', help: 'Colour of the button label. Leave empty to keep the default.' },
       ]},
     ],
   },

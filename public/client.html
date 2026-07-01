@@ -5137,6 +5137,8 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-btn:hover{border-color:var(--tg-accent);color:var(--tg-accent-dark)}',
 '.eb2-btn.primary{background:var(--tg-primary);border-color:var(--tg-primary);color:#fff}',
 '.eb2-btn.primary:hover{color:#fff;opacity:.92}',
+'.eb2-btn.ai{display:inline-flex;align-items:center;gap:6px;background:rgba(0,180,216,.08);border-color:var(--tg-accent);color:var(--tg-accent-dark);font-weight:600}',
+'.eb2-btn.ai:hover{background:var(--tg-accent);border-color:var(--tg-accent);color:#fff}',
 '.eb2-body{flex:1;display:flex;min-height:0}',
 '.eb2-rail{width:268px;flex:0 0 268px;background:var(--tg-bg-primary);border-right:1px solid var(--tg-border);display:flex;flex-direction:column;min-height:0}',
 '.eb2-rail-tabs{display:flex;gap:16px;padding:12px 14px 0;border-bottom:1px solid var(--tg-border)}',
@@ -5209,6 +5211,7 @@ function drawComposeForm() {
   h += '<span class="eb2-saved">&#9679; Draft</span>';
   h += '<div class="eb2-spacer"></div>';
   h += '<div class="eb2-seg"><button class="' + (!mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'desktop\';drawEmails()">Desktop</button><button class="' + (mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'mobile\';drawEmails()">Mobile</button></div>';
+  h += '<button class="eb2-btn ai" onclick="window.__emailComposeAiOpen()" title="Draft or rewrite this email with Luna"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>Compose with AI</button>';
   h += '<button class="eb2-btn" onclick="window.__builderOpenInboxPreview()">Preview</button>';
   h += '<button class="eb2-btn" onclick="window.__openSaveAsTemplateModal()">Save as template</button>';
   h += '<button class="eb2-btn" onclick="window.__emailComposeClose()">Cancel</button>';
@@ -11213,6 +11216,38 @@ window.__emailComposeAiClose = function() {
   if (backdrop) backdrop.remove();
 };
 
+// Bridge the AI composer into the on-canvas builder: take the current AI
+// draft's sections, load them into the builder (fresh ids, internal __
+// keys stripped), carry over the subject/preview/audience, then open the
+// builder so the user can fine-tune each block on the canvas.
+window.__emailComposeAiLoadIntoBuilder = function() {
+  if (!aiCompose.draft || !aiCompose.draft.sections || !aiCompose.draft.sections.length) {
+    if (typeof showEmailToast === 'function') showEmailToast('No draft to load yet.', 'error');
+    return;
+  }
+  var mapped = aiCompose.draft.sections.map(function(s) {
+    var props = {};
+    Object.keys(s.props || {}).forEach(function(k) { if (k.indexOf('__') !== 0) props[k] = s.props[k]; });
+    return { id: genSectionId(), type: s.type, props: props };
+  });
+  emailState.composeData = emailState.composeData || {};
+  if (aiCompose.draft.subject) emailState.composeData.subject = aiCompose.draft.subject;
+  if (aiCompose.draft.previewText) emailState.composeData.previewText = aiCompose.draft.previewText;
+  if (aiCompose.audience) emailState.composeData.audience = aiCompose.audience;
+  if (aiCompose.audienceSegment) emailState.composeData.audienceSegment = aiCompose.audienceSegment;
+  emailState.builderSections = mapped;
+  emailState.builderInitialised = true;
+  emailState.selectedSectionId = mapped[0] ? mapped[0].id : null;
+  emailState.composeOpen = true;
+  emailState.previewHTML = '';
+  // Close the modal directly (skip the discard-confirm — we're keeping it).
+  aiCompose.open = false;
+  var backdrop = document.getElementById('ai-compose-backdrop');
+  if (backdrop) backdrop.remove();
+  drawEmails();
+  if (typeof showEmailToast === 'function') showEmailToast('Draft loaded into the builder', 'success');
+};
+
 async function loadProductsForPicker() {
   if (!state.profile || !state.profile.id) return;
   try {
@@ -11284,6 +11319,7 @@ function renderAiComposeModal() {
     html += '<button class="btn" onclick="window.__emailComposeAiBack()">&larr; Back to brief</button>';
     html += '<div style="display:flex;gap:var(--space-2)">';
     html += '<button class="btn" onclick="window.__emailComposeAiRegenerate()">Generate again</button>';
+    html += '<button class="btn" onclick="window.__emailComposeAiLoadIntoBuilder()" title="Drop this draft onto the canvas to fine-tune it block by block">Edit in builder</button>';
     // Send test — enabled only after Save (we need an emailId to test against).
     // Title hint explains the disabled state to the user.
     var testBtnDisabled = aiCompose.savedEmailId ? '' : ' disabled';

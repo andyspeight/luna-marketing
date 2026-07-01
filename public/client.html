@@ -1069,6 +1069,20 @@ select.email-builder-input { cursor: pointer; }
 }
 .email-builder-section-row:hover .email-builder-section-delete { opacity: 1; }
 .email-builder-section-delete:hover { background: rgba(239,68,68,0.1); color: var(--tg-error); }
+.email-builder-section-dup {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--tg-text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--duration-fast);
+  display: flex; align-items: center; justify-content: center;
+}
+.email-builder-section-row:hover .email-builder-section-dup { opacity: 0.6; }
+.email-builder-section-dup:hover { background: rgba(0,180,216,0.12); color: var(--tg-accent-dark); opacity: 1; }
 
 /* Add section panel — capped at 45% of the left column so the
    section list above it always remains visible. Scrolls internally
@@ -5220,6 +5234,7 @@ function drawComposeForm() {
         h += '<div class="email-builder-section-row' + (active ? ' active' : '') + '" draggable="true" data-section-id="' + esc(s.id) + '" data-section-idx="' + i + '" onclick="window.__builderSelectSection(\'' + esc(s.id) + '\')">';
         h += '<div class="email-builder-section-handle" title="Drag to reorder"><svg width="12" height="14" viewBox="0 0 12 14" fill="none"><circle cx="3" cy="3" r="1.2" fill="currentColor"/><circle cx="9" cy="3" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="9" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11" r="1.2" fill="currentColor"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/></svg></div>';
         h += '<div class="email-builder-section-info"><div class="email-builder-section-type">' + esc(meta.label) + '</div><div class="email-builder-section-summary">' + esc(summary) + '</div></div>';
+        h += '<button class="email-builder-section-dup" onclick="event.stopPropagation();window.__builderDuplicateSection(\'' + esc(s.id) + '\')" title="Duplicate section"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>';
         h += '<button class="email-builder-section-delete" onclick="event.stopPropagation();window.__builderDeleteSection(\'' + esc(s.id) + '\')" title="Remove section"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
         h += '</div>';
       });
@@ -6808,6 +6823,69 @@ window.__builderSelectSection = function(id) {
   drawEmails();
 };
 
+// ── On-canvas selection (no full redraw) ────────────────────────────
+// Called when a contenteditable block on the email canvas gains focus.
+// Selects that section and refreshes just the inspector + Layers active
+// state, leaving the preview iframe (and the caret) untouched.
+window.__tgSelectFromEl = function(el) {
+  if (!el) return;
+  var ref = el.getAttribute('data-tg-edit');
+  if (!ref) return;
+  var ci = ref.indexOf(':');
+  var idx = parseInt(ci < 0 ? ref : ref.slice(0, ci), 10);
+  if (isNaN(idx)) return;
+  var sec = (emailState.builderSections || [])[idx];
+  if (!sec || sec.id === emailState.selectedSectionId) return;
+  emailState.selectedSectionId = sec.id;
+  window.__builderRefreshInspector();
+  window.__builderRefreshLayersActive();
+};
+
+// Rebuild only the right-hand inspector for the current selection. Does
+// NOT touch the canvas iframe, so an in-progress inline edit is safe.
+window.__builderRefreshInspector = function() {
+  var insp = document.querySelector('.eb2-inspector');
+  if (!insp) return;
+  var sel = (emailState.builderSections || []).find(function(s) {
+    return s.id === emailState.selectedSectionId;
+  });
+  if (!sel) {
+    insp.innerHTML = '<div class="eb2-insp-empty">Select a block on the email &mdash; or in the <b>Layers</b> tab &mdash; to edit its settings here.<br><br>Or just click text on the email to edit it in place.</div>';
+    return;
+  }
+  var im = sectionMeta(sel.type);
+  var h = '<div class="eb2-insp-head"><div class="eb2-insp-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><div><div class="eb2-insp-t">' + esc(im.label) + '</div><div class="eb2-insp-s">Block settings</div></div></div>';
+  h += '<div class="eb2-insp-body">' + renderPropertiesForm(sel) + '</div>';
+  insp.innerHTML = h;
+};
+
+// Toggle the .active highlight on the Layers rows to match the current
+// selection, without re-rendering the whole list.
+window.__builderRefreshLayersActive = function() {
+  var rows = document.querySelectorAll('.email-builder-section-row');
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    r.classList.toggle('active', r.getAttribute('data-section-id') === emailState.selectedSectionId);
+  }
+};
+
+// Duplicate a section: deep-clone its props, give it a fresh id, drop the
+// copy directly below the original, select it, and redraw.
+window.__builderDuplicateSection = function(id) {
+  var arr = emailState.builderSections || [];
+  var idx = arr.findIndex(function(s) { return s.id === id; });
+  if (idx < 0) return;
+  var src = arr[idx];
+  var copy = {
+    id: genSectionId(),
+    type: src.type,
+    props: JSON.parse(JSON.stringify(src.props || {}))
+  };
+  arr.splice(idx + 1, 0, copy);
+  emailState.selectedSectionId = copy.id;
+  drawEmails();
+};
+
 // Sections that visually belong at the very top of the email, even
 // when added later in the workflow.
 var HEADER_TYPES = { 'header': true, 'top-bar': true };
@@ -7871,6 +7949,9 @@ window.__builderEnableInlineEdit = function(doc) {
     el.__tgWired = true;
     el.setAttribute('contenteditable', 'true');
     el.setAttribute('spellcheck', 'false');
+    // Clicking/focusing text on the canvas selects that block and opens
+    // its settings in the inspector (no full redraw — keeps the caret).
+    el.addEventListener('focus', function() { window.__tgSelectFromEl(this); });
     el.addEventListener('input', function() { window.__tgInlineCommit(this); });
     el.addEventListener('blur', function() { window.__tgInlineCommit(this); setTimeout(__tgHideRichBar, 150); });
     el.addEventListener('keydown', function(ev) {

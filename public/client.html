@@ -8184,6 +8184,9 @@ window.__builderEnableBlockHover = function(doc) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     var idx = parseInt(tb.getAttribute('data-tg-sec'), 10);
     if (isNaN(idx)) return;
+    // Already showing for this section? Do nothing — re-running would just
+    // recompute the same position and could fight the cursor.
+    if (bar.__idx === idx && bar.style.display === 'flex') return;
     var arr = emailState.builderSections || [];
     bar.__idx = idx;
     // Section bounds: union of the wrapped rows' rects (tbody itself may
@@ -8210,14 +8213,12 @@ window.__builderEnableBlockHover = function(doc) {
     bar.querySelector('[data-a="down"]').disabled = idx === arr.length - 1;
     bar.style.display = 'flex';
     var bw = bar.offsetWidth || 160;
-    var barLeft = Math.max(4 + sx, right + sx - bw);
-    var barTop = Math.max(4 + sy, top + sy - bar.offsetHeight - 4);
-    // If there's no room above the section, tuck the bar just inside its top.
-    if (barTop < top + sy - bar.offsetHeight - 4 + 1 && top + sy - bar.offsetHeight - 4 < sy + 4) {
-      barTop = top + sy + 4;
-    }
-    bar.style.left = barLeft + 'px';
-    bar.style.top = barTop + 'px';
+    // Pin the toolbar just INSIDE the section's top-right corner. Placing it
+    // inside (rather than floating above the top edge) means the cursor
+    // never has to cross into the section above to reach it — which used to
+    // make the bar jump up to that upper section as you moved toward it.
+    bar.style.left = Math.max(4 + sx, right + sx - bw - 8) + 'px';
+    bar.style.top = (top + sy + 8) + 'px';
   }
 
   function scheduleHide() {

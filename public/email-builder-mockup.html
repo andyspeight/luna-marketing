@@ -525,6 +525,10 @@ const SLOTS={
   video:[['capSize','Caption']],
   foot:[['footSize','Footer text']]
 };
+// Saved brand colours — offered as a quick-pick row under every colour control.
+const BRAND=['#1B2B5B','#00B4D8','#0096B7','#0F172A','#E85D1A','#1C8A52','#FFFFFF'];
+// Blocks whose heading supports line-height / letter-spacing tuning.
+const HAS_HEADING={hero:1,feat:1,text:1,cta:1};
 
 /* ===== document model (seeded) ===== */
 let UID=1; const uid=()=>'b'+(UID++);
@@ -551,7 +555,7 @@ function blockInner(b){
     const al=b.align;
     return `<div class="e-hero" style="background:${b.bg};color:${b.fg};padding:${b.pad}px 40px ${b.pad+2}px;text-align:${al}">
       <div class="e-metarow" style="border-color:${hexA(b.fg,.28)};font-size:${fs(11,b.eyebrowSize,12)}px"><span ce data-f="eyebrow">${b.eyebrow}</span><span ce data-f="date">${b.date}</span></div>
-      <h1 class="e-h1" ce data-f="h1" style="font-size:${fs(40,b.h1Size,34)}px">${b.h1}</h1>
+      <h1 class="e-h1" ce data-f="h1" style="font-size:${fs(40,b.h1Size,34)}px${b.lh?`;line-height:${b.lh}`:''}${b.ls?`;letter-spacing:${b.ls}px`:''}">${b.h1}</h1>
       <p class="e-sub" ce data-f="sub" style="font-size:${fs(16,b.subSize,17)}px">${b.sub}</p>
       <a class="e-btn" style="background:${b.btnBg};color:${b.btnFg};font-size:${fs(14,b.btnSize,15)}px" ce data-f="btn">${b.btn}</a>
     </div>`;
@@ -561,11 +565,11 @@ function blockInner(b){
       <div class="e-tile" style="background:${bg}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TILEICON[r.i%4]}</svg></div>
       <div><div class="e-feat-h" ce data-f="rows.${r.i}.h" style="font-size:${fs(17,b.rowHSize,17)}px">${r.h}</div><div class="e-feat-t" ce data-f="rows.${r.i}.t" style="font-size:${fs(15,b.rowTSize,15)}px">${r.t}</div></div></div>`}).join('');
     return `<div class="e-feat-head"><div class="e-feat-eyebrow" ce data-f="eyebrow" style="font-size:${fs(11,b.eyebrowSize,12)}px">${b.eyebrow}</div>
-      <h2 class="e-feat-title" ce data-f="title" style="font-size:${fs(30,b.titleSize,26)}px">${b.title}</h2><p class="e-feat-lede" ce data-f="lede" style="font-size:${fs(16,b.ledeSize,17)}px">${b.lede}</p></div>
+      <h2 class="e-feat-title" ce data-f="title" style="font-size:${fs(30,b.titleSize,26)}px${b.lh?`;line-height:${b.lh}`:''}${b.ls?`;letter-spacing:${b.ls}px`:''}">${b.title}</h2><p class="e-feat-lede" ce data-f="lede" style="font-size:${fs(16,b.ledeSize,17)}px">${b.lede}</p></div>
       <div class="e-divider"><div class="ln"></div></div>
       <div class="e-feat-list">${rows}</div>`;
   }
-  if(b.type==='text')return `<div class="e-pad e-text"><h2 ce data-f="h2" style="font-size:${fs(24,b.h2Size,22)}px">${b.h2||'A short heading'}</h2><p ce data-f="p" style="font-size:${fs(15,b.pSize,16)}px">${b.p||'Write a sentence or two of friendly, human copy. Click to edit — formatting appears as you select.'}</p></div>`;
+  if(b.type==='text')return `<div class="e-pad e-text"><h2 ce data-f="h2" style="font-size:${fs(24,b.h2Size,22)}px${b.lh?`;line-height:${b.lh}`:''}${b.ls?`;letter-spacing:${b.ls}px`:''}">${b.h2||'A short heading'}</h2><p ce data-f="p" style="font-size:${fs(15,b.pSize,16)}px">${b.p||'Write a sentence or two of friendly, human copy. Click to edit — formatting appears as you select.'}</p></div>`;
   if(b.type==='btn')return `<div class="e-pad" style="text-align:${b.align||'left'}"><a class="e-btn" style="background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#fff'};margin-top:0;font-size:${fs(14,b.btnSize,16)}px" ce data-f="btn">${b.btn||'Get started'}</a></div>`;
   if(b.type==='img'){const full=(b.width||'full')==='full';const w=b.width==='small'?'240px':b.width==='medium'?'400px':'100%';const al=b.align||'center';const rad=b.rounded?'10px':'0';
     return `<div style="padding:${full?'0':'18px 40px'};text-align:${al};background:${b.bg||'transparent'}"><div style="display:inline-block;vertical-align:top;width:${w};max-width:100%;height:${full?220:180}px;border-radius:${rad};background:linear-gradient(135deg,#E2E8F0,#F1F5F9)"><div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg></div></div></div>`;}
@@ -582,7 +586,7 @@ function blockInner(b){
     return `<div class="e-pad"><table width="100%" style="border-collapse:collapse"><tr><td width="50%" valign="top" style="padding-right:14px">${col('h1','b1','Left heading','Left column copy goes here.')}</td><td width="50%" valign="top" style="padding-left:14px">${col('h2','b2','Right heading','Right column copy goes here.')}</td></tr></table></div>`;
   }
   if(b.type==='testimonial')return `<div class="e-pad" style="text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#48CAE4,#0096B7);margin:0 auto 14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px">SM</div><p style="font-style:italic;font-size:${fs(20,b.qSize,19)}px;line-height:1.5;color:#1B2B5B;margin:0 0 12px;max-width:440px;display:inline-block" ce data-f="q">${b.q||'“Luna transformed how we run our newsletters.”'}</p><div style="font-weight:700;font-size:${fs(14,b.nameSize,15)}px;color:#0F172A" ce data-f="name">${b.name||'Sarah Mills'}</div><div style="font-size:13px;color:#94A3B8" ce data-f="role">${b.role||'Sunseeker Travel'}</div></div>`;
-  if(b.type==='cta')return `<div style="background:${b.bg||'#1B2B5B'};padding:36px 40px;text-align:center"><div style="font-weight:700;font-size:${fs(22,b.titleSize,20)}px;color:${b.fg||'#FFFFFF'};margin:0 0 16px" ce data-f="title">${b.title||'Ready to get started?'}</div><a style="display:inline-block;background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#FFFFFF'};padding:13px 26px;border-radius:8px;font-weight:600;font-size:${fs(14,b.btnSize,15)}px;text-decoration:none" ce data-f="btn">${b.btn||'Book a demo'}</a></div>`;
+  if(b.type==='cta')return `<div style="background:${b.bg||'#1B2B5B'};padding:36px 40px;text-align:center"><div style="font-weight:700;font-size:${fs(22,b.titleSize,20)}px;color:${b.fg||'#FFFFFF'};margin:0 0 16px${b.lh?`;line-height:${b.lh}`:''}${b.ls?`;letter-spacing:${b.ls}px`:''}" ce data-f="title">${b.title||'Ready to get started?'}</div><a style="display:inline-block;background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#FFFFFF'};padding:13px 26px;border-radius:8px;font-weight:600;font-size:${fs(14,b.btnSize,15)}px;text-decoration:none" ce data-f="btn">${b.btn||'Book a demo'}</a></div>`;
   if(b.type==='list'){const items=b.items||['First point or step','Second point or step','Third point or step'];return `<div class="e-pad"><div style="font-weight:700;font-size:${fs(20,b.titleSize,20)}px;color:#0F172A;margin:0 0 14px" ce data-f="title">${b.title||'Three things to know'}</div>${items.map((t,i)=>`<div style="display:flex;gap:12px;margin-bottom:12px"><div style="flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:#1B2B5B;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${i+1}</div><div style="font-size:${fs(15,b.itemSize,15)}px;line-height:1.55;color:#475569" ce data-f="items.${i}">${t}</div></div>`).join('')}</div>`;}
   if(b.type==='gallery')return `<div class="e-pad"><table width="100%"><tr>${[0,1,2].map(()=>`<td width="33%" style="padding:0 4px"><div style="height:90px;border-radius:8px;background:linear-gradient(135deg,#E2E8F0,#F1F5F9)"></div></td>`).join('')}</tr></table></div>`;
   if(b.type==='social')return `<div style="padding:22px 40px;text-align:center;background:${b.bg||'#F8FAFC'}">${['in','f','ig','x'].map(s=>`<span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;background:#1B2B5B;color:#fff;margin:0 4px;font-size:12px;font-weight:700">${s}</span>`).join('')}</div>`;
@@ -761,7 +765,7 @@ function buildInspector(){
   if(!b){inspector.innerHTML=`<div class="insp-empty"><div class="big"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><p>Select any block to edit its style — or click the text to type inline.</p></div>`;return;}
   const meta=CATALOG[b.type]||{label:b.type,icon:ICON.text};
   let f='';
-  const colorField=(label,key,help)=>`<div class="field"><label>${label}</label><div class="color"><input type="color" value="${b[key]||'#ffffff'}" oninput="upd('${key}',this.value)"><input class="ip" value="${b[key]||''}" oninput="upd('${key}',this.value)"></div>${help?`<div class="help">${help}</div>`:''}</div>`;
+  const colorField=(label,key,help)=>`<div class="field"><label>${label}</label><div class="color"><input type="color" value="${b[key]||'#ffffff'}" oninput="upd('${key}',this.value)"><input class="ip" value="${b[key]||''}" oninput="upd('${key}',this.value)"></div><div class="swatches">${BRAND.map(c=>`<span class="s" style="background:${c}" title="${c}" onclick="upd('${key}','${c}')"></span>`).join('')}</div>${help?`<div class="help">${help}</div>`:''}</div>`;
   if(b.type==='hero'){
     f+=colorField('Background colour','bg');
     f+=colorField('Text colour','fg');
@@ -809,6 +813,12 @@ function buildInspector(){
   if(slots.length){
     f+=`<div style="height:1px;background:var(--border);margin:2px 0 14px"></div><div class="ai-section" style="margin:0 2px 12px">Text size · adapts on mobile</div>`;
     slots.forEach(s=>{ f+=sizeCtl(s[1],s[0],b[s[0]]); });
+  }
+  if(HAS_HEADING[b.type]){
+    const lh=(b.lh!=null?b.lh:1.1), ls=(b.ls!=null?b.ls:0);
+    f+=`<div class="ai-section" style="margin:12px 2px 12px">Heading spacing</div>`;
+    f+=`<div class="field"><label>Line height</label><div class="slider"><input type="range" min="90" max="180" value="${Math.round(lh*100)}" oninput="upd('lh',(+this.value)/100)"><span class="val">${lh.toFixed(2)}</span></div></div>`;
+    f+=`<div class="field"><label>Letter spacing</label><div class="slider"><input type="range" min="-3" max="6" value="${ls}" oninput="upd('ls',+this.value)"><span class="val">${ls}px</span></div></div>`;
   }
   if(!f.trim()) f=`<div class="insp-empty" style="padding:24px 6px"><p>Nothing to configure — this block just displays.</p></div>`;
   inspector.innerHTML=`<div class="insp-head"><div class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></div><div><div class="t">${meta.label}</div><div class="s">Block settings</div></div></div>

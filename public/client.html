@@ -4768,8 +4768,8 @@ window.__emailEdit = function() {
 
   // If the email was built via the section builder OR the AI composer,
   // it has a Sections JSON blob. Branch to the section builder pre-loaded
-  // with those sections (as a NEW draft — saves create a fresh record,
-  // the original is untouched).
+  // with those sections. Saving UPDATES this same record in place (see
+  // emailState.editingEmailId in __emailComposeSave).
   //
   // If no Sections JSON, fall through to the legacy plain-text editor.
   // That editor was the only way to edit older emails that pre-date the
@@ -4822,10 +4822,13 @@ window.__emailEdit = function() {
       emailState.builderInitialised = true;
       emailState.previewHTML = '';
 
-      // Track that we duplicated from an existing email — used to show
-      // a banner in the builder so the user understands save creates new.
-      emailState.duplicatedFromEmailId = email.id;
-      emailState.duplicatedFromSubject = email.subject || '';
+      // Edit in place: saving updates THIS record, not a copy.
+      emailState.editingEmailId = email.id;
+      emailState.editingSubject = email.subject || '';
+      emailState.duplicatedFromEmailId = null;
+      emailState.duplicatedFromSubject = '';
+      // Carry the existing schedule over so re-saving doesn't wipe it.
+      if (email.scheduledSend) emailState.composeData.scheduledSend = email.scheduledSend;
 
       // Close the drawer + open compose
       closeEmailDrawer();
@@ -5002,6 +5005,10 @@ emailState.audiencesLoading = false;
 // saves create a NEW draft (never overwrites the original).
 emailState.duplicatedFromEmailId = null;
 emailState.duplicatedFromSubject = '';
+// When set, the builder is editing an existing email in place — saving
+// updates that record instead of creating a new draft.
+emailState.editingEmailId = null;
+emailState.editingSubject = '';
 
 // Override the original drawEmails to include Compose button and Audiences sub-tab
 var __originalDrawEmails = drawEmails;
@@ -5104,8 +5111,10 @@ window.__emailComposeClose = function() {
   emailState.builderSections = null;
   emailState.selectedSectionId = null;
   emailState.previewHTML = '';
-  // Clear duplicate-from state too — a fresh compose shouldn't show
-  // the banner that says "duplicated from..."
+  // Clear edit/duplicate state too — a fresh compose shouldn't inherit the
+  // edit-in-place target or the "duplicated from..." banner.
+  emailState.editingEmailId = null;
+  emailState.editingSubject = '';
   emailState.duplicatedFromEmailId = null;
   emailState.duplicatedFromSubject = '';
   drawEmails();
@@ -5237,10 +5246,12 @@ function drawComposeForm() {
   h += '<button class="eb2-btn" onclick="window.__openSaveAsTemplateModal()">Save as template</button>';
   h += '<button class="eb2-btn" onclick="window.__emailComposeClose()">Cancel</button>';
   h += '<button class="eb2-btn" onclick="window.__builderOpenScheduleModal()">' + (d.scheduledSend ? 'Reschedule' : 'Schedule') + '</button>';
-  h += '<button class="eb2-btn primary" id="composeSaveBtn" onclick="window.__emailComposeSave()">Save as Draft</button>';
+  h += '<button class="eb2-btn primary" id="composeSaveBtn" onclick="window.__emailComposeSave()">' + (emailState.editingEmailId ? 'Save changes' : 'Save as Draft') + '</button>';
   h += '</div>';
 
-  if (emailState.duplicatedFromEmailId) {
+  if (emailState.editingEmailId) {
+    h += '<div style="margin:10px 14px 0;padding:10px 14px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;font-size:12.5px;color:#166534;line-height:1.45"><strong>Editing</strong> &ldquo;' + esc(emailState.editingSubject || 'this email') + '&rdquo;. Changes save back to this email.</div>';
+  } else if (emailState.duplicatedFromEmailId) {
     h += '<div style="margin:10px 14px 0;padding:10px 14px;background:#FFF7ED;border:1px solid #F97316;border-radius:8px;font-size:12.5px;color:#9A3412;line-height:1.45"><strong>Editing a copy</strong> of "' + esc(emailState.duplicatedFromSubject || 'existing email') + '". Saving creates a new draft &mdash; the original stays in your queue.</div>';
   }
 
@@ -9136,25 +9147,55 @@ window.__emailComposeSave = async function() {
     var renderData = await renderRes.json();
     if (!renderData.success) throw new Error(renderData.error || 'Render failed');
 
-    // Step 2: post to email-compose with rendered HTML + plain + sections JSON for round-tripping
-    var payload = Object.assign({}, d, {
-      clientId: state.profile.id,
-      bodyHTML: renderData.html,
-      bodyPlain: renderData.plainText,
-      sectionsJson: JSON.stringify(sections.map(function(s) { return { type: s.type, props: s.props || {} }; })),
-    });
+    var sectionsJson = JSON.stringify(sections.map(function(s) { return { type: s.type, props: s.props || {} }; }));
 
-    var r = await fetch('/api/email-compose', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    var data = await r.json();
-    if (!data.success) throw new Error(data.error || 'Save failed');
+    var data;
+    if (emailState.editingEmailId) {
+      // Editing an existing email — UPDATE it in place (no new copy).
+      var er = await fetch('/api/email-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: state.profile.id,
+          emailId: emailState.editingEmailId,
+          action: 'edit',
+          edits: {
+            subject: d.subject,
+            previewText: d.previewText || '',
+            bodyHTML: renderData.html,
+            bodyPlain: renderData.plainText,
+            sectionsJson: sectionsJson,
+            audience: d.audience,
+            audienceSegment: d.audienceSegment || '',
+            emailType: d.emailType || 'Newsletter',
+            scheduledSend: d.scheduledSend || '',
+          },
+        }),
+      });
+      data = await er.json();
+      if (!data.success) throw new Error(data.error || 'Save failed');
+    } else {
+      // New email — create a draft.
+      var payload = Object.assign({}, d, {
+        clientId: state.profile.id,
+        bodyHTML: renderData.html,
+        bodyPlain: renderData.plainText,
+        sectionsJson: sectionsJson,
+      });
+      var r = await fetch('/api/email-compose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      data = await r.json();
+      if (!data.success) throw new Error(data.error || 'Save failed');
+    }
 
-    showEmailToast(d.scheduledSend
-      ? ('Scheduled for ' + formatDate(d.scheduledSend) + ' — awaiting approval')
-      : 'Email saved as Awaiting Approval', 'success');
+    showEmailToast(emailState.editingEmailId
+      ? 'Changes saved'
+      : (d.scheduledSend
+        ? ('Scheduled for ' + formatDate(d.scheduledSend) + ' — awaiting approval')
+        : 'Email saved as Awaiting Approval'), 'success');
     emailState.composeOpen = false;
     emailState.composeData = {
       subject: '', previewText: '', bodyHTML: '', bodyPlain: '',
@@ -9165,13 +9206,15 @@ window.__emailComposeSave = async function() {
     emailState.builderSections = null;
     emailState.selectedSectionId = null;
     emailState.previewHTML = '';
-    // Clear duplicate-from state — next compose is a fresh start
+    // Clear edit/duplicate state — next compose is a fresh start
+    emailState.editingEmailId = null;
+    emailState.editingSubject = '';
     emailState.duplicatedFromEmailId = null;
     emailState.duplicatedFromSubject = '';
     loadEmails();  // refresh queue
   } catch (e) {
     alert('Save failed: ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'Save as Draft'; btn.style.opacity = '1'; }
+    if (btn) { btn.disabled = false; btn.textContent = emailState.editingEmailId ? 'Save changes' : 'Save as Draft'; btn.style.opacity = '1'; }
   }
 };
 

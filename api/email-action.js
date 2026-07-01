@@ -180,27 +180,45 @@ async function edit(emailId, actor, ip, edits) {
   if (typeof edits.previewText === "string") updates["Preview Text"] = edits.previewText.slice(0, 200);
   if (typeof edits.bodyHTML === "string") updates["Body HTML"] = edits.bodyHTML;
   if (typeof edits.bodyPlain === "string") updates["Body Plain"] = edits.bodyPlain;
-  if (typeof edits.scheduledSend === "string") updates["Scheduled Send"] = edits.scheduledSend;
+  // Empty string clears the date field — Airtable needs null, not "".
+  if (typeof edits.scheduledSend === "string") updates["Scheduled Send"] = edits.scheduledSend || null;
   if (typeof edits.audience === "string") updates["Audience"] = edits.audience;
+  if (typeof edits.audienceSegment === "string") updates["Audience Segment"] = edits.audienceSegment.slice(0, 200);
+  if (typeof edits.emailType === "string") updates["Email Type"] = edits.emailType;
 
-  if (Object.keys(updates).length === 0) {
+  const hasSections = typeof edits.sectionsJson === "string" && edits.sectionsJson.length < 200000;
+  if (Object.keys(updates).length === 0 && !hasSections) {
     throw new Error("No editable fields provided");
   }
 
-  await patchEmail(emailId, updates);
+  // The "Sections JSON" field lets the builder round-trip on the next edit.
+  // It may not exist on older bases — write it with a graceful fallback
+  // (retry without it on UNKNOWN_FIELD_NAME), mirroring email-compose.
+  const withSections = hasSections
+    ? { ...updates, "Sections JSON": edits.sectionsJson }
+    : updates;
+  try {
+    await patchEmail(emailId, withSections);
+  } catch (e) {
+    if (e.message && e.message.includes("UNKNOWN_FIELD_NAME") && hasSections && Object.keys(updates).length > 0) {
+      await patchEmail(emailId, updates); // retry without Sections JSON
+    } else {
+      throw e;
+    }
+  }
 
   await writeAuditLog({
     actor,
     action: "edit",
     subjectId: emailId,
     details: {
-      fieldsChanged: Object.keys(updates),
+      fieldsChanged: Object.keys(withSections),
       subject: updates["Subject"] || current.fields["Subject"],
     },
     ip,
   });
 
-  return { fieldsChanged: Object.keys(updates) };
+  return { fieldsChanged: Object.keys(withSections) };
 }
 
 async function cancel(emailId, actor, ip, reason) {

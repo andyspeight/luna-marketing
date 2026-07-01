@@ -7008,6 +7008,24 @@ window.__builderAddSectionAtIndex = function(type, index) {
   drawEmails();
 };
 
+// Move an existing section from one index to a target insertion index
+// (used by canvas drag-to-reorder). The target index is expressed against
+// the array BEFORE removal, so we shift it down by one when the source sat
+// above it. Dropping a block back into its own slot is a no-op.
+window.__builderReorderFromIdx = null;
+window.__builderMoveSectionToIndex = function(fromIdx, targetIndex) {
+  var arr = emailState.builderSections || [];
+  if (fromIdx < 0 || fromIdx >= arr.length) return;
+  var moved = arr[fromIdx];
+  var to = targetIndex > fromIdx ? targetIndex - 1 : targetIndex;
+  to = Math.max(0, Math.min(to, arr.length - 1));
+  if (to === fromIdx) { window.__builderRefreshLayersActive && window.__builderRefreshLayersActive(); return; }
+  arr.splice(fromIdx, 1);
+  arr.splice(to, 0, moved);
+  emailState.selectedSectionId = moved.id;
+  drawEmails();
+};
+
 window.__builderDeleteSection = function(id) {
   if (!confirm('Remove this section?')) return;
   emailState.builderSections = emailState.builderSections.filter(function(s) { return s.id !== id; });
@@ -8037,7 +8055,8 @@ window.__builderEnableBlockHover = function(doc) {
       '#tgSecBar button:hover{background:rgba(255,255,255,.12);color:#fff}' +
       '#tgSecBar button.danger:hover{background:rgba(239,68,68,.25);color:#fff}' +
       '#tgSecBar button:disabled{opacity:.3;cursor:default}' +
-      '#tgSecBar .tgSecLbl{color:#94a3b8;font:600 10px/1 ui-sans-serif,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 6px;display:inline-flex;align-items:center;max-width:120px;overflow:hidden;white-space:nowrap}';
+      '#tgSecBar .tgSecLbl{color:#94a3b8;font:600 10px/1 ui-sans-serif,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.6px;padding:0 8px 0 4px;display:inline-flex;align-items:center;max-width:110px;overflow:hidden;white-space:nowrap}' +
+      '#tgSecBar button.tgGrip{cursor:grab}#tgSecBar button.tgGrip:active{cursor:grabbing}';
     (doc.head || doc.body).appendChild(style);
 
     var outline = doc.createElement('div');
@@ -8050,6 +8069,7 @@ window.__builderEnableBlockHover = function(doc) {
       return '<button data-a="' + cls + '"' + (cls === 'del' ? ' class="danger"' : '') + ' title="' + title + '">' + svg + '</button>';
     };
     bar.innerHTML =
+      '<button class="tgGrip" data-a="drag" draggable="true" title="Drag to move this block"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="8" cy="6" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="6" r="1.5"/><circle cx="16" cy="12" r="1.5"/><circle cx="16" cy="18" r="1.5"/></svg></button>' +
       '<span class="tgSecLbl" id="tgSecLbl"></span>' +
       mk('up', 'Move up', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>') +
       mk('down', 'Move down', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>') +
@@ -8061,6 +8081,9 @@ window.__builderEnableBlockHover = function(doc) {
     bar.addEventListener('mousedown', function(ev) {
       var b = ev.target.closest && ev.target.closest('button[data-a]');
       if (!b) return;
+      // The grip starts a native drag — don't preventDefault (that would
+      // cancel the drag) and don't treat it as a click action.
+      if (b.getAttribute('data-a') === 'drag') return;
       ev.preventDefault();
       ev.stopPropagation();
       var idx = bar.__idx;
@@ -8072,6 +8095,30 @@ window.__builderEnableBlockHover = function(doc) {
       else if (a === 'down') window.__builderMoveSection(idx, 1);
       else if (a === 'dup') window.__builderDuplicateSection(id);
       else if (a === 'del') window.__builderDeleteSection(id);
+    });
+
+    // Grip drag = pick the pinned block up and drop it at a new position.
+    // The canvas drop handler (see __builderEnableCanvasDrop) reads
+    // window.__builderReorderFromIdx and performs the move.
+    bar.addEventListener('dragstart', function(ev) {
+      var g = ev.target.closest && ev.target.closest('[data-a="drag"]');
+      if (!g) { ev.preventDefault(); return; }
+      var idx = bar.__idx;
+      if (idx == null) { ev.preventDefault(); return; }
+      window.__builderReorderFromIdx = idx;
+      try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', 'reorder'); } catch (e) {}
+      // Dim the block being dragged, and hide the hover chrome for clarity.
+      var srcTb = doc.querySelector('[data-tg-sec="' + idx + '"]');
+      if (srcTb) srcTb.style.opacity = '0.4';
+      bar.style.display = 'none';
+      outlineEl.style.display = 'none';
+    });
+    bar.addEventListener('dragend', function() {
+      window.__builderReorderFromIdx = null;
+      var l = doc.getElementById('tgDropLine');
+      if (l) l.style.display = 'none';
+      var dimmed = doc.querySelectorAll('[data-tg-sec]');
+      for (var i = 0; i < dimmed.length; i++) dimmed[i].style.opacity = '';
     });
   }
 
@@ -8186,11 +8233,17 @@ window.__builderEnableCanvasDrop = function(doc) {
     return { index: last.idx + 1, y: last.bottom + sy };
   }
 
+  // A drag we care about is either a palette add (__builderNewDragType) or
+  // a reorder of an existing block (__builderReorderFromIdx).
+  function activeDrag() {
+    return window.__builderNewDragType != null || window.__builderReorderFromIdx != null;
+  }
+
   doc.addEventListener('dragover', function(ev) {
     // Always preventDefault so a stray text-drag can't paste into a field.
     ev.preventDefault();
-    if (!window.__builderNewDragType) return;
-    try { ev.dataTransfer.dropEffect = 'copy'; } catch (e) {}
+    if (!activeDrag()) return;
+    try { ev.dataTransfer.dropEffect = window.__builderReorderFromIdx != null ? 'move' : 'copy'; } catch (e) {}
     var d = computeDrop(ev.clientY);
     line.style.display = 'block';
     line.style.top = (d.y - 1) + 'px';
@@ -8202,11 +8255,17 @@ window.__builderEnableCanvasDrop = function(doc) {
   doc.addEventListener('drop', function(ev) {
     ev.preventDefault();
     line.style.display = 'none';
-    var type = window.__builderNewDragType;
-    if (!type) return; // non-palette drop — swallowed, nothing inserted
     var d = computeDrop(ev.clientY);
-    window.__builderNewDragType = null;
-    window.__builderAddSectionAtIndex(type, d.index);
+    if (window.__builderNewDragType != null) {
+      var type = window.__builderNewDragType;
+      window.__builderNewDragType = null;
+      window.__builderAddSectionAtIndex(type, d.index);
+    } else if (window.__builderReorderFromIdx != null) {
+      var from = window.__builderReorderFromIdx;
+      window.__builderReorderFromIdx = null;
+      window.__builderMoveSectionToIndex(from, d.index);
+    }
+    // else: non-palette drop — swallowed, nothing inserted.
   });
 };
 

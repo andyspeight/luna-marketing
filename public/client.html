@@ -7781,6 +7781,7 @@ window.__builderRenderPreview = async function() {
         sections: sections.map(function(s) { return { type: s.type, props: s.props || {} }; }),
         previewText: emailState.composeData.previewText,
         title: emailState.composeData.subject,
+        editable: true,
       }),
     });
     var data = await r.json();
@@ -7793,6 +7794,7 @@ window.__builderRenderPreview = async function() {
       doc.open();
       doc.write(data.html);
       doc.close();
+      window.__builderEnableInlineEdit(doc);
     }
   } catch (e) {
     console.error('Preview render failed:', e);
@@ -7806,6 +7808,62 @@ window.__builderRenderPreview = async function() {
   } finally {
     if (loading) loading.style.display = 'none';
   }
+};
+
+// ── On-canvas inline editing (Phase 1b) ──────────────────────────────
+// After the server-rendered preview is written into the iframe, make the
+// elements the renderer tagged with data-tg-edit="<sectionIndex>:<propPath>"
+// directly editable. Edits are written straight back into the section
+// props model — the iframe already shows the typed text, so we DON'T
+// reload it on every keystroke (that would kill the caret); the next
+// server render (colour change, block add, save) picks the edits up.
+window.__builderEnableInlineEdit = function(doc) {
+  if (!doc) return;
+  if (!doc.getElementById('tg-edit-style')) {
+    var st = doc.createElement('style');
+    st.id = 'tg-edit-style';
+    st.textContent = '[data-tg-edit]{outline:0;cursor:text;transition:box-shadow .1s}' +
+      '[data-tg-edit]:hover{box-shadow:0 0 0 2px rgba(0,180,216,0.28)}' +
+      '[data-tg-edit]:focus{box-shadow:0 0 0 2px #00B4D8;background:rgba(0,180,216,0.06)}';
+    (doc.head || doc.body || doc.documentElement).appendChild(st);
+  }
+  var els = doc.querySelectorAll('[data-tg-edit]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    if (el.__tgWired) continue;
+    el.__tgWired = true;
+    el.setAttribute('contenteditable', 'true');
+    el.setAttribute('spellcheck', 'false');
+    el.addEventListener('input', function() { window.__tgInlineCommit(this); });
+    el.addEventListener('blur', function() { window.__tgInlineCommit(this); });
+    el.addEventListener('keydown', function(ev) {
+      // Enter commits single-line fields; body/longtext keeps newlines.
+      if (ev.key === 'Enter' && String(this.getAttribute('data-tg-edit')).indexOf('body') < 0) {
+        ev.preventDefault();
+        this.blur();
+      }
+    });
+  }
+};
+
+// Write an inline edit back into the section props model (no iframe reload).
+window.__tgInlineCommit = function(el) {
+  var ref = el.getAttribute('data-tg-edit');
+  if (!ref) return;
+  var ci = ref.indexOf(':');
+  if (ci < 0) return;
+  var idx = parseInt(ref.slice(0, ci), 10);
+  var path = ref.slice(ci + 1);
+  var sec = (emailState.builderSections || [])[idx];
+  if (!sec) return;
+  if (!sec.props) sec.props = {};
+  var val = (el.innerText || '').replace(/ /g, ' ').replace(/\s+$/, '');
+  setNestedValue(sec.props, path, val);
+  // Keep the left-panel summary and any open form field in sync — but do
+  // NOT trigger a preview re-render (the iframe already shows the edit).
+  try { updateSectionSummaryInDOM(sec.id); } catch (e) {}
+  var f = document.getElementById('prop_' + sec.id + '_' + path.replace(/\./g, '_'));
+  if (f && f.value !== val) f.value = val;
 };
 
 window.__builderApplyTemplate = function(templateId) {

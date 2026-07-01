@@ -163,6 +163,9 @@ module.exports = async (req, res) => {
       unsubUrl,
       bodyBackground: bodyBackground || undefined,
       brand,
+      // When the builder requests it, emit data-tg-edit hooks for on-canvas
+      // editing. Never set on the send path, so delivered emails are clean.
+      editable: body.editable === true,
     });
 
     if (result.errors.length > 0) {

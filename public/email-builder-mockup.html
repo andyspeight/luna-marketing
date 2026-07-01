@@ -135,6 +135,8 @@ button{font-family:inherit;cursor:pointer}
 .rtbar button:hover{background:rgba(255,255,255,.14);color:#fff}
 .rtbar .sep{width:1px;height:18px;background:rgba(255,255,255,.16);margin:0 3px}
 .rtbar .sw{width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.3)}
+.rtbar .rtc{width:28px;height:28px;padding:2px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:transparent;cursor:pointer;margin-left:3px;flex:0 0 auto}
+.rtbar button[data-color]{padding:0 4px;min-width:24px}
 
 /* ───────── Right rail (settings) ───────── */
 .inspector{width:300px;flex:0 0 300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
@@ -428,9 +430,18 @@ textarea.ip{height:auto;padding:9px 11px;resize:vertical;line-height:1.5}
   <button data-size="down" title="Smaller">A−</button>
   <button data-size="up" title="Larger">A+</button>
   <span class="sep"></span>
-  <button data-color="#00B4D8" title="Teal"><span class="sw" style="background:#00B4D8"></span></button>
-  <button data-color="#1B2B5B" title="Navy"><span class="sw" style="background:#1B2B5B"></span></button>
   <button data-color="#0F172A" title="Ink"><span class="sw" style="background:#0F172A"></span></button>
+  <button data-color="#475569" title="Slate"><span class="sw" style="background:#475569"></span></button>
+  <button data-color="#1B2B5B" title="Navy"><span class="sw" style="background:#1B2B5B"></span></button>
+  <button data-color="#00B4D8" title="Teal"><span class="sw" style="background:#00B4D8"></span></button>
+  <button data-color="#0096B7" title="Teal dark"><span class="sw" style="background:#0096B7"></span></button>
+  <button data-color="#1C8A52" title="Green"><span class="sw" style="background:#1C8A52"></span></button>
+  <button data-color="#B9740E" title="Amber"><span class="sw" style="background:#B9740E"></span></button>
+  <button data-color="#E85D1A" title="Orange"><span class="sw" style="background:#E85D1A"></span></button>
+  <button data-color="#C0392B" title="Red"><span class="sw" style="background:#C0392B"></span></button>
+  <button data-color="#6B3FD1" title="Purple"><span class="sw" style="background:#6B3FD1"></span></button>
+  <button data-color="#FFFFFF" title="White"><span class="sw" style="background:#FFFFFF"></span></button>
+  <input type="color" class="rtc" id="rtColor" value="#00B4D8" title="Any colour…">
 </div>
 
 <div class="proto"><span class="b">PROTOTYPE</span> Interactive concept for the new Luna email builder — drag, drop &amp; edit anything.</div>
@@ -448,7 +459,14 @@ const ICON = {
   stats:'<line x1="5" y1="11" x2="9" y2="11" stroke-width="2.6"/><line x1="5" y1="14" x2="8" y2="14"/><line x1="10.5" y1="11" x2="14.5" y2="11" stroke-width="2.6"/><line x1="10.5" y1="14" x2="13.5" y2="14"/><line x1="16" y1="11" x2="20" y2="11" stroke-width="2.6"/>',
   divider:'<line x1="3" y1="12" x2="21" y2="12"/>',
   spacer:'<line x1="4" y1="8" x2="20" y2="8" stroke-dasharray="2 2"/><line x1="4" y1="16" x2="20" y2="16" stroke-dasharray="2 2"/>',
-  foot:'<rect x="2" y="14" width="20" height="6" rx="1" fill="currentColor" opacity=".5"/><line x1="9" y1="17" x2="15" y2="17" stroke="#fff" opacity=".8"/>'
+  foot:'<rect x="2" y="14" width="20" height="6" rx="1" fill="currentColor" opacity=".5"/><line x1="9" y1="17" x2="15" y2="17" stroke="#fff" opacity=".8"/>',
+  header:'<rect x="2" y="4" width="20" height="5" rx="1" fill="currentColor" opacity=".2"/><line x1="9" y1="6.5" x2="15" y2="6.5"/>',
+  columns:'<rect x="3" y="4" width="8" height="16" rx="1"/><rect x="13" y="4" width="8" height="16" rx="1"/>',
+  list:'<rect x="3" y="4" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><line x1="9" y1="6" x2="20" y2="6"/><rect x="3" y="10" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><line x1="9" y1="12" x2="20" y2="12"/><rect x="3" y="16" width="4" height="4" rx="1" fill="currentColor" opacity=".4"/><line x1="9" y1="18" x2="20" y2="18"/>',
+  video:'<rect x="3" y="5" width="18" height="14" rx="2"/><polygon points="10 9 16 12 10 15" fill="currentColor"/>',
+  gallery:'<rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="13" width="7" height="7" rx="1"/><rect x="14" y="13" width="7" height="7" rx="1"/>',
+  ctaband:'<rect x="2" y="7" width="20" height="10" rx="2" fill="currentColor" opacity=".18"/><rect x="8" y="10.5" width="8" height="3" rx="1.5"/>',
+  social:'<circle cx="6" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="18" cy="12" r="2.4"/>'
 };
 const CATALOG = {
   hero:{label:'Hero',group:'hero',icon:ICON.hero},
@@ -459,12 +477,54 @@ const CATALOG = {
   quote:{label:'Quote',group:'content',icon:ICON.quote},
   offers:{label:'Offers',group:'commerce',icon:ICON.offers},
   stats:{label:'Stats',group:'commerce',icon:ICON.stats},
+  header:{label:'Header',group:'hero',icon:ICON.header},
+  columns:{label:'Columns',group:'content',icon:ICON.columns},
+  list:{label:'List',group:'content',icon:ICON.list},
+  testimonial:{label:'Testimonial',group:'content',icon:ICON.quote},
+  video:{label:'Video',group:'content',icon:ICON.video},
+  gallery:{label:'Gallery',group:'content',icon:ICON.gallery},
+  cta:{label:'CTA banner',group:'commerce',icon:ICON.ctaband},
   divider:{label:'Divider',group:'struct',icon:ICON.divider},
   spacer:{label:'Spacer',group:'struct',icon:ICON.spacer},
+  social:{label:'Social',group:'struct',icon:ICON.social},
   foot:{label:'Footer',group:'struct',icon:ICON.foot}
 };
 const TILES=[['#D7F0F2','#0E7C86'],['#FBE8C8','#B9740E'],['#E3E8EF','#475569'],['#D8F1E2','#1C8A52']];
 const TILEICON=['<path d="M12 3l1.8 4.7L18.5 9.5 13.8 11.3 12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>','<polygon points="12 2 15 8 22 9 17 14 18 21 12 17.8 6 21 7 14 2 9 9 8"/>','<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/>','<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/>'];
+
+/* ===== text-size scale + mobile auto-reduce ===== */
+// Each text slot has an intrinsic base px and a preset multiplier (S→Huge).
+// On mobile we (a) halve the up-scaling and (b) cap each slot at a
+// role-appropriate ceiling, so "Huge" headlines shrink to something that
+// still fits a phone instead of overflowing.
+const SCALE={s:.85,m:1,l:1.2,xl:1.45,h:1.8};
+const SIZE_OPTS=[['s','S'],['m','M'],['l','L'],['xl','XL'],['h','Huge']];
+let deviceMode='desktop';
+function fs(base,key,mobileCap){
+  const mult=SCALE[key||'m']||1;
+  let px=base*mult;
+  if(deviceMode==='mobile'){ px=base*(1+(mult-1)*0.5); if(mobileCap) px=Math.min(px,mobileCap); }
+  return Math.round(px);
+}
+function sizeCtl(label,key,cur){
+  return `<div class="field"><label>${label} size</label><div class="segsm sizeseg">${SIZE_OPTS.map(o=>`<button class="${(cur||'m')===o[0]?'on':''}" onclick="upd('${key}','${o[0]}')">${o[1]}</button>`).join('')}</div></div>`;
+}
+const SLOTS={
+  hero:[['eyebrowSize','Eyebrow'],['h1Size','Headline'],['subSize','Body'],['btnSize','Button']],
+  feat:[['eyebrowSize','Eyebrow'],['titleSize','Title'],['ledeSize','Intro'],['rowHSize','Feature heading'],['rowTSize','Feature text']],
+  text:[['h2Size','Heading'],['pSize','Body']],
+  btn:[['btnSize','Button']],
+  quote:[['qSize','Quote']],
+  stats:[['valSize','Number'],['labelSize','Label']],
+  offers:[['titleSize','Card title']],
+  columns:[['hSize','Headings'],['bSize','Body']],
+  testimonial:[['qSize','Quote'],['nameSize','Name']],
+  cta:[['titleSize','Title'],['btnSize','Button']],
+  list:[['titleSize','Title'],['itemSize','Items']],
+  header:[['logoSize','Wordmark']],
+  video:[['capSize','Caption']],
+  foot:[['footSize','Footer text']]
+};
 
 /* ===== document model (seeded) ===== */
 let UID=1; const uid=()=>'b'+(UID++);
@@ -486,34 +546,47 @@ let selId=null;
 const canvas=document.getElementById('canvas');
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function blockInner(b){
+  const M=deviceMode==='mobile';
   if(b.type==='hero'){
     const al=b.align;
     return `<div class="e-hero" style="background:${b.bg};color:${b.fg};padding:${b.pad}px 40px ${b.pad+2}px;text-align:${al}">
-      <div class="e-metarow" style="border-color:${hexA(b.fg,.28)}"><span ce data-f="eyebrow">${b.eyebrow}</span><span ce data-f="date">${b.date}</span></div>
-      <h1 class="e-h1" ce data-f="h1">${b.h1}</h1>
-      <p class="e-sub" ce data-f="sub">${b.sub}</p>
-      <a class="e-btn" style="background:${b.btnBg};color:${b.btnFg}" ce data-f="btn">${b.btn}</a>
+      <div class="e-metarow" style="border-color:${hexA(b.fg,.28)};font-size:${fs(11,b.eyebrowSize,12)}px"><span ce data-f="eyebrow">${b.eyebrow}</span><span ce data-f="date">${b.date}</span></div>
+      <h1 class="e-h1" ce data-f="h1" style="font-size:${fs(40,b.h1Size,34)}px">${b.h1}</h1>
+      <p class="e-sub" ce data-f="sub" style="font-size:${fs(16,b.subSize,17)}px">${b.sub}</p>
+      <a class="e-btn" style="background:${b.btnBg};color:${b.btnFg};font-size:${fs(14,b.btnSize,15)}px" ce data-f="btn">${b.btn}</a>
     </div>`;
   }
   if(b.type==='feat'){
     const rows=b.rows.map(r=>{const[bg,fg]=TILES[r.i%4];return `<div class="e-feat-row">
       <div class="e-tile" style="background:${bg}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${fg}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TILEICON[r.i%4]}</svg></div>
-      <div><div class="e-feat-h" ce data-f="rows.${r.i}.h">${r.h}</div><div class="e-feat-t" ce data-f="rows.${r.i}.t">${r.t}</div></div></div>`}).join('');
-    return `<div class="e-feat-head"><div class="e-feat-eyebrow" ce data-f="eyebrow">${b.eyebrow}</div>
-      <h2 class="e-feat-title" ce data-f="title">${b.title}</h2><p class="e-feat-lede" ce data-f="lede">${b.lede}</p></div>
+      <div><div class="e-feat-h" ce data-f="rows.${r.i}.h" style="font-size:${fs(17,b.rowHSize,17)}px">${r.h}</div><div class="e-feat-t" ce data-f="rows.${r.i}.t" style="font-size:${fs(15,b.rowTSize,15)}px">${r.t}</div></div></div>`}).join('');
+    return `<div class="e-feat-head"><div class="e-feat-eyebrow" ce data-f="eyebrow" style="font-size:${fs(11,b.eyebrowSize,12)}px">${b.eyebrow}</div>
+      <h2 class="e-feat-title" ce data-f="title" style="font-size:${fs(30,b.titleSize,26)}px">${b.title}</h2><p class="e-feat-lede" ce data-f="lede" style="font-size:${fs(16,b.ledeSize,17)}px">${b.lede}</p></div>
       <div class="e-divider"><div class="ln"></div></div>
       <div class="e-feat-list">${rows}</div>`;
   }
-  if(b.type==='text')return `<div class="e-pad e-text"><h2 ce data-f="h2">${b.h2||'A short heading'}</h2><p ce data-f="p">${b.p||'Write a sentence or two of friendly, human copy. Click to edit — formatting appears as you select.'}</p></div>`;
-  if(b.type==='btn')return `<div class="e-pad" style="text-align:${b.align||'left'}"><a class="e-btn" style="background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#fff'};margin-top:0" ce data-f="btn">${b.btn||'Get started'}</a></div>`;
+  if(b.type==='text')return `<div class="e-pad e-text"><h2 ce data-f="h2" style="font-size:${fs(24,b.h2Size,22)}px">${b.h2||'A short heading'}</h2><p ce data-f="p" style="font-size:${fs(15,b.pSize,16)}px">${b.p||'Write a sentence or two of friendly, human copy. Click to edit — formatting appears as you select.'}</p></div>`;
+  if(b.type==='btn')return `<div class="e-pad" style="text-align:${b.align||'left'}"><a class="e-btn" style="background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#fff'};margin-top:0;font-size:${fs(14,b.btnSize,16)}px" ce data-f="btn">${b.btn||'Get started'}</a></div>`;
   if(b.type==='img'){const full=(b.width||'full')==='full';const w=b.width==='small'?'240px':b.width==='medium'?'400px':'100%';const al=b.align||'center';const rad=b.rounded?'10px':'0';
     return `<div style="padding:${full?'0':'18px 40px'};text-align:${al};background:${b.bg||'transparent'}"><div style="display:inline-block;vertical-align:top;width:${w};max-width:100%;height:${full?220:180}px;border-radius:${rad};background:linear-gradient(135deg,#E2E8F0,#F1F5F9)"><div style="height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg></div></div></div>`;}
-  if(b.type==='quote')return `<div class="e-pad" style="text-align:${b.align||'left'}"><p style="display:inline-block;text-align:left;max-width:480px;font-size:21px;font-style:italic;line-height:1.5;color:#1B2B5B;margin:0;border-left:3px solid ${b.accent||'#00B4D8'};padding-left:18px" ce data-f="q">${b.q||'“Our booking enquiries jumped 30% in the first month.”'}</p></div>`;
-  if(b.type==='offers'){const n=b.count||2;const acc=b.accent||'#0096B7';return `<div class="e-pad"><div style="display:flex;gap:14px">${Array.from({length:n}).map(()=>`<div style="flex:1;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden"><div style="height:96px;background:linear-gradient(135deg,${hexA(acc,.6)},${acc})"></div><div style="padding:12px"><div style="font-weight:700;font-size:14px;color:#0F172A">Santorini escape</div><div style="font-size:12px;color:#475569;margin:3px 0 8px">7 nights · all-inclusive</div><div style="font-weight:800;color:#1B2B5B">From £689pp</div></div></div>`).join('')}</div></div>`;}
-  if(b.type==='stats')return `<div class="e-stats" style="background:${b.bg||'#F8FAFC'}">${[['3.2×','more enquiries'],['+41%','time on site'],['12k','widgets live']].map(s=>`<div class="e-stat"><div class="v" style="color:${b.valColour||'#1B2B5B'}">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('')}</div>`;
+  if(b.type==='quote')return `<div class="e-pad" style="text-align:${b.align||'left'}"><p style="display:inline-block;text-align:left;max-width:480px;font-size:${fs(21,b.qSize,19)}px;font-style:italic;line-height:1.5;color:#1B2B5B;margin:0;border-left:3px solid ${b.accent||'#00B4D8'};padding-left:18px" ce data-f="q">${b.q||'“Our booking enquiries jumped 30% in the first month.”'}</p></div>`;
+  if(b.type==='offers'){const n=b.count||2;const acc=b.accent||'#0096B7';return `<div class="e-pad"><div style="display:flex;gap:14px">${Array.from({length:n}).map(()=>`<div style="flex:1;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden"><div style="height:96px;background:linear-gradient(135deg,${hexA(acc,.6)},${acc})"></div><div style="padding:12px"><div style="font-weight:700;font-size:${fs(14,b.titleSize,15)}px;color:#0F172A">Santorini escape</div><div style="font-size:12px;color:#475569;margin:3px 0 8px">7 nights · all-inclusive</div><div style="font-weight:800;color:#1B2B5B">From £689pp</div></div></div>`).join('')}</div></div>`;}
+  if(b.type==='stats')return `<div class="e-stats" style="background:${b.bg||'#F8FAFC'}">${[['3.2×','more enquiries'],['+41%','time on site'],['12k','widgets live']].map(s=>`<div class="e-stat"><div class="v" style="color:${b.valColour||'#1B2B5B'};font-size:${fs(30,b.valSize,26)}px">${s[0]}</div><div class="l" style="font-size:${fs(12,b.labelSize,12)}px">${s[1]}</div></div>`).join('')}</div>`;
   if(b.type==='divider')return `<div class="e-divider"><div class="ln"></div></div>`;
   if(b.type==='spacer')return `<div style="height:${b.h||32}px"></div>`;
-  if(b.type==='foot')return `<div class="e-foot"><div class="wm" ce data-f="wm">Travelgenix</div>Fully automated marketing for travel agents.<br><a>Unsubscribe</a> · <a>View in browser</a> · <a>Preferences</a></div>`;
+  if(b.type==='foot')return `<div class="e-foot" style="font-size:${fs(12,b.footSize,13)}px"><div class="wm" ce data-f="wm">Travelgenix</div>Fully automated marketing for travel agents.<br><a>Unsubscribe</a> · <a>View in browser</a> · <a>Preferences</a></div>`;
+  if(b.type==='header')return `<div style="padding:20px 40px;text-align:${b.align||'center'};background:${b.bg||'#FFFFFF'};border-bottom:1px solid #EEF2F7"><span ce data-f="logo" style="font-weight:800;font-size:${fs(20,b.logoSize,22)}px;letter-spacing:-.02em;color:${b.fg||'#0F172A'}">${b.logo||'Travelgenix'}</span></div>`;
+  if(b.type==='columns'){
+    const col=(hk,bk,ph,pb)=>`<div style="font-weight:700;font-size:${fs(18,b.hSize,18)}px;color:#0F172A;margin:0 0 6px" ce data-f="${hk}">${b[hk]||ph}</div><div style="font-size:${fs(15,b.bSize,15)}px;line-height:1.6;color:#475569" ce data-f="${bk}">${b[bk]||pb}</div>`;
+    if(M)return `<div class="e-pad">${col('h1','b1','Left heading','Left column copy goes here.')}<div style="height:18px"></div>${col('h2','b2','Right heading','Right column copy goes here.')}</div>`;
+    return `<div class="e-pad"><table width="100%" style="border-collapse:collapse"><tr><td width="50%" valign="top" style="padding-right:14px">${col('h1','b1','Left heading','Left column copy goes here.')}</td><td width="50%" valign="top" style="padding-left:14px">${col('h2','b2','Right heading','Right column copy goes here.')}</td></tr></table></div>`;
+  }
+  if(b.type==='testimonial')return `<div class="e-pad" style="text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#48CAE4,#0096B7);margin:0 auto 14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px">SM</div><p style="font-style:italic;font-size:${fs(20,b.qSize,19)}px;line-height:1.5;color:#1B2B5B;margin:0 0 12px;max-width:440px;display:inline-block" ce data-f="q">${b.q||'“Luna transformed how we run our newsletters.”'}</p><div style="font-weight:700;font-size:${fs(14,b.nameSize,15)}px;color:#0F172A" ce data-f="name">${b.name||'Sarah Mills'}</div><div style="font-size:13px;color:#94A3B8" ce data-f="role">${b.role||'Sunseeker Travel'}</div></div>`;
+  if(b.type==='cta')return `<div style="background:${b.bg||'#1B2B5B'};padding:36px 40px;text-align:center"><div style="font-weight:700;font-size:${fs(22,b.titleSize,20)}px;color:${b.fg||'#FFFFFF'};margin:0 0 16px" ce data-f="title">${b.title||'Ready to get started?'}</div><a style="display:inline-block;background:${b.btnBg||'#00B4D8'};color:${b.btnFg||'#FFFFFF'};padding:13px 26px;border-radius:8px;font-weight:600;font-size:${fs(14,b.btnSize,15)}px;text-decoration:none" ce data-f="btn">${b.btn||'Book a demo'}</a></div>`;
+  if(b.type==='list'){const items=b.items||['First point or step','Second point or step','Third point or step'];return `<div class="e-pad"><div style="font-weight:700;font-size:${fs(20,b.titleSize,20)}px;color:#0F172A;margin:0 0 14px" ce data-f="title">${b.title||'Three things to know'}</div>${items.map((t,i)=>`<div style="display:flex;gap:12px;margin-bottom:12px"><div style="flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:#1B2B5B;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${i+1}</div><div style="font-size:${fs(15,b.itemSize,15)}px;line-height:1.55;color:#475569" ce data-f="items.${i}">${t}</div></div>`).join('')}</div>`;}
+  if(b.type==='gallery')return `<div class="e-pad"><table width="100%"><tr>${[0,1,2].map(()=>`<td width="33%" style="padding:0 4px"><div style="height:90px;border-radius:8px;background:linear-gradient(135deg,#E2E8F0,#F1F5F9)"></div></td>`).join('')}</tr></table></div>`;
+  if(b.type==='social')return `<div style="padding:22px 40px;text-align:center;background:${b.bg||'#F8FAFC'}">${['in','f','ig','x'].map(s=>`<span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;background:#1B2B5B;color:#fff;margin:0 4px;font-size:12px;font-weight:700">${s}</span>`).join('')}</div>`;
+  if(b.type==='video')return `<div class="e-pad"><div style="height:200px;border-radius:10px;background:linear-gradient(135deg,#334155,#0F172A);display:flex;align-items:center;justify-content:center"><div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center"><div style="width:0;height:0;border-left:16px solid #1B2B5B;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px"></div></div></div><div style="text-align:center;font-size:${fs(13,b.capSize,13)}px;color:#94A3B8;margin-top:8px" ce data-f="cap">${b.cap||'Watch: 60-second product tour'}</div></div>`;
   return '';
 }
 function render(){
@@ -601,7 +674,8 @@ function act(id,a){
 
 /* ===== rich-text floating toolbar ===== */
 const rt=document.getElementById('rtbar');
-function showRT(){const sel=window.getSelection();if(!sel.rangeCount||sel.isCollapsed){return;}const r=sel.getRangeAt(0).getBoundingClientRect();if(!r.width){return;}rt.classList.add('show');rt.style.left=Math.max(8,r.left+r.width/2-rt.offsetWidth/2)+'px';rt.style.top=(r.top-rt.offsetHeight-8)+'px';}
+let rtRange=null;
+function showRT(){const sel=window.getSelection();if(!sel.rangeCount||sel.isCollapsed){return;}const r=sel.getRangeAt(0).getBoundingClientRect();if(!r.width){return;}rtRange=sel.getRangeAt(0).cloneRange();rt.classList.add('show');rt.style.left=Math.max(8,r.left+r.width/2-rt.offsetWidth/2)+'px';rt.style.top=(r.top-rt.offsetHeight-8)+'px';}
 function hideRT(){rt.classList.remove('show');}
 rt.querySelectorAll('button').forEach(btn=>btn.addEventListener('mousedown',e=>{
   e.preventDefault();
@@ -615,6 +689,16 @@ rt.querySelectorAll('button').forEach(btn=>btn.addEventListener('mousedown',e=>{
   const ce=window.getSelection().anchorNode&&window.getSelection().anchorNode.parentElement.closest('[ce]');
   if(ce){const blk=ce.closest('.blk');setField(blk.dataset.id,ce.dataset.f,ce.innerHTML);}
 }));
+// Custom colour: the native picker steals focus, so restore the saved
+// text selection before applying the colour.
+const rtColor=document.getElementById('rtColor');
+rtColor.addEventListener('mousedown',e=>e.stopPropagation());
+rtColor.addEventListener('input',function(){
+  if(rtRange){const s=window.getSelection();s.removeAllRanges();s.addRange(rtRange);}
+  document.execCommand('foreColor',false,this.value);
+  const ce=window.getSelection().anchorNode&&window.getSelection().anchorNode.parentElement.closest('[ce]');
+  if(ce){const blk=ce.closest('.blk');setField(blk.dataset.id,ce.dataset.f,ce.innerHTML);}
+});
 
 /* ===== drag & drop (palette → canvas, and reorder) ===== */
 let dragData=null;
@@ -659,6 +743,13 @@ function defaults(type){
   if(type==='stats')return{...base,bg:'#F8FAFC',valColour:'#1B2B5B'};
   if(type==='img')return{...base,width:'full',align:'center',rounded:false,bg:'transparent'};
   if(type==='offers')return{...base,count:2,accent:'#0096B7'};
+  if(type==='header')return{...base,logo:'Travelgenix',align:'center',bg:'#FFFFFF',fg:'#0F172A'};
+  if(type==='columns')return{...base,h1:'Left heading',b1:'Left column copy goes here — keep it short and scannable.',h2:'Right heading',b2:'Right column copy goes here — keep it short and scannable.'};
+  if(type==='testimonial')return{...base,q:'“Luna transformed how we run our newsletters — hours saved every week.”',name:'Sarah Mills',role:'Sunseeker Travel'};
+  if(type==='cta')return{...base,bg:'#1B2B5B',fg:'#FFFFFF',btnBg:'#00B4D8',btnFg:'#FFFFFF',title:'Ready to get started?',btn:'Book a demo'};
+  if(type==='list')return{...base,title:'Three things to know',items:['First point or step','Second point or step','Third point or step']};
+  if(type==='social')return{...base,bg:'#F8FAFC'};
+  if(type==='video')return{...base,cap:'Watch: 60-second product tour'};
   return base;
 }
 function insertAt(i,type){doc.splice(i,0,defaults(type));selId=doc[i].id;render();select(selId);}
@@ -705,9 +796,21 @@ function buildInspector(){
     f+=`<div class="field"><label>Cards</label><div class="segsm">${[1,2,3].map(n=>`<button class="${(b.count||2)===n?'on':''}" onclick="upd('count',${n})">${n}</button>`).join('')}</div></div>`;
     f+=colorField('Card accent','accent');
     f+=`<div class="field"><label>Source</label><div class="help">Live offers are pulled from your Travelify feed at send time — this just controls how many show and the styling.</div></div>`;
-  } else {
-    f+=`<div class="insp-empty" style="padding:18px 4px"><p>This block edits inline — click its text on the canvas. Styling controls for <b>${meta.label}</b> would appear here.</p></div>`;
+  } else if(b.type==='cta'){
+    f+=colorField('Background','bg');f+=colorField('Text colour','fg');f+=colorField('Button colour','btnBg');f+=colorField('Button text','btnFg');
+  } else if(b.type==='header'){
+    f+=`<div class="field"><label>Alignment</label><div class="segsm">${['left','center'].map(a=>`<button class="${(b.align||'center')===a?'on':''}" onclick="upd('align','${a}')">${a}</button>`).join('')}</div></div>`;
+    f+=colorField('Background','bg');f+=colorField('Wordmark colour','fg');
+  } else if(b.type==='social'){
+    f+=colorField('Background','bg');
   }
+  // Text-size controls for every text slot in this block (auto-reduce on mobile)
+  const slots=SLOTS[b.type]||[];
+  if(slots.length){
+    f+=`<div style="height:1px;background:var(--border);margin:2px 0 14px"></div><div class="ai-section" style="margin:0 2px 12px">Text size · adapts on mobile</div>`;
+    slots.forEach(s=>{ f+=sizeCtl(s[1],s[0],b[s[0]]); });
+  }
+  if(!f.trim()) f=`<div class="insp-empty" style="padding:24px 6px"><p>Nothing to configure — this block just displays.</p></div>`;
   inspector.innerHTML=`<div class="insp-head"><div class="ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></div><div><div class="t">${meta.label}</div><div class="s">Block settings</div></div></div>
   <div class="insp-tabs"><button class="insp-tab on">Style</button><button class="insp-tab">Spacing</button><button class="insp-tab">Visibility</button></div>
   <div class="insp-body">${f}</div>`;
@@ -731,6 +834,8 @@ document.querySelectorAll('#device button').forEach(btn=>btn.addEventListener('c
   const m=btn.dataset.dev==='mobile';
   document.getElementById('canvasWrap').classList.toggle('mobile',m);
   document.getElementById('devLabel').textContent=m?'Mobile · 380px':'Desktop · 600px';
+  deviceMode=m?'mobile':'desktop';
+  render();
 }));
 window.addEventListener('scroll',hideRT,true);
 
@@ -819,6 +924,9 @@ if(location.hash.indexOf('empty')>=0){doc=[];render();}
 if(location.hash.indexOf('dark')>=0){document.documentElement.dataset.theme='dark';document.getElementById('themeBtn').textContent='☀️';}
 if(location.hash.indexOf('sched')>=0){setTimeout(openSchedule,40);}
 if(location.hash.indexOf('insp')>=0){setTimeout(()=>insertAt(doc.length-1,'offers'),40);}
+if(location.hash.indexOf('showcase')>=0){doc=[defaults('header'),defaults('columns'),defaults('testimonial'),defaults('cta'),defaults('list'),defaults('gallery'),defaults('social'),defaults('foot')];selId=null;render();}
+if(location.hash.indexOf('huge')>=0){doc[0].h1Size='h';doc[0].subSize='l';if(doc[1])doc[1].titleSize='xl';render();}
+if(location.hash.indexOf('mob')>=0){deviceMode='mobile';document.getElementById('canvasWrap').classList.add('mobile');document.getElementById('devLabel').textContent='Mobile · 380px';document.querySelectorAll('#device button').forEach(x=>x.classList.toggle('on',x.dataset.dev==='mobile'));render();}
 </script>
 </body>
 </html>

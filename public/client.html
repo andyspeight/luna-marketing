@@ -5156,7 +5156,7 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-canvaswrap{width:600px;max-width:100%;transition:width .3s cubic-bezier(.4,0,.2,1)}',
 '.eb2-canvaswrap.mobile{width:380px}',
 '.eb2-envelope{background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:12px;box-shadow:var(--shadow-sm);padding:4px 14px;margin-bottom:14px}',
-'.eb2-env-row{display:flex;align-items:center;gap:10px;padding:8px 0}',
+'.eb2-env-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;padding:8px 0}',
 '.eb2-env-row + .eb2-env-row{border-top:1px solid var(--tg-border-light)}',
 '.eb2-from{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--tg-accent),var(--tg-accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex:0 0 30px}',
 '.eb2-env-name{font-weight:600;font-size:12.5px;color:var(--tg-text-primary)}',
@@ -5177,6 +5177,9 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-insp-ic{width:30px;height:30px;border-radius:7px;background:rgba(0,180,216,.1);color:var(--tg-accent-dark);display:flex;align-items:center;justify-content:center;flex:0 0 30px}',
 '.eb2-insp-t{font-weight:600;font-size:14px;color:var(--tg-text-primary)}',
 '.eb2-insp-s{font-family:var(--tg-font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--tg-text-tertiary)}',
+'.eb2-insp-act{flex:0 0 28px;width:28px;height:28px;border-radius:6px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-tertiary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}',
+'.eb2-insp-act:hover{color:var(--tg-accent-dark);border-color:var(--tg-accent);background:rgba(0,180,216,.06)}',
+'.eb2-insp-act.danger:hover{color:var(--tg-error);border-color:var(--tg-error);background:rgba(239,68,68,.07)}',
 '.eb2-insp-body{flex:1;overflow-y:auto;padding:14px}',
 '.eb2-insp-empty{padding:40px 22px;text-align:center;color:var(--tg-text-tertiary);font-size:12.5px;line-height:1.7}',
 '@media (max-width:1180px){.eb2-inspector{display:none}}',
@@ -5355,15 +5358,7 @@ function drawComposeForm() {
   h += '</div>'; // stage
 
   // ── RIGHT: contextual inspector ──
-  h += '<div class="eb2-inspector">';
-  if (!selectedSection) {
-    h += '<div class="eb2-insp-empty">Select a block on the email &mdash; or in the <b>Layers</b> tab &mdash; to edit its settings here.<br><br>Or just click text on the email to edit it in place.</div>';
-  } else {
-    var im = sectionMeta(selectedSection.type);
-    h += '<div class="eb2-insp-head"><div class="eb2-insp-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><div><div class="eb2-insp-t">' + esc(im.label) + '</div><div class="eb2-insp-s">Block settings</div></div></div>';
-    h += '<div class="eb2-insp-body">' + renderPropertiesForm(selectedSection) + '</div>';
-  }
-  h += '</div>'; // inspector
+  h += '<div class="eb2-inspector">' + window.__builderInspectorInner(selectedSection) + '</div>';
 
   h += '</div>'; // body
   h += '</div>'; // eb2
@@ -6841,6 +6836,26 @@ window.__tgSelectFromEl = function(el) {
   window.__builderRefreshLayersActive();
 };
 
+// Build the inspector's inner HTML for a section (or the empty state).
+// Shared by the full redraw (drawComposeForm) and the no-redraw refresh so
+// the two never drift. The head carries Duplicate + Delete actions so a
+// selected block can always be removed without hunting through the Layers
+// tab.
+window.__builderInspectorInner = function(sel) {
+  if (!sel) {
+    return '<div class="eb2-insp-empty">Select a block on the email &mdash; or in the <b>Layers</b> tab &mdash; to edit its settings here.<br><br>Or just click text on the email to edit it in place.</div>';
+  }
+  var im = sectionMeta(sel.type);
+  var h = '<div class="eb2-insp-head">';
+  h += '<div class="eb2-insp-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>';
+  h += '<div style="flex:1;min-width:0"><div class="eb2-insp-t">' + esc(im.label) + '</div><div class="eb2-insp-s">Block settings</div></div>';
+  h += '<button class="eb2-insp-act" title="Duplicate block" onclick="window.__builderDuplicateSection(\'' + esc(sel.id) + '\')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>';
+  h += '<button class="eb2-insp-act danger" title="Delete block" onclick="window.__builderDeleteSection(\'' + esc(sel.id) + '\')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>';
+  h += '</div>';
+  h += '<div class="eb2-insp-body">' + renderPropertiesForm(sel) + '</div>';
+  return h;
+};
+
 // Rebuild only the right-hand inspector for the current selection. Does
 // NOT touch the canvas iframe, so an in-progress inline edit is safe.
 window.__builderRefreshInspector = function() {
@@ -6849,14 +6864,7 @@ window.__builderRefreshInspector = function() {
   var sel = (emailState.builderSections || []).find(function(s) {
     return s.id === emailState.selectedSectionId;
   });
-  if (!sel) {
-    insp.innerHTML = '<div class="eb2-insp-empty">Select a block on the email &mdash; or in the <b>Layers</b> tab &mdash; to edit its settings here.<br><br>Or just click text on the email to edit it in place.</div>';
-    return;
-  }
-  var im = sectionMeta(sel.type);
-  var h = '<div class="eb2-insp-head"><div class="eb2-insp-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><div><div class="eb2-insp-t">' + esc(im.label) + '</div><div class="eb2-insp-s">Block settings</div></div></div>';
-  h += '<div class="eb2-insp-body">' + renderPropertiesForm(sel) + '</div>';
-  insp.innerHTML = h;
+  insp.innerHTML = window.__builderInspectorInner(sel);
 };
 
 // Toggle the .active highlight on the Layers rows to match the current
@@ -6913,23 +6921,29 @@ window.__builderAddSection = function(type) {
   var newSection = { id: genSectionId(), type: type, props: defaults };
   emailState.builderSections = emailState.builderSections || [];
 
-  // Insert before the first footer if one exists, else append.
-  // Headers always go to position 0 (or just after an existing header).
-  var firstFooterIdx = emailState.builderSections.findIndex(function(s) { return isFooterType(s.type); });
+  var arr = emailState.builderSections;
+  var firstFooterIdx = arr.findIndex(function(s) { return isFooterType(s.type); });
+  // Where is the currently-selected block? New content is dropped directly
+  // BELOW it (that's where the user is working), so a clicked block lands
+  // in view instead of at the very bottom of the email.
+  var selIdx = arr.findIndex(function(s) { return s.id === emailState.selectedSectionId; });
+
   if (isHeaderType(type)) {
-    // Place after any leading header sections so we don't break a
-    // header + top-bar pair that's already at the top.
+    // Headers/top-bars always go to the top, after any leading headers so
+    // we don't split an existing header + top-bar pair.
     var insertAt = 0;
-    while (insertAt < emailState.builderSections.length && isHeaderType(emailState.builderSections[insertAt].type)) {
-      insertAt++;
-    }
-    emailState.builderSections.splice(insertAt, 0, newSection);
+    while (insertAt < arr.length && isHeaderType(arr[insertAt].type)) insertAt++;
+    arr.splice(insertAt, 0, newSection);
   } else if (isFooterType(type)) {
-    emailState.builderSections.push(newSection);
+    arr.push(newSection);
+  } else if (selIdx >= 0 && !isFooterType(arr[selIdx].type)) {
+    // Insert just after the selected block.
+    arr.splice(selIdx + 1, 0, newSection);
   } else if (firstFooterIdx >= 0) {
-    emailState.builderSections.splice(firstFooterIdx, 0, newSection);
+    // No usable selection — slot above the first footer.
+    arr.splice(firstFooterIdx, 0, newSection);
   } else {
-    emailState.builderSections.push(newSection);
+    arr.push(newSection);
   }
 
   emailState.selectedSectionId = newSection.id;
@@ -7976,6 +7990,11 @@ window.__builderEnableInlineEdit = function(doc) {
     });
   }
   doc.addEventListener('selectionchange', __tgOnSelChange);
+  // Block dragging a palette chip onto the canvas from inserting its raw
+  // type string (e.g. "feature-tiles") into an editable text area. Drops
+  // are placed via the Layers tab, not the canvas, so swallow them here.
+  doc.addEventListener('dragover', function(ev) { ev.preventDefault(); });
+  doc.addEventListener('drop', function(ev) { ev.preventDefault(); });
 };
 
 // ── On-canvas block hover controls ───────────────────────────────────

@@ -7819,6 +7819,8 @@ window.__builderRenderPreview = async function() {
 // server render (colour change, block add, save) picks the edits up.
 window.__builderEnableInlineEdit = function(doc) {
   if (!doc) return;
+  window.__tgEditDoc = doc;
+  __tgEnsureRichBar();
   if (!doc.getElementById('tg-edit-style')) {
     var st = doc.createElement('style');
     st.id = 'tg-edit-style';
@@ -7835,7 +7837,7 @@ window.__builderEnableInlineEdit = function(doc) {
     el.setAttribute('contenteditable', 'true');
     el.setAttribute('spellcheck', 'false');
     el.addEventListener('input', function() { window.__tgInlineCommit(this); });
-    el.addEventListener('blur', function() { window.__tgInlineCommit(this); });
+    el.addEventListener('blur', function() { window.__tgInlineCommit(this); setTimeout(__tgHideRichBar, 150); });
     el.addEventListener('keydown', function(ev) {
       // Enter commits single-line fields; body/longtext keeps newlines.
       if (ev.key === 'Enter' && String(this.getAttribute('data-tg-edit')).indexOf('body') < 0) {
@@ -7844,6 +7846,7 @@ window.__builderEnableInlineEdit = function(doc) {
       }
     });
   }
+  doc.addEventListener('selectionchange', __tgOnSelChange);
 };
 
 // Write an inline edit back into the section props model (no iframe reload).
@@ -7857,7 +7860,11 @@ window.__tgInlineCommit = function(el) {
   var sec = (emailState.builderSections || [])[idx];
   if (!sec) return;
   if (!sec.props) sec.props = {};
-  var val = (el.innerText || '').replace(/ /g, ' ').replace(/\s+$/, '');
+  // Rich fields (data-tg-rich) round-trip through markdown so bold/italic/
+  // links survive the server renderer; plain fields store plain text.
+  var val = el.hasAttribute('data-tg-rich')
+    ? __tgHtmlToMd(el.innerHTML)
+    : (el.innerText || '').replace(/\u00a0/g, ' ').replace(/\s+$/, '');
   setNestedValue(sec.props, path, val);
   // Keep the left-panel summary and any open form field in sync — but do
   // NOT trigger a preview re-render (the iframe already shows the edit).
@@ -7865,6 +7872,79 @@ window.__tgInlineCommit = function(el) {
   var f = document.getElementById('prop_' + sec.id + '_' + path.replace(/\./g, '_'));
   if (f && f.value !== val) f.value = val;
 };
+
+// Floating rich-text toolbar (Phase 1c) — shown when text is selected
+// inside a data-tg-rich element in the preview iframe. Bold / Italic / Link
+// apply to the iframe selection; the edit commits back as markdown.
+function __tgEnsureRichBar() {
+  var tb = document.getElementById('tgRichBar');
+  if (tb) return tb;
+  tb = document.createElement('div');
+  tb.id = 'tgRichBar';
+  tb.style.cssText = 'position:fixed;z-index:99999;display:none;gap:2px;background:#0F172A;border-radius:8px;padding:4px;box-shadow:0 10px 30px rgba(15,23,42,0.35)';
+  var btn = 'border:none;background:none;color:#cbd5e1;width:30px;height:28px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer';
+  tb.innerHTML =
+    '<button data-c="bold" title="Bold" style="' + btn + '">B</button>' +
+    '<button data-c="italic" title="Italic" style="' + btn + ';font-style:italic;font-weight:500">i</button>' +
+    '<button data-c="link" title="Link" style="' + btn + ';font-size:13px">🔗</button>';
+  tb.addEventListener('mousedown', function(ev) {
+    var b = ev.target.closest('[data-c]');
+    if (!b) return;
+    ev.preventDefault(); // keep the iframe selection
+    var doc = window.__tgEditDoc;
+    if (!doc) return;
+    try { doc.execCommand('styleWithCSS', false, false); } catch (e) {}
+    if (b.dataset.c === 'link') {
+      var url = window.prompt('Link URL', 'https://');
+      if (url) doc.execCommand('createLink', false, url);
+    } else {
+      doc.execCommand(b.dataset.c, false, null);
+    }
+    var sel = doc.getSelection && doc.getSelection();
+    var node = sel && sel.anchorNode;
+    var host = node && (node.nodeType === 1 ? node : node.parentElement);
+    host = host && host.closest && host.closest('[data-tg-edit]');
+    if (host) window.__tgInlineCommit(host);
+  });
+  document.body.appendChild(tb);
+  return tb;
+}
+function __tgHideRichBar() {
+  var tb = document.getElementById('tgRichBar');
+  if (tb) tb.style.display = 'none';
+}
+function __tgOnSelChange() {
+  var doc = window.__tgEditDoc;
+  if (!doc) return;
+  var sel = doc.getSelection && doc.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { __tgHideRichBar(); return; }
+  var node = sel.anchorNode;
+  var el = node && (node.nodeType === 1 ? node : node.parentElement);
+  var rich = el && el.closest && el.closest('[data-tg-rich]');
+  if (!rich) { __tgHideRichBar(); return; }
+  var rect = sel.getRangeAt(0).getBoundingClientRect();
+  if (!rect.width && !rect.height) { __tgHideRichBar(); return; }
+  var ifr = document.getElementById('builderPreviewFrame');
+  if (!ifr) return;
+  var ir = ifr.getBoundingClientRect();
+  var tb = __tgEnsureRichBar();
+  tb.style.display = 'flex';
+  tb.style.top = Math.max(8, ir.top + rect.top - tb.offsetHeight - 8) + 'px';
+  tb.style.left = Math.max(8, ir.left + rect.left + rect.width / 2 - tb.offsetWidth / 2) + 'px';
+}
+// Convert contenteditable HTML back to the markdown the renderers accept.
+function __tgHtmlToMd(html) {
+  return String(html)
+    .replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**')
+    .replace(/<(i|em)>([\s\S]*?)<\/\1>/gi, '*$2*')
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div)>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
+}
 
 window.__builderApplyTemplate = function(templateId) {
   if (!templateId) return;

@@ -1127,7 +1127,8 @@ select.email-builder-input { cursor: pointer; }
   flex: 1; overflow-y: auto;
 }
 .email-builder-prop-header {
-  padding: 14px 16px 12px;
+  padding: 0 0 12px;
+  margin-bottom: 12px;
   border-bottom: 1px solid var(--tg-border);
 }
 .email-builder-prop-title {
@@ -1137,9 +1138,10 @@ select.email-builder-input { cursor: pointer; }
 }
 .email-builder-prop-desc {
   font-size: 12px;
+  line-height: 1.5;
   color: var(--tg-text-tertiary);
 }
-.email-builder-prop-fields { padding: 14px 16px; }
+.email-builder-prop-fields { padding: 0; }
 .email-builder-prop-field { margin-bottom: 14px; }
 .email-builder-prop-label {
   display: block;
@@ -1156,7 +1158,7 @@ select.email-builder-input { cursor: pointer; }
   color: var(--tg-text-primary);
   transition: border-color var(--duration-fast);
 }
-.email-builder-prop-input:focus { border-color: var(--tg-accent); outline: none; }
+.email-builder-prop-input:focus { border-color: var(--tg-accent); outline: none; box-shadow: 0 0 0 3px rgba(0,180,216,0.12); }
 textarea.email-builder-prop-input { padding: 8px 10px; height: auto; line-height: 1.5; resize: vertical; min-height: 70px; }
 select.email-builder-prop-input { cursor: pointer; height: 34px; }
 .email-builder-prop-checkbox {
@@ -6724,10 +6726,13 @@ function renderField(section, basePath, field, depth) {
 function renderPropertiesForm(section) {
   var meta = sectionMeta(section.type);
   var h = '';
-  h += '<div class="email-builder-prop-header">';
-  h += '<div class="email-builder-prop-title">' + esc(meta.label) + '</div>';
-  h += '<div class="email-builder-prop-desc">' + esc(meta.description) + '</div>';
-  h += '</div>';
+  // The inspector header already shows the block label, so we don't repeat
+  // it here — just a subtle one-line description for context.
+  if (meta.description) {
+    h += '<div class="email-builder-prop-header">';
+    h += '<div class="email-builder-prop-desc">' + esc(meta.description) + '</div>';
+    h += '</div>';
+  }
   h += '<div class="email-builder-prop-fields">';
   meta.fields.forEach(function(field) {
     h += renderField(section, '', field, 0);

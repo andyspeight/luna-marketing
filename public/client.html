@@ -2252,14 +2252,66 @@ function renderPosts(){
 
 /* ── CREATE POST ── */
 function renderCreate(){
-  var h='<div class="prompt-box"><div class="card-title">Create a Post from a Prompt</div>';
-  h+='<p style="font-size:var(--text-sm);color:var(--tg-text-secondary);margin-bottom:var(--space-4);line-height:1.6">Describe the post you want and Luna will generate it with your brand voice, images and hashtags for all 7 platforms.</p>';
+  var h='<div class="prompt-box"><div class="card-title">Create a Post</div>';
+  h+='<p style="font-size:var(--text-sm);color:var(--tg-text-secondary);margin-bottom:var(--space-4);line-height:1.6">Describe the post you want &mdash; Luna drafts it for all your platforms in your brand voice. Review it right here, tweak the wording, then <strong>schedule it or post now</strong> without leaving this page.</p>';
   h+='<textarea class="prompt-textarea" id="promptText" placeholder="e.g. Create a post about summer family deals in Turkey with an early booking angle"></textarea>';
-  h+='<button class="btn btn-primary" style="margin-top:var(--space-3);width:100%" id="promptBtn" onclick="C.createPost()">Generate Post</button>';
+  h+='<button class="btn btn-primary" style="margin-top:var(--space-3);width:100%" id="promptBtn" onclick="C.createPost()">Generate draft</button>';
   h+='<div class="post-feedback" id="prompt-fb"></div>';
-  h+='<div class="prompt-examples"><div class="input-label" style="margin-bottom:var(--space-2)">Quick prompts</div>';
+  h+='<div class="prompt-examples" id="promptExamples"><div class="input-label" style="margin-bottom:var(--space-2)">Quick prompts</div>';
   ['Post about the Maldives for luxury couples, soft CTA','Summer family beach holiday inspiration for Turkey','Travel tip about shoulder season savings in Spain','Behind the scenes: why we love being travel agents'].forEach(function(ex){h+='<button class="prompt-example" onclick="document.getElementById(\'promptText\').value=this.textContent">'+ex+'</button>'});
-  h+='</div></div>';$('view-create').innerHTML=h;
+  h+='</div></div>';
+  // Inline draft appears here after Generate — review / tweak / schedule / post,
+  // all without switching tabs.
+  h+='<div id="composeResult" style="margin-top:var(--space-4)"></div>';
+  $('view-create').innerHTML=h;
+  if(state.composeDraft) renderComposeDraft();
+}
+
+// Programmatically switch top-nav view (reuses the .tabs click handler).
+function goView(v){var t=document.querySelector('.tab[data-view="'+v+'"]');if(t)t.click();}
+
+// Render the inline draft returned by /api/prompt-post: per-platform captions
+// (editable), image, and one action bar to schedule or post — no tab-hopping.
+function renderComposeDraft(){
+  var p=state.composeDraft; var host=$('composeResult'); if(!p||!host)return;
+  var ex=$('promptExamples'); if(ex)ex.style.display='none';
+  var shown=PLATS.filter(function(pl){return shouldShowPlat(p,pl.key)});
+  if(!shown.length)shown=PLATS.filter(function(pl){return (p['caption_'+pl.key]||'').trim()});
+  if(!shown.length){host.innerHTML='<div class="card" style="padding:20px;color:var(--tg-text-tertiary)">Draft created, but no captions came back. Open it in <a href="#" onclick="goView(\'posts\');return false" style="color:var(--tg-accent-dark)">My Posts</a>.</div>';return;}
+  var isHold=(p.status==='Quality Hold');
+  var h='<div class="card" id="composeCard" style="overflow:hidden">';
+  h+='<div style="padding:14px 16px;border-bottom:1px solid var(--tg-border);display:flex;align-items:center;gap:10px"><div style="font-weight:700;font-size:15px">Your draft</div><div style="font-size:12px;color:var(--tg-text-tertiary)">'+esc(p.destination||p.title||'')+'</div><a href="#" onclick="goView(\'posts\');return false" style="margin-left:auto;font-size:12px;color:var(--tg-accent-dark)">Fine-tune in My Posts</a></div>';
+  h+='<div id="compBody">';
+  h+='<div class="plat-tabs" style="padding:12px 16px 0">';
+  shown.forEach(function(pl,i){h+='<button class="plat-tab comp-tab'+(i===0?' active':'')+'" onclick="C.compShowPlat(this,\''+pl.key+'\')">'+pl.icon+'</button>'});
+  h+='</div>';
+  shown.forEach(function(pl,i){
+    var cap=p['caption_'+pl.key]||''; var img=getImageForPost(p,pl); var wc=cap.split(/\s+/).filter(Boolean).length;
+    h+='<div class="comp-panel'+(i===0?' active':'')+'" data-k="'+pl.key+'" style="display:'+(i===0?'block':'none')+';padding:12px 16px">';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-weight:600;font-size:13px">'+pl.name+'</span><span id="comp-wc-'+pl.key+'" style="margin-left:auto;font-size:11px;color:var(--tg-text-tertiary)">'+wc+' words</span></div>';
+    if(img)h+='<img src="'+img+'" style="width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-bottom:10px" alt="">';
+    h+='<textarea id="comp-captext-'+pl.key+'" onblur="C.compSaveCap(\''+pl.key+'\')" style="width:100%;box-sizing:border-box;min-height:120px;padding:10px 12px;border:1px solid var(--tg-border);border-radius:8px;font-size:14px;line-height:1.5;font-family:inherit;resize:vertical;background:var(--tg-bg-primary);color:var(--tg-text-primary)">'+esc(cap)+'</textarea>';
+    h+='</div>';
+  });
+  h+='</div>';
+  h+='<div id="compBar" style="padding:14px 16px;border-top:1px solid var(--tg-border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+  if(isHold){
+    h+='<div style="color:var(--tg-error);font-size:13px">This draft was flagged by the quality check. <a href="#" onclick="goView(\'posts\');return false" style="color:var(--tg-accent-dark);font-weight:600">Review it in My Posts</a> before posting.</div>';
+  }else{
+    h+='<button class="btn btn-approve btn-sm" onclick="C.compPostNow(this)">Post now</button>';
+    h+='<button class="btn btn-sm" style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--tg-accent-dark)" onclick="C.compToggleSchedule()">Schedule&hellip;</button>';
+    h+='<button class="btn btn-ghost btn-sm" onclick="C.compDiscard()" style="margin-left:auto">Discard</button>';
+  }
+  h+='</div>';
+  var today=new Date(); var iso=today.getFullYear()+'-'+pad2(today.getMonth()+1)+'-'+pad2(today.getDate());
+  h+='<div id="compSchedule" style="display:none;padding:0 16px 16px"><div style="background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+  h+='<label style="font-size:12px;font-weight:600;color:var(--tg-text-secondary)">Date <input type="date" id="compSchedDate" min="'+iso+'" value="'+iso+'" style="margin-left:6px;height:34px;padding:0 8px;border:1px solid var(--tg-border);border-radius:7px;font-family:inherit"></label>';
+  h+='<label style="font-size:12px;font-weight:600;color:var(--tg-text-secondary)">Time <input type="time" id="compSchedTime" value="09:00" style="margin-left:6px;height:34px;padding:0 8px;border:1px solid var(--tg-border);border-radius:7px;font-family:inherit"></label>';
+  h+='<button class="btn btn-primary btn-sm" onclick="C.compConfirmSchedule(this)" style="margin-left:auto">Confirm schedule</button>';
+  h+='</div></div>';
+  h+='<div class="post-feedback" id="compFb" style="margin:0 16px 16px"></div>';
+  h+='</div>';
+  host.innerHTML=h;
 }
 
 /* ── CALENDAR ── */
@@ -3795,7 +3847,15 @@ window.C={
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},
   setPostsFilter:function(f){if(f!=='Queued'&&f!=='Approved'&&f!=='Quality Hold')return;state.postsFilter=f;state.posts=state.allPosts.filter(function(p){return p.status===state.postsFilter});state.selected={};renderPosts()},
   publishOne:async function(pid,btn){var fb=$('cfb-'+pid);btn.disabled=true;btn.textContent='Publishing...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:pid})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Published to '+(d.platforms&&d.platforms.succeeded?d.platforms.succeeded+' platform'+(d.platforms.succeeded!==1?'s':''):'Metricool')+(d.platforms&&d.platforms.failed?' ('+d.platforms.failed+' failed)':'')}var c=$('cp-'+pid);if(c){c.style.opacity='0.3';c.style.pointerEvents='none'}setTimeout(loadPosts,1500)}catch(e){btn.disabled=false;btn.textContent='Publish now';if(fb){fb.className='post-feedback show';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}}},
-  createPost:async function(){var txt=$('promptText');var fb=$('prompt-fb');var btn=$('promptBtn');if(!txt||!txt.value.trim())return;btn.disabled=true;btn.textContent='Generating...';fb.style.cssText='display:block;background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);color:var(--tg-text-tertiary)';fb.textContent='Creating post for all 7 platforms...';try{var r=await fetch('/api/prompt-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id,prompt:txt.value.trim()})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success)';fb.textContent='Post created and added to queue';txt.value='';await loadPosts()}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Post'}},
+  createPost:async function(){var txt=$('promptText');var fb=$('prompt-fb');var btn=$('promptBtn');if(!txt||!txt.value.trim())return;btn.disabled=true;btn.textContent='Generating...';fb.style.cssText='display:block;background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);color:var(--tg-text-tertiary)';fb.textContent='Drafting your post for every platform… (30–60s)';try{var r=await fetch('/api/prompt-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id,prompt:txt.value.trim()})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.display='none';txt.value='';state.composeDraft=d.post;renderComposeDraft();loadPosts();}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate draft'}},
+  // ── Composer: inline draft review + schedule/post, no tab-hopping ──
+  compShowPlat:function(btn,key){var wrap=btn.closest('#composeCard');if(!wrap)return;wrap.querySelectorAll('.comp-tab').forEach(function(t){t.classList.remove('active')});btn.classList.add('active');wrap.querySelectorAll('.comp-panel').forEach(function(pn){var on=pn.getAttribute('data-k')===key;pn.classList.toggle('active',on);pn.style.display=on?'block':'none';});},
+  compSaveCap:async function(key){var p=state.composeDraft;if(!p)return;var ta=$('comp-captext-'+key);if(!ta)return;var val=ta.value;p['caption_'+key]=val;var body={recordId:p.id,action:'update_caption'};body[key]=val;try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){}var wc=$('comp-wc-'+key);if(wc)wc.textContent=val.split(/\s+/).filter(Boolean).length+' words';},
+  compDiscard:function(){if(!confirm('Discard this draft? It will stay in My Posts as Queued, but this panel will close.'))return;state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';},
+  compReset:function(){state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';var t=$('promptText');if(t){t.value='';t.focus();}var fb=$('prompt-fb');if(fb)fb.style.display='none';},
+  compToggleSchedule:function(){var s=$('compSchedule');if(!s)return;s.style.display=s.style.display==='none'?'block':'none';},
+  compConfirmSchedule:async function(btn){var p=state.composeDraft;if(!p)return;var dEl=$('compSchedDate'),tEl=$('compSchedTime'),fb=$('compFb');if(!dEl||!dEl.value){fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Pick a date first.';return;}var date=dEl.value,time=(tEl&&tEl.value)||'09:00';btn.disabled=true;btn.textContent='Scheduling…';try{var r=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,scheduledDate:date,scheduledTime:time})});if(!r.ok)throw new Error((await r.json()).error||'Failed');var ar=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});if(!ar.ok)throw new Error((await ar.json()).error||'Approve failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Scheduled</strong> for '+esc(formatDate(date+'T'+time))+'. It’s approved and will go out then. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Confirm schedule';fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Error: '+e.message;}},
+  compPostNow:async function(btn){var p=state.composeDraft;if(!p)return;var fb=$('compFb');btn.disabled=true;btn.textContent='Posting…';fb.style.cssText='display:block;color:var(--tg-text-tertiary)';fb.textContent='Approving and sending to your platforms…';try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:p.id})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');var succ=(d.platforms&&d.platforms.succeeded)||0,fail=(d.platforms&&d.platforms.failed)||0;fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Posted</strong> to '+succ+' platform'+(succ!==1?'s':'')+(fail?' &middot; <span style="color:var(--tg-error)">'+fail+' failed</span>':'')+'. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Post now';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error);padding:12px;border-radius:8px';fb.textContent='Couldn’t post: '+e.message+'. You can still find this draft in My Posts.';}},
   showReject:function(pid){var reasons=['Wrong tone','Wrong destination','Too generic','Don\'t like the image','Too long','Too short','Not relevant right now','Other'];var h='<div class="reject-modal" id="rejectModal" onclick="if(event.target===this)C.closeReject()"><div class="reject-box"><div class="reject-title">Why are you rejecting this post?</div><div class="reject-sub">Your feedback helps Luna create better content for you.</div><div class="reject-reasons">';reasons.forEach(function(r){h+='<button class="reject-reason" onclick="C.selectReason(this)">'+r+'</button>'});h+='</div><input class="reject-notes" id="rejectNotes" placeholder="Tell us more (optional)..."><div class="reject-btns"><button class="btn btn-ghost btn-sm" onclick="C.closeReject()">Cancel</button><button class="btn btn-reject btn-sm" id="rejectSubmitBtn" onclick="C.submitReject(\''+pid+'\')" disabled style="opacity:0.5">Reject Post</button></div></div></div>';document.body.insertAdjacentHTML('beforeend',h)},
   selectReason:function(btn){btn.parentElement.querySelectorAll('.reject-reason').forEach(function(r){r.classList.remove('selected')});btn.classList.add('selected');var sub=$('rejectSubmitBtn');if(sub){sub.disabled=false;sub.style.opacity='1'}var notesEl=$('rejectNotes');if(notesEl)notesEl.classList.toggle('show',btn.textContent==='Other')},
   closeReject:function(){var m=$('rejectModal');if(m)m.remove()},

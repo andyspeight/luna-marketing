@@ -223,9 +223,15 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // Scheduled time update (from calendar drag)
-      if (body.scheduledTime) {
-        var schedFields = { "Scheduled Time": body.scheduledTime };
+      // Scheduled date and/or time update (calendar drag sends time; the
+      // Composer's schedule picker sends both a date and a time).
+      if (body.scheduledTime || body.scheduledDate) {
+        var schedFields = {};
+        if (body.scheduledTime) schedFields["Scheduled Time"] = body.scheduledTime;
+        if (typeof body.scheduledDate === "string") {
+          // Empty string clears the date (Airtable needs null, not "").
+          schedFields["Scheduled Date"] = body.scheduledDate || null;
+        }
         if (body.title) schedFields["Post Title"] = body.title;
         await updatePost(recordId, schedFields);
         return res.status(200).json({

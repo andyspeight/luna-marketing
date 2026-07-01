@@ -5129,6 +5129,7 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-crumb .eb2-name{font-weight:600;font-size:13px;color:var(--tg-text-primary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
 '.eb2-crumb .eb2-sub{font-family:var(--tg-font-mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tg-text-tertiary)}',
 '.eb2-saved{font-size:11px;color:#10B981;font-weight:600}',
+'.eb2-sched{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--tg-accent-dark);background:rgba(0,180,216,.1);border:1px solid var(--tg-accent);border-radius:20px;padding:3px 10px}',
 '.eb2-spacer{flex:1}',
 '.eb2-seg{display:flex;background:var(--tg-bg-tertiary);border-radius:8px;padding:3px;gap:2px}',
 '.eb2-seg button{border:none;background:none;color:var(--tg-text-tertiary);height:28px;padding:0 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}',
@@ -5208,13 +5209,18 @@ function drawComposeForm() {
   // ── TOP BAR ──
   h += '<div class="eb2-top">';
   h += '<div class="eb2-brand"><div class="eb2-logo">L</div><div class="eb2-crumb"><div class="eb2-name">' + esc(d.subject || 'Untitled email') + '</div><div class="eb2-sub">' + esc(d.emailType || 'Email') + '</div></div></div>';
-  h += '<span class="eb2-saved">&#9679; Draft</span>';
+  if (d.scheduledSend) {
+    h += '<span class="eb2-sched" title="Scheduled send time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' + esc(formatDate(d.scheduledSend)) + '</span>';
+  } else {
+    h += '<span class="eb2-saved">&#9679; Draft</span>';
+  }
   h += '<div class="eb2-spacer"></div>';
   h += '<div class="eb2-seg"><button class="' + (!mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'desktop\';drawEmails()">Desktop</button><button class="' + (mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'mobile\';drawEmails()">Mobile</button></div>';
   h += '<button class="eb2-btn ai" onclick="window.__emailComposeAiOpen()" title="Draft or rewrite this email with Luna"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>Compose with AI</button>';
   h += '<button class="eb2-btn" onclick="window.__builderOpenInboxPreview()">Preview</button>';
   h += '<button class="eb2-btn" onclick="window.__openSaveAsTemplateModal()">Save as template</button>';
   h += '<button class="eb2-btn" onclick="window.__emailComposeClose()">Cancel</button>';
+  h += '<button class="eb2-btn" onclick="window.__builderOpenScheduleModal()">' + (d.scheduledSend ? 'Reschedule' : 'Schedule') + '</button>';
   h += '<button class="eb2-btn primary" id="composeSaveBtn" onclick="window.__emailComposeSave()">Save as Draft</button>';
   h += '</div>';
 
@@ -8755,6 +8761,66 @@ window.__composeBodyMode = function(mode) {
   drawEmails();
 };
 
+// ── Schedule send ────────────────────────────────────────────────────
+// The email-compose API already accepts a `scheduledSend` ISO datetime
+// (it records a future "Scheduled Send" on the record; status still goes
+// through Awaiting Approval). This UI just lets the user pick that time
+// and then runs the normal save, which forwards composeData.scheduledSend.
+function __tgToDatetimeLocal(dt) {
+  var p = function(n) { return (n < 10 ? '0' : '') + n; };
+  return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate()) +
+    'T' + p(dt.getHours()) + ':' + p(dt.getMinutes());
+}
+
+window.__builderOpenScheduleModal = function() {
+  var d = emailState.composeData || {};
+  var base = d.scheduledSend ? new Date(d.scheduledSend) : new Date(Date.now() + 60 * 60 * 1000);
+  if (isNaN(base.getTime())) base = new Date(Date.now() + 60 * 60 * 1000);
+  var localVal = __tgToDatetimeLocal(base);
+  var minVal = __tgToDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000));
+
+  var existing = document.getElementById('eb2-sched-backdrop');
+  if (existing) existing.remove();
+
+  var html = '<div id="eb2-sched-backdrop" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)window.__builderCloseScheduleModal()">';
+  html += '<div style="background:var(--tg-bg-primary);border-radius:var(--radius-xl,14px);box-shadow:var(--shadow-xl);width:100%;max-width:420px;overflow:hidden">';
+  html += '<div style="padding:20px 22px 0"><h3 style="margin:0;font-size:17px;font-weight:700;color:var(--tg-text-primary)">Schedule send</h3>';
+  html += '<p style="margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--tg-text-tertiary)">Pick when this email should go out. It still needs approval first &mdash; scheduling just sets the intended send time.</p></div>';
+  html += '<div style="padding:18px 22px 4px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tg-text-tertiary);margin-bottom:7px">Send date &amp; time</label>';
+  html += '<input type="datetime-local" id="eb2-sched-input" value="' + localVal + '" min="' + minVal + '" style="width:100%;box-sizing:border-box;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:9px;font-size:14px;font-family:inherit;background:var(--tg-bg-secondary);color:var(--tg-text-primary)"></div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;padding:16px 22px 20px">';
+  if (d.scheduledSend) html += '<button class="eb2-btn" style="color:var(--tg-error)" onclick="window.__builderClearSchedule()">Clear</button>';
+  html += '<div style="flex:1"></div>';
+  html += '<button class="eb2-btn" onclick="window.__builderCloseScheduleModal()">Cancel</button>';
+  html += '<button class="eb2-btn primary" onclick="window.__builderConfirmSchedule()">Schedule &amp; save</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.__builderCloseScheduleModal = function() {
+  var b = document.getElementById('eb2-sched-backdrop');
+  if (b) b.remove();
+};
+
+window.__builderClearSchedule = function() {
+  if (emailState.composeData) emailState.composeData.scheduledSend = '';
+  window.__builderCloseScheduleModal();
+  drawEmails();
+};
+
+window.__builderConfirmSchedule = function() {
+  var inp = document.getElementById('eb2-sched-input');
+  if (!inp || !inp.value) { alert('Pick a date and time first.'); return; }
+  var dt = new Date(inp.value);
+  if (isNaN(dt.getTime())) { alert('That date/time is not valid.'); return; }
+  if (dt.getTime() <= Date.now()) { alert('Pick a time in the future.'); return; }
+  emailState.composeData = emailState.composeData || {};
+  emailState.composeData.scheduledSend = dt.toISOString();
+  window.__builderCloseScheduleModal();
+  // Persist via the normal save — it forwards scheduledSend to the API.
+  window.__emailComposeSave();
+};
+
 window.__emailComposeSave = async function() {
   var d = emailState.composeData;
   if ($('composeSubject')) d.subject = $('composeSubject').value;
@@ -8821,7 +8887,9 @@ window.__emailComposeSave = async function() {
     var data = await r.json();
     if (!data.success) throw new Error(data.error || 'Save failed');
 
-    showEmailToast('Email saved as Awaiting Approval', 'success');
+    showEmailToast(d.scheduledSend
+      ? ('Scheduled for ' + formatDate(d.scheduledSend) + ' — awaiting approval')
+      : 'Email saved as Awaiting Approval', 'success');
     emailState.composeOpen = false;
     emailState.composeData = {
       subject: '', previewText: '', bodyHTML: '', bodyPlain: '',

@@ -2251,9 +2251,25 @@ function renderPosts(){
 }
 
 /* ── CREATE POST ── */
+// The five post types that make up the real posting week: product-led
+// angles (backed by the Content Engine's canonical product copy) and
+// industry commentary (backed by the daily Research Sparks feed).
+var COMP_TYPES=[
+  {key:'launch',label:'Product launch',needsProduct:true},
+  {key:'why',label:'Why Travelgenix',needsProduct:true},
+  {key:'win',label:'Customer win',needsProduct:true},
+  {key:'supplier',label:'New supplier',needsProduct:false},
+  {key:'news',label:'Industry comment',needsProduct:false},
+];
+
 function renderCreate(){
   var h='<div class="prompt-box"><div class="card-title">Create a Post</div>';
-  h+='<p style="font-size:var(--text-sm);color:var(--tg-text-secondary);margin-bottom:var(--space-4);line-height:1.6">Describe the post you want &mdash; Luna drafts it for all your platforms in your brand voice. Review it right here, tweak the wording, then <strong>schedule it or post now</strong> without leaving this page.</p>';
+  h+='<p style="font-size:var(--text-sm);color:var(--tg-text-secondary);margin-bottom:var(--space-4);line-height:1.6">Pick a starting point (or just type) &mdash; Luna drafts the post for all your platforms in your brand voice. Review it right here, tweak the wording, then <strong>schedule it or post now</strong> without leaving this page.</p>';
+  // Quick-start chips for the real post mix
+  h+='<div id="compTypes" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-3)">';
+  COMP_TYPES.forEach(function(t){h+='<button class="prompt-example" data-comp-type="'+t.key+'" onclick="C.compSetType(\''+t.key+'\')" style="margin:0">'+t.label+'</button>'});
+  h+='</div>';
+  h+='<div id="compQuickArea"></div>';
   h+='<textarea class="prompt-textarea" id="promptText" placeholder="e.g. Create a post about summer family deals in Turkey with an early booking angle"></textarea>';
   h+='<button class="btn btn-primary" style="margin-top:var(--space-3);width:100%" id="promptBtn" onclick="C.createPost()">Generate draft</button>';
   h+='<div class="post-feedback" id="prompt-fb"></div>';
@@ -3856,6 +3872,86 @@ window.C={
   compToggleSchedule:function(){var s=$('compSchedule');if(!s)return;s.style.display=s.style.display==='none'?'block':'none';},
   compConfirmSchedule:async function(btn){var p=state.composeDraft;if(!p)return;var dEl=$('compSchedDate'),tEl=$('compSchedTime'),fb=$('compFb');if(!dEl||!dEl.value){fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Pick a date first.';return;}var date=dEl.value,time=(tEl&&tEl.value)||'09:00';btn.disabled=true;btn.textContent='Scheduling…';try{var r=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,scheduledDate:date,scheduledTime:time})});if(!r.ok)throw new Error((await r.json()).error||'Failed');var ar=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});if(!ar.ok)throw new Error((await ar.json()).error||'Approve failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Scheduled</strong> for '+esc(formatDate(date+'T'+time))+'. It’s approved and will go out then. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Confirm schedule';fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Error: '+e.message;}},
   compPostNow:async function(btn){var p=state.composeDraft;if(!p)return;var fb=$('compFb');btn.disabled=true;btn.textContent='Posting…';fb.style.cssText='display:block;color:var(--tg-text-tertiary)';fb.textContent='Approving and sending to your platforms…';try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:p.id})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');var succ=(d.platforms&&d.platforms.succeeded)||0,fail=(d.platforms&&d.platforms.failed)||0;fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Posted</strong> to '+succ+' platform'+(succ!==1?'s':'')+(fail?' &middot; <span style="color:var(--tg-error)">'+fail+' failed</span>':'')+'. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Post now';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error);padding:12px;border-radius:8px';fb.textContent='Couldn’t post: '+e.message+'. You can still find this draft in My Posts.';}},
+  // ── Composer quick-starts: product-backed angles + industry sparks ──
+  compSetType:function(key){
+    state.compType=state.compType===key?null:key;
+    document.querySelectorAll('#compTypes [data-comp-type]').forEach(function(b){
+      var on=b.getAttribute('data-comp-type')===state.compType;
+      b.style.background=on?'var(--tg-accent)':'';b.style.color=on?'#fff':'';b.style.borderColor=on?'var(--tg-accent)':'';
+    });
+    var area=$('compQuickArea');if(!area)return;
+    if(!state.compType){area.innerHTML='';return;}
+    var t=COMP_TYPES.find(function(x){return x.key===state.compType});
+    if(t&&t.needsProduct){C.compRenderProductPicker();}
+    else if(state.compType==='news'){C.compRenderSparks();}
+    else if(state.compType==='supplier'){
+      area.innerHTML='';
+      var txt=$('promptText');
+      if(txt){txt.value='Write a post announcing new supplier connectivity: [supplier name] is now connected to Travelgenix. What this unlocks for travel agents: [what agents can now book/see]. Keep it warm, friendly and jargon-free.';txt.focus();}
+    }
+  },
+  compRenderProductPicker:function(){
+    var area=$('compQuickArea');if(!area)return;
+    var box='<div style="background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);border-radius:8px;padding:12px;margin-bottom:var(--space-3)">';
+    if(!state.compProducts){
+      area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-text-tertiary)">Loading your products&hellip;</div></div>';
+      fetch('/api/content-engine-products?action=list&tenantId='+encodeURIComponent(state.profile.id),{credentials:'include'})
+        .then(function(r){return r.json()})
+        .then(function(d){state.compProducts=(d.products||[]).filter(function(p){return p.status==='Active'});C.compRenderProductPicker();})
+        .catch(function(){area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-error)">Couldn’t load products — just describe the post below instead.</div></div>';});
+      return;
+    }
+    if(!state.compProducts.length){area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-text-tertiary)">No active products in your Content Engine yet — add one there, or just describe the post below.</div></div>';return;}
+    var hh=box+'<div style="font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:8px">Which product?</div><div style="display:flex;gap:8px;flex-wrap:wrap">';
+    state.compProducts.forEach(function(p,i){hh+='<button class="prompt-example" style="margin:0" onclick="C.compPickProduct('+i+')">'+esc(p.name)+'</button>'});
+    hh+='</div></div>';
+    area.innerHTML=hh;
+  },
+  compPickProduct:function(i){
+    var p=(state.compProducts||[])[i];if(!p)return;
+    var facts='Product: '+p.name+'.';
+    if(p.oneLiner)facts+=' What it is: '+p.oneLiner+'.';
+    if(p.problem)facts+=' Problem it solves: '+p.problem+'.';
+    if(p.proof)facts+=' Proof point: '+p.proof+'.';
+    if(p.ctaText&&p.ctaUrl)facts+=' CTA: "'+p.ctaText+'" → '+p.ctaUrl+'.';
+    var lead;
+    if(state.compType==='launch')lead='Write a product launch post announcing '+p.name+'. [Add what’s new about this launch here.] ';
+    else if(state.compType==='win')lead='Write a customer win post. [Add the customer’s name and what they achieved here.] The product behind it — ';
+    else lead='Write a "why Travelgenix" post focused on '+p.name+'. ';
+    var txt=$('promptText');
+    if(txt){txt.value=lead+facts+' Keep it warm, friendly and jargon-free.';txt.focus();}
+  },
+  compRenderSparks:function(){
+    var area=$('compQuickArea');if(!area)return;
+    var box='<div style="background:var(--tg-bg-tertiary);border:1px solid var(--tg-border);border-radius:8px;padding:12px;margin-bottom:var(--space-3)">';
+    if(!state.compSparks){
+      area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-text-tertiary)">Loading today’s industry stories&hellip;</div></div>';
+      fetch('/api/sparks').then(function(r){return r.json()})
+        .then(function(d){state.compSparks=d.sparks||[];C.compRenderSparks();})
+        .catch(function(){area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-error)">Couldn’t load the news feed — paste a story link below instead.</div></div>';});
+      return;
+    }
+    if(!state.compSparks.length){area.innerHTML=box+'<div style="font-size:13px;color:var(--tg-text-tertiary)">No fresh stories yet (the research feed updates each morning). Paste a link or describe the story below.</div></div>';return;}
+    var hh=box+'<div style="font-size:12px;font-weight:600;color:var(--tg-text-secondary);margin-bottom:8px">Today in travel — pick a story to comment on</div>';
+    state.compSparks.slice(0,8).forEach(function(s,i){
+      hh+='<button onclick="C.compPickSpark('+i+')" style="display:block;width:100%;text-align:left;background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:7px;padding:9px 11px;margin-bottom:6px;cursor:pointer;font-family:inherit">';
+      hh+='<div style="font-size:13px;font-weight:600;color:var(--tg-text-primary);line-height:1.4">'+esc(s.headline)+'</div>';
+      hh+='<div style="font-size:11px;color:var(--tg-text-tertiary);margin-top:2px">'+esc(s.source||'')+(s.angle?' · '+esc(s.angle):'')+'</div>';
+      hh+='</button>';
+    });
+    hh+='</div>';
+    area.innerHTML=hh;
+  },
+  compPickSpark:function(i){
+    var s=(state.compSparks||[])[i];if(!s)return;
+    var txt=$('promptText');if(!txt)return;
+    var v='Write an industry-comment post reacting to this story: "'+s.headline+'"';
+    if(s.summary)v+=' — '+s.summary.slice(0,220);
+    if(s.url)v+=' (source: '+s.url+')';
+    if(s.angle)v+='. Suggested angle: '+s.angle;
+    v+='. Give Travelgenix’s friendly, jargon-free take and what it means for travel agents. [Add your own view here if you have one.]';
+    txt.value=v;txt.focus();
+  },
   showReject:function(pid){var reasons=['Wrong tone','Wrong destination','Too generic','Don\'t like the image','Too long','Too short','Not relevant right now','Other'];var h='<div class="reject-modal" id="rejectModal" onclick="if(event.target===this)C.closeReject()"><div class="reject-box"><div class="reject-title">Why are you rejecting this post?</div><div class="reject-sub">Your feedback helps Luna create better content for you.</div><div class="reject-reasons">';reasons.forEach(function(r){h+='<button class="reject-reason" onclick="C.selectReason(this)">'+r+'</button>'});h+='</div><input class="reject-notes" id="rejectNotes" placeholder="Tell us more (optional)..."><div class="reject-btns"><button class="btn btn-ghost btn-sm" onclick="C.closeReject()">Cancel</button><button class="btn btn-reject btn-sm" id="rejectSubmitBtn" onclick="C.submitReject(\''+pid+'\')" disabled style="opacity:0.5">Reject Post</button></div></div></div>';document.body.insertAdjacentHTML('beforeend',h)},
   selectReason:function(btn){btn.parentElement.querySelectorAll('.reject-reason').forEach(function(r){r.classList.remove('selected')});btn.classList.add('selected');var sub=$('rejectSubmitBtn');if(sub){sub.disabled=false;sub.style.opacity='1'}var notesEl=$('rejectNotes');if(notesEl)notesEl.classList.toggle('show',btn.textContent==='Other')},
   closeReject:function(){var m=$('rejectModal');if(m)m.remove()},

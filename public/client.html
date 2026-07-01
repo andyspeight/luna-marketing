@@ -5904,11 +5904,10 @@ var SECTION_META = {
       { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
       { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
       { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
-        { key: 'icon', label: 'Icon', type: 'select', options: ['sparkles', 'star', 'mail', 'file', 'pin', 'chat', 'phone', 'calendar', 'globe', 'plane', 'search', 'tag', 'heart', 'shield', 'bolt', 'users', 'check'] },
+        { key: 'icon', label: 'Icon', type: 'select', options: ['sparkles', 'star', 'mail', 'file', 'pin', 'chat', 'phone', 'calendar', 'globe', 'plane', 'search', 'tag', 'heart', 'shield', 'bolt', 'users', 'check', 'clock', 'map', 'camera'] },
         { key: 'colour', label: 'Tile colour', type: 'select', options: ['teal', 'amber', 'slate', 'green', 'blue', 'purple', 'pink'] },
-        { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
+        { key: 'icon_emoji', label: 'Custom emoji (overrides icon)', type: 'text', maxLength: 8, help: 'Paste any emoji to use instead of the chosen icon.' },
         { key: 'tile_colour', label: 'Custom tile colour (advanced)', type: 'colour', defaultPreview: '#D7F0F2', placeholder: 'Overrides the tile colour theme', help: 'Leave empty to use the chosen tile colour theme.' },
-        { key: 'icon_colour', label: 'Custom icon colour (advanced)', type: 'colour', defaultPreview: '#0E7C86', placeholder: 'Overrides the glyph colour', help: "Leave empty to use the theme's glyph colour." },
         { key: 'heading', label: 'Feature heading', type: 'text', required: true, maxLength: 80 },
         { key: 'text', label: 'Feature description', type: 'longText', maxLength: 240 },
       ]},
@@ -6271,6 +6270,7 @@ var SECTION_META = {
       { key: 'title_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 220 },
       { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
+      { key: 'background_colour', label: 'Background colour', type: 'colour', defaultPreview: '#0A0F1F', placeholder: 'Defaults to dark navy', help: 'Background colour of the block. Leave empty to keep the dark navy gradient.' },
       { key: 'cta', label: 'Primary CTA', type: 'group', required: true, fields: [
         { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url', required: true },

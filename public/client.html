@@ -5320,7 +5320,7 @@ function drawComposeForm() {
   ];
   addableTypes.forEach(function(t) {
     var meta = sectionMeta(t.type);
-    h += '<button class="email-builder-section-type-btn" onclick="window.__builderAddSection(\'' + t.type + '\')" title="' + esc(meta.description) + '">';
+    h += '<button class="email-builder-section-type-btn" draggable="true" style="cursor:grab" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()" title="Click to add, or drag onto the section list — ' + esc(meta.description) + '">';
     h += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
     h += '<span>' + esc(meta.label) + '</span>';
     h += '</button>';
@@ -6774,7 +6774,8 @@ function attachBuilderHandlers() {
     });
     row.addEventListener('dragover', function(e) {
       e.preventDefault();
-      if (!dragSrc || dragSrc === row) return;
+      var isNew = !!window.__builderNewDragType;
+      if (!isNew && (!dragSrc || dragSrc === row)) return;
       var rect = row.getBoundingClientRect();
       var midY = rect.top + rect.height / 2;
       row.classList.toggle('drop-target-above', e.clientY < midY);
@@ -6785,13 +6786,34 @@ function attachBuilderHandlers() {
     });
     row.addEventListener('drop', function(e) {
       e.preventDefault();
-      if (!dragSrc || dragSrc === row) return;
-      var srcId = dragSrc.getAttribute('data-section-id');
       var dstId = row.getAttribute('data-section-id');
       var rect = row.getBoundingClientRect();
       var dropAfter = e.clientY > rect.top + rect.height / 2;
+      // Dropping a NEW block from the palette: insert it at this position.
+      if (window.__builderNewDragType) {
+        var t = window.__builderNewDragType;
+        window.__builderNewDragType = null;
+        window.__builderAddSectionAt(t, dstId, dropAfter);
+        return;
+      }
+      if (!dragSrc || dragSrc === row) return;
+      var srcId = dragSrc.getAttribute('data-section-id');
       window.__builderReorderSection(srcId, dstId, dropAfter);
     });
+  });
+
+  // List-level target so a palette block dropped on empty space (or below
+  // the last row) appends to the end.
+  list.addEventListener('dragover', function(e) {
+    if (window.__builderNewDragType) e.preventDefault();
+  });
+  list.addEventListener('drop', function(e) {
+    if (!window.__builderNewDragType) return;
+    if (e.target.closest && e.target.closest('.email-builder-section-row')) return; // row handled it
+    e.preventDefault();
+    var t = window.__builderNewDragType;
+    window.__builderNewDragType = null;
+    window.__builderAddSectionAt(t, null, true);
   });
 
   // Hydrate the offer-filter editor (chips, dropdowns, disclosure).
@@ -6842,6 +6864,41 @@ window.__builderAddSection = function(type) {
     emailState.builderSections.push(newSection);
   }
 
+  emailState.selectedSectionId = newSection.id;
+  drawEmails();
+};
+
+// ── Drag-to-place from the block palette (Phase 2) ──────────────────
+// A palette button can be dragged onto the section list and dropped at a
+// specific position, instead of clicking (which appends). Reuses the
+// existing list drop-indicator styling.
+window.__builderNewDragType = null;
+window.__builderPaletteDragStart = function(e, type) {
+  window.__builderNewDragType = type;
+  try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', type); } catch (err) {}
+};
+window.__builderPaletteDragEnd = function() {
+  window.__builderNewDragType = null;
+  var l = document.getElementById('builderSectionList');
+  if (l) l.querySelectorAll('.email-builder-section-row').forEach(function(r) {
+    r.classList.remove('drop-target-above', 'drop-target-below');
+  });
+};
+// Insert a new section at an explicit position (dstId = anchor row, or null
+// to append). Explicit drop placement overrides the auto header/footer
+// positioning used by click-to-add.
+window.__builderAddSectionAt = function(type, dstId, dropAfter) {
+  var defaults = defaultPropsForType(type);
+  var newSection = { id: genSectionId(), type: type, props: defaults };
+  var arr = emailState.builderSections = emailState.builderSections || [];
+  var idx;
+  if (dstId == null) {
+    idx = arr.length;
+  } else {
+    var d = arr.findIndex(function(s) { return s.id === dstId; });
+    idx = d < 0 ? arr.length : (dropAfter ? d + 1 : d);
+  }
+  arr.splice(idx, 0, newSection);
   emailState.selectedSectionId = newSection.id;
   drawEmails();
 };

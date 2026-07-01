@@ -5152,6 +5152,8 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-search{width:100%;height:34px;border:1px solid var(--tg-border);border-radius:8px;padding:0 11px;font-size:13px;background:var(--tg-bg-secondary);color:var(--tg-text-primary);margin-bottom:12px;font-family:inherit}',
 '.eb2-search:focus{outline:none;border-color:var(--tg-accent);background:var(--tg-bg-primary)}',
 '.eb2-palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}',
+'.eb2-pgroup{grid-column:1/-1;font:700 10px/1 var(--tg-font-body,inherit);text-transform:uppercase;letter-spacing:.7px;color:var(--tg-text-tertiary);padding:12px 2px 3px}',
+'.eb2-pgroup:first-child{padding-top:2px}',
 '.eb2-chip{background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:8px;padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:grab;text-align:center;color:var(--tg-accent-dark);transition:all .12s;font-family:inherit}',
 '.eb2-chip:hover{border-color:var(--tg-accent);background:var(--tg-bg-primary);transform:translateY(-1px);box-shadow:var(--shadow-sm)}',
 '.eb2-chip:active{cursor:grabbing}',
@@ -5193,7 +5195,7 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '@media (max-width:980px){.eb2-rail{width:220px;flex-basis:220px}}'
 ].join('\n') + '</style>'; }
 window.__builderRailTab = function(tab){ emailState.builderRailTab = tab; drawEmails(); };
-window.__builderPaletteFilter = function(q){ q = (q||'').toLowerCase().trim(); var p = document.getElementById('eb2Palette'); if(!p) return; p.querySelectorAll('.eb2-chip').forEach(function(c){ var l=(c.getAttribute('data-label')||'').toLowerCase(); c.style.display = (!q || l.indexOf(q)>=0) ? '' : 'none'; }); };
+window.__builderPaletteFilter = function(q){ q = (q||'').toLowerCase().trim(); var p = document.getElementById('eb2Palette'); if(!p) return; var vis = {}; p.querySelectorAll('.eb2-chip').forEach(function(c){ var l=(c.getAttribute('data-label')||'').toLowerCase(); var show = (!q || l.indexOf(q)>=0); c.style.display = show ? '' : 'none'; if(show){ vis[c.getAttribute('data-group')||''] = true; } }); p.querySelectorAll('.eb2-pgroup').forEach(function(hd){ hd.style.display = vis[hd.getAttribute('data-group')||''] ? '' : 'none'; }); };
 
 function drawComposeForm() {
   var el = $('view-emails');
@@ -5331,12 +5333,38 @@ function drawComposeForm() {
     { type: 'footer-dark', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.6"/><line x1="9" y1="16" x2="15" y2="16" stroke="white" opacity="0.9"/><line x1="6" y1="19" x2="18" y2="19" stroke="white" opacity="0.4"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
-    addableTypes.forEach(function(t) {
-      var meta = sectionMeta(t.type);
-      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the email to drop it exactly where you want" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
-      h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
-      h += '<span>' + esc(meta.label) + '</span>';
-      h += '</button>';
+    // Group the (long, flat) block list into labelled sections so it's
+    // scannable. Groups reference types by name; a lookup keeps each
+    // block's real icon, and any type not assigned to a group falls into
+    // "More" — so no block can be dropped or shown twice.
+    var byType = {};
+    addableTypes.forEach(function(t) { byType[t.type] = t; });
+    var paletteGroups = [
+      { label: 'Basics', types: ['header', 'hero', 'text', 'two-column', 'cta', 'divider', 'image'] },
+      { label: 'Offers', types: ['offers-hero', 'offers-three-up', 'offers-urgency', 'offers-list', 'offers-two-up', 'offers-editorial'] },
+      { label: 'Marketing', types: ['hero-image', 'hero-coloured', 'destination-grid', 'feature-story', 'pull-quote', 'cta-banner', 'story-numbered'] },
+      { label: 'Product launch', types: ['hero-dark', 'product-mockup', 'features-section', 'feature-tiles', 'stats-strip', 'testimonial', 'cta-dark'] },
+      { label: 'Editorial', types: ['masthead', 'masthead-bar', 'headline-duotone', 'toc', 'lead-story', 'duo-grid', 'image-duo', 'product-cards-3up', 'pulse-stats', 'numbered-list', 'cta-pill', 'image-full-bleed'] },
+      { label: 'Transactional', types: ['top-bar', 'confirmation-block', 'trip-card', 'cost-summary', 'next-steps', 'help-block', 'calendar-grid'] },
+      { label: 'Footers', types: ['footer', 'footer-light', 'footer-dark', 'footer-meta', 'footer-icons'] },
+      { label: 'Advanced', types: ['generated-image', 'html'] },
+    ];
+    var placed = {};
+    paletteGroups.forEach(function(g) { g.types.forEach(function(tp) { placed[tp] = true; }); });
+    var leftovers = addableTypes.filter(function(t) { return !placed[t.type]; }).map(function(t) { return t.type; });
+    if (leftovers.length) paletteGroups.push({ label: 'More', types: leftovers });
+    paletteGroups.forEach(function(g) {
+      var items = g.types.filter(function(tp) { return byType[tp]; });
+      if (!items.length) return;
+      h += '<div class="eb2-pgroup" data-group="' + esc(g.label) + '">' + esc(g.label) + '</div>';
+      items.forEach(function(tp) {
+        var t = byType[tp];
+        var meta = sectionMeta(t.type);
+        h += '<button class="eb2-chip" draggable="true" data-group="' + esc(g.label) + '" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the email to drop it exactly where you want" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
+        h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
+        h += '<span>' + esc(meta.label) + '</span>';
+        h += '</button>';
+      });
     });
     h += '</div>';
     h += '<div class="eb2-hint">Click a block to add it, or <b>drag it onto the email</b> to drop it exactly where you want. Text edits happen right on the email &mdash; just click it.</div>';

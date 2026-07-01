@@ -1143,6 +1143,16 @@ select.email-builder-input { cursor: pointer; }
 }
 .email-builder-prop-fields { padding: 0; }
 .email-builder-prop-field { margin-bottom: 14px; }
+/* Highlight the inspector field/array-item that maps to the text currently
+   being edited on the canvas. */
+.email-builder-prop-array-item.tg-insp-active,
+.email-builder-prop-field.tg-insp-active {
+  outline: 2px solid var(--tg-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+  transition: outline-color .2s;
+}
+.email-builder-prop-input.tg-insp-active { border-color: var(--tg-accent); box-shadow: 0 0 0 3px rgba(0,180,216,0.14); }
 .email-builder-prop-label {
   display: block;
   font-size: 12px; font-weight: 600;
@@ -5465,8 +5475,10 @@ var SECTION_META = {
       { key: 'imageAlt', label: 'Image alt text', type: 'text' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
       { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Headline colour', type: 'colour', defaultPreview: '#0F172A', help: 'Colour of the headline text. Leave empty to keep the default.' },
       { key: 'subhead', label: 'Subhead', type: 'longText', maxLength: 280 },
       { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Subhead colour', type: 'colour', defaultPreview: '#334155', help: 'Colour of the subhead text. Leave empty to keep the default.' },
       { key: 'ctaText', label: 'Button text', type: 'text', maxLength: 40 },
       { key: 'ctaUrl', label: 'Button link', type: 'url' },
       { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#0ABAB5', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
@@ -5480,10 +5492,12 @@ var SECTION_META = {
     fields: [
       { key: 'headline', label: 'Headline', type: 'text', maxLength: 100 },
       { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
       { key: 'subhead', label: 'Subhead', type: 'text', maxLength: 160 },
       { key: 'subhead_size', label: 'Subhead text size', type: 'fontSize' },
       { key: 'body', label: 'Body', type: 'longText', required: true, maxLength: 2000 },
       { key: 'body_size', label: 'Body text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#334155', help: 'Leave empty to keep the default.' },
       { key: 'align', label: 'Alignment', type: 'select', options: ['left', 'center'] },
     ],
   },
@@ -5491,6 +5505,8 @@ var SECTION_META = {
     label: 'Two columns',
     description: 'Side-by-side blocks, stacks on mobile',
     fields: [
+      { key: 'heading_colour', label: 'Headline colour', type: 'colour', defaultPreview: '#0F172A', help: "Colour of both columns' headlines. Leave empty to keep the default." },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#334155', help: "Colour of both columns' body text. Leave empty to keep the default." },
       { key: 'left.imageUrl', label: 'Left image URL', type: 'url' },
       { key: 'left.headline', label: 'Left headline', type: 'text', maxLength: 60 },
       { key: 'left.headline_size', label: 'Left headline text size', type: 'fontSize' },
@@ -5515,8 +5531,10 @@ var SECTION_META = {
     fields: [
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 80 },
       { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Headline colour', type: 'colour', defaultPreview: '#0F172A', help: 'Colour of the headline text. Leave empty to keep the default.' },
       { key: 'body', label: 'Supporting copy', type: 'longText', maxLength: 200 },
       { key: 'body_size', label: 'Supporting copy text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#334155', help: 'Colour of the supporting copy. Leave empty to keep the default.' },
       { key: 'ctaText', label: 'Button text', type: 'text', required: true, maxLength: 40 },
       { key: 'ctaUrl', label: 'Button link', type: 'url', required: true },
       { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#0ABAB5', placeholder: 'Defaults to current button colour', help: 'Background colour of the button. Leave empty to keep the default.' },
@@ -5741,8 +5759,10 @@ var SECTION_META = {
       { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 100 },
       { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Headline colour', type: 'colour', defaultPreview: '#FFFFFF', help: 'Colour of the headline text. Leave empty to keep the default.' },
       { key: 'deck', label: 'Subhead / deck', type: 'longText', maxLength: 280 },
       { key: 'deck_size', label: 'Deck text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Subhead / deck colour', type: 'colour', defaultPreview: '#E6EBF5', help: 'Colour of the deck text. Leave empty to keep the default.' },
       { key: 'cta', label: 'CTA button (optional)', type: 'group', fields: [
         { key: 'text', label: 'Button text', type: 'text', maxLength: 40 },
         { key: 'url', label: 'Button URL', type: 'url' },
@@ -5779,10 +5799,13 @@ var SECTION_META = {
     fields: [
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
       { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
+      { key: 'eyebrow_colour', label: 'Eyebrow colour', type: 'colour', defaultPreview: '#00B4D8', help: 'Leave empty to keep the default.' },
       { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
       { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default. Applies to the section title and the article title.' },
       { key: 'lede', label: 'Section lede', type: 'longText', maxLength: 200 },
       { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default. Applies to the lede and the article excerpt.' },
       { key: 'image_url', label: 'Article image URL', type: 'url' },
       { key: 'image_alt', label: 'Image alt text', type: 'text', maxLength: 100 },
       { key: 'body_title', label: 'Article title (inside the card)', type: 'text', required: true, maxLength: 100 },
@@ -5802,8 +5825,11 @@ var SECTION_META = {
       { key: 'variant', label: 'Style', type: 'select', options: ['simple', 'labelled'] },
       { key: 'label', label: 'Eyebrow label (e.g. "Heard this week")', type: 'text', maxLength: 40, help: 'Only shown when style is "labelled".' },
       { key: 'label_size', label: 'Label text size', type: 'fontSize' },
+      { key: 'eyebrow_colour', label: 'Eyebrow label colour', type: 'colour', defaultPreview: '#00B4D8', help: 'Leave empty to keep the default.' },
       { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 280 },
       { key: 'quote_size', label: 'Quote text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Quote colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Attribution colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
       { key: 'attribution', label: 'Attribution (optional)', type: 'group', fields: [
         { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
         { key: 'role', label: 'Role / company', type: 'text', maxLength: 100 },
@@ -5816,8 +5842,10 @@ var SECTION_META = {
     fields: [
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 80 },
       { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Title colour', type: 'colour', defaultPreview: '#FFFFFF', help: 'Colour of the title text. Leave empty to keep the default.' },
       { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 200 },
       { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#E2E8F0', help: 'Colour of the supporting text. Leave empty to keep the default.' },
       { key: 'cta', label: 'CTA button', type: 'group', required: true, fields: [
         { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url', required: true },
@@ -5904,11 +5932,10 @@ var SECTION_META = {
       { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
       { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
       { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
-        { key: 'icon', label: 'Icon', type: 'select', options: ['sparkles', 'star', 'mail', 'file', 'pin', 'chat', 'phone', 'calendar', 'globe', 'plane', 'search', 'tag', 'heart', 'shield', 'bolt', 'users', 'check'] },
+        { key: 'icon', label: 'Icon', type: 'select', options: ['sparkles', 'star', 'mail', 'file', 'pin', 'chat', 'phone', 'calendar', 'globe', 'plane', 'search', 'tag', 'heart', 'shield', 'bolt', 'users', 'check', 'clock', 'map', 'camera'] },
         { key: 'colour', label: 'Tile colour', type: 'select', options: ['teal', 'amber', 'slate', 'green', 'blue', 'purple', 'pink'] },
-        { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
+        { key: 'icon_emoji', label: 'Custom emoji (overrides icon)', type: 'text', maxLength: 8, help: 'Paste any emoji to use instead of the chosen icon.' },
         { key: 'tile_colour', label: 'Custom tile colour (advanced)', type: 'colour', defaultPreview: '#D7F0F2', placeholder: 'Overrides the tile colour theme', help: 'Leave empty to use the chosen tile colour theme.' },
-        { key: 'icon_colour', label: 'Custom icon colour (advanced)', type: 'colour', defaultPreview: '#0E7C86', placeholder: 'Overrides the glyph colour', help: "Leave empty to use the theme's glyph colour." },
         { key: 'heading', label: 'Feature heading', type: 'text', required: true, maxLength: 80 },
         { key: 'text', label: 'Feature description', type: 'longText', maxLength: 240 },
       ]},
@@ -6050,10 +6077,13 @@ var SECTION_META = {
     fields: [
       { key: 'issue_label', label: 'Issue label (e.g. "Vol. 02 · Issue 19")', type: 'text', maxLength: 60 },
       { key: 'date_label', label: 'Date (e.g. "Friday, 8 May 2026")', type: 'text', maxLength: 40 },
+      { key: 'eyebrow_colour', label: 'Issue / date colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
       { key: 'title', label: 'Title', type: 'text', required: true, maxLength: 60 },
       { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Title colour', type: 'colour', defaultPreview: '#1B2B5B', help: 'Leave empty to keep the default.' },
       { key: 'tagline', label: 'Tagline (italic, single line)', type: 'text', maxLength: 120 },
       { key: 'tagline_size', label: 'Tagline text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Tagline colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
     ],
   },
   'toc': {
@@ -6075,6 +6105,7 @@ var SECTION_META = {
       { key: 'kicker_size', label: 'Kicker text size', type: 'fontSize' },
       { key: 'headline', label: 'Headline', type: 'text', required: true, maxLength: 120 },
       { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Headline colour', type: 'colour', defaultPreview: '#0F172A', help: 'Colour of the headline text. Leave empty to keep the default.' },
       { key: 'deck', label: 'Deck (large lede paragraph)', type: 'longText', maxLength: 280 },
       { key: 'deck_size', label: 'Deck text size', type: 'fontSize' },
       { key: 'image_url', label: 'Lead image URL', type: 'url' },
@@ -6085,6 +6116,7 @@ var SECTION_META = {
       ]},
       { key: 'body', label: 'Article body', type: 'longText', maxLength: 4000, help: 'Blank line = paragraph break. **bold**, *italic*, [text](url) work inline.' },
       { key: 'body_size', label: 'Body text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Body colour', type: 'colour', defaultPreview: '#475569', help: 'Colour of the article body text. Leave empty to keep the default.' },
       { key: 'link_text', label: 'Read-more link text', type: 'text', maxLength: 60 },
       { key: 'link_url', label: 'Read-more link URL', type: 'url' },
       { key: 'cta_colour', label: 'Link colour', type: 'colour', defaultPreview: '#00B4D8', placeholder: 'Defaults to current link colour', help: 'Colour of the read-more link. Leave empty to keep the default.' },
@@ -6225,10 +6257,13 @@ var SECTION_META = {
     fields: [
       { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 30 },
       { key: 'eyebrow_size', label: 'Eyebrow text size', type: 'fontSize' },
+      { key: 'eyebrow_colour', label: 'Eyebrow colour', type: 'colour', defaultPreview: '#00B4D8', help: 'Leave empty to keep the default.' },
       { key: 'title', label: 'Section title', type: 'text', required: true, maxLength: 80 },
       { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default. Applies to the title and every feature heading.' },
       { key: 'lede', label: 'Lede paragraph', type: 'longText', maxLength: 280 },
       { key: 'lede_size', label: 'Lede text size', type: 'fontSize' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default. Applies to the lede and every feature description.' },
       { key: 'features', label: 'Features', type: 'array', required: true, itemLabel: 'feature', itemFields: [
         { key: 'icon', label: 'Icon', type: 'select', options: ['chat', 'bolt', 'users', 'clock', 'globe', 'star', 'shield', 'trending', 'search', 'spark'] },
         { key: 'icon_svg', label: 'Custom SVG (overrides icon if set)', type: 'longText', maxLength: 2000 },
@@ -6254,6 +6289,8 @@ var SECTION_META = {
     fields: [
       { key: 'quote', label: 'Quote text', type: 'longText', required: true, maxLength: 400 },
       { key: 'quote_size', label: 'Quote text size', type: 'fontSize' },
+      { key: 'heading_colour', label: 'Quote & name colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Role / company colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
       { key: 'author', label: 'Author', type: 'group', fields: [
         { key: 'initials', label: 'Avatar initials (auto from name if blank)', type: 'text', maxLength: 2 },
         { key: 'name', label: 'Name', type: 'text', maxLength: 60 },
@@ -6271,6 +6308,7 @@ var SECTION_META = {
       { key: 'title_size', label: 'Headline text size', type: 'fontSize' },
       { key: 'text', label: 'Supporting text', type: 'longText', maxLength: 220 },
       { key: 'text_size', label: 'Supporting text size', type: 'fontSize' },
+      { key: 'background_colour', label: 'Background colour', type: 'colour', defaultPreview: '#0A0F1F', placeholder: 'Defaults to dark navy', help: 'Background colour of the block. Leave empty to keep the dark navy gradient.' },
       { key: 'cta', label: 'Primary CTA', type: 'group', required: true, fields: [
         { key: 'text', label: 'Button text', type: 'text', required: true, maxLength: 30 },
         { key: 'url', label: 'Button URL', type: 'url', required: true },
@@ -6874,10 +6912,40 @@ window.__tgSelectFromEl = function(el) {
   var idx = parseInt(ci < 0 ? ref : ref.slice(0, ci), 10);
   if (isNaN(idx)) return;
   var sec = (emailState.builderSections || [])[idx];
-  if (!sec || sec.id === emailState.selectedSectionId) return;
-  emailState.selectedSectionId = sec.id;
-  window.__builderRefreshInspector();
-  window.__builderRefreshLayersActive();
+  if (!sec) return;
+  var path = ci < 0 ? '' : ref.slice(ci + 1);
+  if (sec.id !== emailState.selectedSectionId) {
+    emailState.selectedSectionId = sec.id;
+    window.__builderRefreshInspector();
+    window.__builderRefreshLayersActive();
+  }
+  // Reveal & highlight the matching inspector field (and its array item, if
+  // any) so it's obvious which control on the right maps to the text you're
+  // editing on the canvas — important for repeating rows (feature lists etc).
+  window.__tgHighlightInspectorField(sec.id, path);
+};
+
+// Scroll the inspector to the field for `path` and briefly highlight it (and
+// the array-item it belongs to). No-op if the field isn't on screen.
+window.__tgHighlightInspectorField = function(sid, path) {
+  if (!path) return;
+  var fid = 'prop_' + sid + '_' + path.replace(/\./g, '_');
+  // Defer a tick so a just-refreshed inspector has painted.
+  setTimeout(function() {
+    var insp = document.querySelector('.eb2-inspector');
+    if (!insp) return;
+    var f = document.getElementById(fid);
+    if (!f) return;
+    insp.querySelectorAll('.tg-insp-active').forEach(function(n) { n.classList.remove('tg-insp-active'); });
+    var item = f.closest('.email-builder-prop-array-item') || f.closest('.email-builder-prop-field');
+    if (item) {
+      item.classList.add('tg-insp-active');
+      item.scrollIntoView({ block: 'nearest' });
+    }
+    // Also nudge focus outline onto the field itself without stealing the
+    // caret from the canvas (visual only).
+    if (f.classList) f.classList.add('tg-insp-active');
+  }, 0);
 };
 
 // Build the inspector's inner HTML for a section (or the empty state).

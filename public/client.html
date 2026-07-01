@@ -5103,149 +5103,131 @@ function hasComposeContent() {
   return false;
 }
 
+// ═════════════════════════════════════════════════════════════
+// EMAIL BUILDER v2 — prototype-derived three-zone layout
+// (Blocks/Layers rail · canvas+envelope · contextual inspector)
+// ═════════════════════════════════════════════════════════════
+function EB2_STYLES(){ return '<style id="eb2-styles">' + [
+'.eb2{display:flex;flex-direction:column;height:calc(100vh - 150px);min-height:600px;background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:14px;overflow:hidden;margin:0 var(--space-5) var(--space-5)}',
+'.eb2-top{height:56px;flex:0 0 56px;background:var(--tg-bg-primary);border-bottom:1px solid var(--tg-border);display:flex;align-items:center;gap:9px;padding:0 14px}',
+'.eb2-brand{display:flex;align-items:center;gap:9px}',
+'.eb2-logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--tg-accent),var(--tg-accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}',
+'.eb2-crumb .eb2-name{font-weight:600;font-size:13px;color:var(--tg-text-primary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+'.eb2-crumb .eb2-sub{font-family:var(--tg-font-mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tg-text-tertiary)}',
+'.eb2-saved{font-size:11px;color:#10B981;font-weight:600}',
+'.eb2-spacer{flex:1}',
+'.eb2-seg{display:flex;background:var(--tg-bg-tertiary);border-radius:8px;padding:3px;gap:2px}',
+'.eb2-seg button{border:none;background:none;color:var(--tg-text-tertiary);height:28px;padding:0 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}',
+'.eb2-seg button.on{background:var(--tg-bg-primary);color:var(--tg-primary);box-shadow:var(--shadow-xs)}',
+'.eb2-btn{height:34px;border:1px solid var(--tg-border);background:var(--tg-bg-primary);color:var(--tg-text-secondary);border-radius:8px;padding:0 13px;font-size:13px;font-weight:500;cursor:pointer}',
+'.eb2-btn:hover{border-color:var(--tg-accent);color:var(--tg-accent-dark)}',
+'.eb2-btn.primary{background:var(--tg-primary);border-color:var(--tg-primary);color:#fff}',
+'.eb2-btn.primary:hover{color:#fff;opacity:.92}',
+'.eb2-body{flex:1;display:flex;min-height:0}',
+'.eb2-rail{width:268px;flex:0 0 268px;background:var(--tg-bg-primary);border-right:1px solid var(--tg-border);display:flex;flex-direction:column;min-height:0}',
+'.eb2-rail-tabs{display:flex;gap:16px;padding:12px 14px 0;border-bottom:1px solid var(--tg-border)}',
+'.eb2-rail-tab{border:none;background:none;padding:0 0 10px;font-size:12.5px;font-weight:600;color:var(--tg-text-tertiary);cursor:pointer;position:relative}',
+'.eb2-rail-tab.on{color:var(--tg-primary)}',
+'.eb2-rail-tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--tg-accent);border-radius:2px}',
+'.eb2-rail-body{flex:1;overflow-y:auto;padding:12px}',
+'.eb2-search{width:100%;height:34px;border:1px solid var(--tg-border);border-radius:8px;padding:0 11px;font-size:13px;background:var(--tg-bg-secondary);color:var(--tg-text-primary);margin-bottom:12px;font-family:inherit}',
+'.eb2-search:focus{outline:none;border-color:var(--tg-accent);background:var(--tg-bg-primary)}',
+'.eb2-palette{display:grid;grid-template-columns:1fr 1fr;gap:8px}',
+'.eb2-chip{background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:8px;padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:grab;text-align:center;color:var(--tg-accent-dark);transition:all .12s;font-family:inherit}',
+'.eb2-chip:hover{border-color:var(--tg-accent);background:var(--tg-bg-primary);transform:translateY(-1px);box-shadow:var(--shadow-sm)}',
+'.eb2-chip:active{cursor:grabbing}',
+'.eb2-chip span{font-size:10.5px;font-weight:600;color:var(--tg-text-secondary);line-height:1.15}',
+'.eb2-hint{font-size:11px;color:var(--tg-text-tertiary);line-height:1.5;background:var(--tg-bg-secondary);border:1px dashed var(--tg-border);border-radius:8px;padding:10px;margin-top:10px}',
+'.eb2-stage{flex:1;min-width:0;overflow-y:auto;background:var(--tg-bg-tertiary);background-image:radial-gradient(circle at 1px 1px,rgba(15,23,42,.05) 1px,transparent 0);background-size:22px 22px;display:flex;flex-direction:column;align-items:center;padding:24px 20px 80px}',
+'.eb2-canvaswrap{width:600px;max-width:100%;transition:width .3s cubic-bezier(.4,0,.2,1)}',
+'.eb2-canvaswrap.mobile{width:380px}',
+'.eb2-envelope{background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:12px;box-shadow:var(--shadow-sm);padding:4px 14px;margin-bottom:14px}',
+'.eb2-env-row{display:flex;align-items:center;gap:10px;padding:8px 0}',
+'.eb2-env-row + .eb2-env-row{border-top:1px solid var(--tg-border-light)}',
+'.eb2-from{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--tg-accent),var(--tg-accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex:0 0 30px}',
+'.eb2-env-name{font-weight:600;font-size:12.5px;color:var(--tg-text-primary)}',
+'.eb2-env-email{font-size:11px;color:var(--tg-text-tertiary)}',
+'.eb2-k{font-family:var(--tg-font-mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tg-text-tertiary);width:54px;flex:0 0 54px}',
+'.eb2-env-v{flex:1;border:1px solid transparent;border-radius:6px;padding:6px 9px;margin:-2px 0;font-size:13px;color:var(--tg-text-primary);font-weight:500;background:transparent;font-family:inherit}',
+'.eb2-env-v:hover{background:var(--tg-bg-secondary)}',
+'.eb2-env-v:focus{outline:none;border-color:var(--tg-accent);background:var(--tg-bg-primary)}',
+'.eb2-env-v.sub{color:var(--tg-text-secondary);font-weight:400}',
+'.eb2-aud,.eb2-mini{border:1px solid var(--tg-border);border-radius:7px;height:30px;font-size:12px;padding:0 8px;background:var(--tg-bg-primary);color:var(--tg-text-secondary);font-family:inherit}',
+'.eb2-aud:focus,.eb2-mini:focus{outline:none;border-color:var(--tg-accent)}',
+'.eb2-device{font-family:var(--tg-font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--tg-text-tertiary);text-align:center;margin-bottom:10px}',
+'.eb2-canvas{background:#fff;border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;position:relative}',
+'.eb2-frame{width:100%;border:0;display:block;min-height:640px;background:#fff}',
+'.eb2-loading{position:absolute;top:10px;right:12px;font-size:11px;color:var(--tg-text-tertiary);background:var(--tg-bg-primary);padding:3px 9px;border-radius:6px;box-shadow:var(--shadow-sm)}',
+'.eb2-inspector{width:300px;flex:0 0 300px;background:var(--tg-bg-primary);border-left:1px solid var(--tg-border);display:flex;flex-direction:column;min-height:0}',
+'.eb2-insp-head{padding:14px 16px;border-bottom:1px solid var(--tg-border);display:flex;align-items:center;gap:10px}',
+'.eb2-insp-ic{width:30px;height:30px;border-radius:7px;background:rgba(0,180,216,.1);color:var(--tg-accent-dark);display:flex;align-items:center;justify-content:center;flex:0 0 30px}',
+'.eb2-insp-t{font-weight:600;font-size:14px;color:var(--tg-text-primary)}',
+'.eb2-insp-s{font-family:var(--tg-font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--tg-text-tertiary)}',
+'.eb2-insp-body{flex:1;overflow-y:auto;padding:14px}',
+'.eb2-insp-empty{padding:40px 22px;text-align:center;color:var(--tg-text-tertiary);font-size:12.5px;line-height:1.7}',
+'@media (max-width:1180px){.eb2-inspector{display:none}}',
+'@media (max-width:980px){.eb2-rail{width:220px;flex-basis:220px}}'
+].join('\n') + '</style>'; }
+window.__builderRailTab = function(tab){ emailState.builderRailTab = tab; drawEmails(); };
+window.__builderPaletteFilter = function(q){ q = (q||'').toLowerCase().trim(); var p = document.getElementById('eb2Palette'); if(!p) return; p.querySelectorAll('.eb2-chip').forEach(function(c){ var l=(c.getAttribute('data-label')||'').toLowerCase(); c.style.display = (!q || l.indexOf(q)>=0) ? '' : 'none'; }); };
+
 function drawComposeForm() {
   var el = $('view-emails');
   var d = emailState.composeData;
-
-  // Initialise builder state on first open
-  if (!emailState.builderInitialised) {
-    initBuilder();
-  }
-
+  if (!emailState.builderInitialised) initBuilder();
   var sections = emailState.builderSections;
   var selectedId = emailState.selectedSectionId;
   var selectedSection = sections.find(function(s) { return s.id === selectedId; });
+  var mobile = emailState.previewMode === 'mobile';
+  var railTab = emailState.builderRailTab || 'blocks';
+  var cn = (state.profile && (state.profile.businessName || state.profile.tradingName || state.profile.name)) || 'Your business';
+  var ci = String(cn).split(/\s+/).map(function(w){ return w ? w[0] : ''; }).join('').slice(0, 2).toUpperCase() || 'TG';
 
-  var h = '';
+  var h = EB2_STYLES();
+  h += '<div class="eb2">';
 
-  // ─── TOP BAR ───
-  h += '<div class="email-builder-topbar">';
-  h += '<div class="email-builder-topbar-left">';
-  h += '<h2 style="font-size:var(--text-xl);font-weight:700;color:var(--tg-text-primary);margin:0">Compose Email</h2>';
-  h += '<p style="font-size:var(--text-sm);color:var(--tg-text-tertiary);margin:4px 0 0">Saved as Awaiting Approval. Email crons paused so this won\'t auto-send.</p>';
-  h += '</div>';
-  h += '<div class="email-builder-topbar-right">';
-  h += '<button onclick="window.__emailComposeClose()" class="email-builder-btn email-builder-btn-ghost">Cancel</button>';
-  h += '<button onclick="window.__openSaveAsTemplateModal()" class="email-builder-btn email-builder-btn-ghost" title="Save the current section structure as a reusable template">Save as template</button>';
-  h += '<button id="composeSaveBtn" onclick="window.__emailComposeSave()" class="email-builder-btn email-builder-btn-primary">Save as Draft</button>';
-  h += '</div>';
+  // ── TOP BAR ──
+  h += '<div class="eb2-top">';
+  h += '<div class="eb2-brand"><div class="eb2-logo">L</div><div class="eb2-crumb"><div class="eb2-name">' + esc(d.subject || 'Untitled email') + '</div><div class="eb2-sub">' + esc(d.emailType || 'Email') + '</div></div></div>';
+  h += '<span class="eb2-saved">&#9679; Draft</span>';
+  h += '<div class="eb2-spacer"></div>';
+  h += '<div class="eb2-seg"><button class="' + (!mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'desktop\';drawEmails()">Desktop</button><button class="' + (mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'mobile\';drawEmails()">Mobile</button></div>';
+  h += '<button class="eb2-btn" onclick="window.__builderOpenInboxPreview()">Preview</button>';
+  h += '<button class="eb2-btn" onclick="window.__openSaveAsTemplateModal()">Save as template</button>';
+  h += '<button class="eb2-btn" onclick="window.__emailComposeClose()">Cancel</button>';
+  h += '<button class="eb2-btn primary" id="composeSaveBtn" onclick="window.__emailComposeSave()">Save as Draft</button>';
   h += '</div>';
 
-  // ─── DUPLICATE-FROM BANNER ───
-  // Shown when the user opened this compose by clicking Edit on an
-  // existing section-built email. Saves create a NEW draft (per the
-  // safest-edit decision — no update endpoint, no risk of corrupting
-  // the original). The original email stays in the queue, the user
-  // can Cancel it after the new one is saved.
   if (emailState.duplicatedFromEmailId) {
-    h += '<div style="margin:0 var(--space-5) var(--space-4);padding:12px 16px;background:var(--tg-bg-warning,#FFF7ED);border:1px solid var(--tg-border-warning,#F97316);border-radius:var(--radius-md);display:flex;align-items:center;gap:10px;font-size:var(--text-sm)">';
-    h += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-    h += '<div style="color:#9A3412;line-height:1.4">';
-    h += '<strong>Editing a copy</strong> of "' + esc(emailState.duplicatedFromSubject || 'existing email') + '". ';
-    h += 'Saving creates a new draft — the original stays in your queue. ';
-    h += 'Cancel the original after saving if you want to replace it.';
+    h += '<div style="margin:10px 14px 0;padding:10px 14px;background:#FFF7ED;border:1px solid #F97316;border-radius:8px;font-size:12.5px;color:#9A3412;line-height:1.45"><strong>Editing a copy</strong> of "' + esc(emailState.duplicatedFromSubject || 'existing email') + '". Saving creates a new draft &mdash; the original stays in your queue.</div>';
+  }
+
+  h += '<div class="eb2-body">';
+
+  // ── LEFT RAIL: Blocks / Layers ──
+  h += '<div class="eb2-rail">';
+  h += '<div class="eb2-rail-tabs"><button class="eb2-rail-tab ' + (railTab !== 'layers' ? 'on' : '') + '" onclick="window.__builderRailTab(\'blocks\')">Blocks</button><button class="eb2-rail-tab ' + (railTab === 'layers' ? 'on' : '') + '" onclick="window.__builderRailTab(\'layers\')">Layers (' + sections.length + ')</button></div>';
+  h += '<div class="eb2-rail-body">';
+  if (railTab === 'layers') {
+    h += '<div id="builderSectionList">';
+    if (!sections.length) {
+      h += '<div style="padding:22px 12px;text-align:center;color:var(--tg-text-tertiary);font-size:12px;line-height:1.6">No sections yet &mdash; add blocks from the <b>Blocks</b> tab.</div>';
+    } else {
+      sections.forEach(function(s, i) {
+        var meta = sectionMeta(s.type);
+        var summary = sectionSummary(s);
+        var active = s.id === selectedId;
+        h += '<div class="email-builder-section-row' + (active ? ' active' : '') + '" draggable="true" data-section-id="' + esc(s.id) + '" data-section-idx="' + i + '" onclick="window.__builderSelectSection(\'' + esc(s.id) + '\')">';
+        h += '<div class="email-builder-section-handle" title="Drag to reorder"><svg width="12" height="14" viewBox="0 0 12 14" fill="none"><circle cx="3" cy="3" r="1.2" fill="currentColor"/><circle cx="9" cy="3" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="9" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11" r="1.2" fill="currentColor"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/></svg></div>';
+        h += '<div class="email-builder-section-info"><div class="email-builder-section-type">' + esc(meta.label) + '</div><div class="email-builder-section-summary">' + esc(summary) + '</div></div>';
+        h += '<button class="email-builder-section-delete" onclick="event.stopPropagation();window.__builderDeleteSection(\'' + esc(s.id) + '\')" title="Remove section"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
+        h += '</div>';
+      });
+    }
     h += '</div>';
-    h += '</div>';
-  }
-
-  // ─── METADATA STRIP ───
-  h += '<div class="email-builder-metastrip">';
-
-  // Subject
-  h += '<div class="email-builder-meta-field">';
-  h += '<label class="email-builder-meta-label">Subject</label>';
-  h += '<input id="composeSubject" type="text" value="' + esc(d.subject) + '" maxlength="200" placeholder="Subject line" class="email-builder-input" oninput="window.__composeUpdate(\'subject\',this.value)">';
-  h += '</div>';
-
-  // Preview text
-  h += '<div class="email-builder-meta-field">';
-  h += '<label class="email-builder-meta-label">Preview text</label>';
-  h += '<input id="composePreview" type="text" value="' + esc(d.previewText) + '" maxlength="200" placeholder="Inbox preview line" class="email-builder-input" oninput="window.__composeUpdate(\'previewText\',this.value);window.__builderPreviewDebounced()">';
-  h += '</div>';
-
-  // Audience
-  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
-  h += '<label class="email-builder-meta-label">Audience</label>';
-  h += '<select onchange="window.__composeUpdate(\'audience\',this.value)" class="email-builder-input" style="width:130px">';
-  ['Cold', 'Nurture', 'Client', 'Drip'].forEach(function(a) {
-    h += '<option value="' + a + '"' + (d.audience === a ? ' selected' : '') + '>' + a + '</option>';
-  });
-  h += '</select>';
-  h += '</div>';
-
-  // Type
-  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
-  h += '<label class="email-builder-meta-label">Type</label>';
-  h += '<select onchange="window.__composeUpdate(\'emailType\',this.value)" class="email-builder-input" style="width:140px">';
-  ['Newsletter', 'Promotion', 'Update', 'Drip'].forEach(function(t) {
-    h += '<option value="' + t + '"' + (d.emailType === t ? ' selected' : '') + '>' + t + '</option>';
-  });
-  h += '</select>';
-  h += '</div>';
-
-  // Template loader
-  h += '<div class="email-builder-meta-field" style="flex:0 0 auto">';
-  h += '<label class="email-builder-meta-label">Start from template</label>';
-  h += '<select id="composeTemplate" onchange="window.__builderApplyTemplate(this.value);this.value=\'\'" class="email-builder-input" style="width:200px">';
-  h += '<option value="">Choose a template...</option>';
-  if (emailState.templates && emailState.templates.length) {
-    emailState.templates.forEach(function(t) {
-      h += '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>';
-    });
   } else {
-    h += '<option disabled>No templates loaded</option>';
-  }
-  h += '</select>';
-  h += '</div>';
-
-  h += '</div>';
-
-  // Recipient
-  h += '<div class="email-builder-recipient-strip">';
-  h += '<label class="email-builder-meta-label" style="margin-right:12px;flex-shrink:0">Send to (single recipient for now)</label>';
-  h += '<input id="composeRecipient" type="email" value="' + esc(d.recipientEmail) + '" placeholder="someone@example.com" class="email-builder-input" style="flex:1;max-width:340px" oninput="window.__composeUpdate(\'recipientEmail\',this.value)">';
-  h += '<input id="composeSegment" type="text" value="' + esc(d.audienceSegment) + '" placeholder="Audience label (optional)" class="email-builder-input" style="flex:1;max-width:240px;margin-left:8px" oninput="window.__composeUpdate(\'audienceSegment\',this.value)">';
-  h += '</div>';
-
-  // ─── THREE-PANEL BUILDER ───
-  h += '<div class="email-builder-panels">';
-
-  // ── LEFT: SECTION LIST ──
-  h += '<div class="email-builder-left">';
-  h += '<div class="email-builder-panel-header">Sections</div>';
-  h += '<div class="email-builder-section-list" id="builderSectionList">';
-  if (sections.length === 0) {
-    h += '<div class="email-builder-empty">No sections yet. Add one below.</div>';
-  } else {
-    sections.forEach(function(s, i) {
-      var meta = sectionMeta(s.type);
-      var summary = sectionSummary(s);
-      var active = s.id === selectedId;
-      h += '<div class="email-builder-section-row' + (active ? ' active' : '') + '"';
-      h += ' draggable="true"';
-      h += ' data-section-id="' + esc(s.id) + '"';
-      h += ' data-section-idx="' + i + '"';
-      h += ' onclick="window.__builderSelectSection(\'' + esc(s.id) + '\')"';
-      h += '>';
-      h += '<div class="email-builder-section-handle" title="Drag to reorder">';
-      h += '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><circle cx="3" cy="3" r="1.2" fill="currentColor"/><circle cx="9" cy="3" r="1.2" fill="currentColor"/><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="9" cy="7" r="1.2" fill="currentColor"/><circle cx="3" cy="11" r="1.2" fill="currentColor"/><circle cx="9" cy="11" r="1.2" fill="currentColor"/></svg>';
-      h += '</div>';
-      h += '<div class="email-builder-section-info">';
-      h += '<div class="email-builder-section-type">' + esc(meta.label) + '</div>';
-      h += '<div class="email-builder-section-summary">' + esc(summary) + '</div>';
-      h += '</div>';
-      h += '<button class="email-builder-section-delete" onclick="event.stopPropagation();window.__builderDeleteSection(\'' + esc(s.id) + '\')" title="Remove section">';
-      h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
-      h += '</button>';
-      h += '</div>';
-    });
-  }
-  h += '</div>';
-
-  // Add section panel
-  h += '<div class="email-builder-add-section">';
-  h += '<div class="email-builder-panel-header" style="border-top:1px solid var(--tg-border);padding-top:12px;margin-top:0">Add a section</div>';
-  h += '<div class="email-builder-section-types">';
+    h += '<input class="eb2-search" placeholder="Search blocks&hellip;" oninput="window.__builderPaletteFilter(this.value)">';
+    h += '<div class="eb2-palette" id="eb2Palette">';
   var addableTypes = [
     { type: 'header', icon: '<rect x="2" y="4" width="20" height="4" rx="1"/>' },
     { type: 'hero', icon: '<rect x="2" y="3" width="20" height="10" rx="1"/><line x1="6" y1="17" x2="18" y2="17"/><line x1="9" y1="20" x2="15" y2="20"/>' },
@@ -5318,65 +5300,61 @@ function drawComposeForm() {
     { type: 'footer-dark', icon: '<rect x="2" y="13" width="20" height="8" rx="1" fill="currentColor" opacity="0.6"/><line x1="9" y1="16" x2="15" y2="16" stroke="white" opacity="0.9"/><line x1="6" y1="19" x2="18" y2="19" stroke="white" opacity="0.4"/>' },
     { type: 'footer', icon: '<rect x="2" y="16" width="20" height="4" rx="1"/><line x1="7" y1="10" x2="17" y2="10"/>' },
   ];
-  addableTypes.forEach(function(t) {
-    var meta = sectionMeta(t.type);
-    h += '<button class="email-builder-section-type-btn" draggable="true" style="cursor:grab" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()" title="Click to add, or drag onto the section list — ' + esc(meta.description) + '">';
-    h += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
-    h += '<span>' + esc(meta.label) + '</span>';
-    h += '</button>';
-  });
-  h += '</div>';
-  h += '</div>';
-  h += '</div>'; // end left
-
-  // ── MIDDLE: PROPERTIES ──
-  h += '<div class="email-builder-middle">';
-  h += '<div class="email-builder-panel-header">Properties</div>';
-  h += '<div class="email-builder-properties" id="builderProperties">';
-  if (!selectedSection) {
-    h += '<div class="email-builder-empty" style="padding:40px 20px;text-align:center">';
-    h += '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.3;margin-bottom:12px"><path d="M12 6V4M12 6a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>';
-    h += '<div style="font-size:13px">Select a section to edit its properties</div>';
+    addableTypes.forEach(function(t) {
+      var meta = sectionMeta(t.type);
+      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the Layers tab to place it" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
+      h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
+      h += '<span>' + esc(meta.label) + '</span>';
+      h += '</button>';
+    });
     h += '</div>';
-  } else {
-    h += renderPropertiesForm(selectedSection);
+    h += '<div class="eb2-hint">Click a block to add it, or drag it onto the <b>Layers</b> tab to drop it in an exact spot. Text edits happen right on the email &mdash; just click it.</div>';
   }
-  h += '</div>';
-  h += '</div>'; // end middle
+  h += '</div>'; // rail-body
+  h += '</div>'; // rail
 
-  // ── RIGHT: PREVIEW ──
-  h += '<div class="email-builder-right">';
-  h += '<div class="email-builder-panel-header" style="display:flex;justify-content:space-between;align-items:center">';
-  h += '<span>Live preview</span>';
-  h += '<div style="display:flex;gap:6px;align-items:center">';
-  h += '<button onclick="window.__builderOpenInboxPreview()" style="background:none;border:1px solid var(--tg-border);border-radius:var(--radius-sm);padding:3px 8px;font-size:11px;color:var(--tg-text-secondary);cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="See the email at true inbox dimensions">';
-  h += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="22,7 12,13 2,7"/></svg>';
-  h += 'Inbox size';
-  h += '</button>';
-  h += '<div style="display:flex;gap:4px">';
-  h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'desktop' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'desktop\')" title="Desktop preview">';
-  h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="13" rx="1"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
-  h += '</button>';
-  h += '<button class="email-builder-preview-mode' + (emailState.previewMode === 'mobile' ? ' active' : '') + '" onclick="window.__builderPreviewMode(\'mobile\')" title="Mobile preview">';
-  h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>';
-  h += '</button>';
+  // ── CENTER: envelope + canvas ──
+  h += '<div class="eb2-stage">';
+  h += '<div class="eb2-canvaswrap' + (mobile ? ' mobile' : '') + '">';
+  h += '<div class="eb2-envelope">';
+  h += '<div class="eb2-env-row"><span class="eb2-from">' + esc(ci) + '</span><div style="flex:1;min-width:0"><div class="eb2-env-name">' + esc(cn) + '</div><div class="eb2-env-email">' + esc((state.profile && (state.profile.replyToEmail || state.profile.email)) || '') + '</div></div>';
+  h += '<select class="eb2-aud" onchange="window.__composeUpdate(\'audience\',this.value)">';
+  ['Cold', 'Nurture', 'Client', 'Drip'].forEach(function(a) { h += '<option value="' + a + '"' + (d.audience === a ? ' selected' : '') + '>' + a + '</option>'; });
+  h += '</select></div>';
+  h += '<div class="eb2-env-row"><span class="eb2-k">Subject</span><input class="eb2-env-v" value="' + esc(d.subject) + '" placeholder="Subject line" maxlength="200" oninput="window.__composeUpdate(\'subject\',this.value)"></div>';
+  h += '<div class="eb2-env-row"><span class="eb2-k">Preview</span><input class="eb2-env-v sub" value="' + esc(d.previewText) + '" placeholder="Inbox preview text" maxlength="200" oninput="window.__composeUpdate(\'previewText\',this.value);window.__builderPreviewDebounced()"></div>';
+  h += '<div class="eb2-env-row"><span class="eb2-k">Setup</span>';
+  h += '<select class="eb2-mini" onchange="window.__composeUpdate(\'emailType\',this.value)">';
+  ['Newsletter', 'Promotion', 'Update', 'Drip'].forEach(function(t) { h += '<option value="' + t + '"' + (d.emailType === t ? ' selected' : '') + '>' + t + '</option>'; });
+  h += '</select>';
+  h += '<select class="eb2-mini" onchange="if(this.value){window.__builderApplyTemplate(this.value);this.value=\'\';}"><option value="">Template&hellip;</option>';
+  if (emailState.templates && emailState.templates.length) { emailState.templates.forEach(function(t) { h += '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>'; }); }
+  h += '</select>';
+  h += '<input class="eb2-mini" style="flex:1;min-width:110px" placeholder="Send test to (email)" value="' + esc(d.recipientEmail) + '" oninput="window.__composeUpdate(\'recipientEmail\',this.value)">';
+  h += '<input class="eb2-mini" style="flex:0 0 150px" placeholder="Audience label (optional)" value="' + esc(d.audienceSegment) + '" oninput="window.__composeUpdate(\'audienceSegment\',this.value)">';
   h += '</div>';
   h += '</div>';
+  h += '<div class="eb2-device">' + (mobile ? 'Mobile &middot; 380px' : 'Desktop &middot; 600px') + '</div>';
+  h += '<div class="eb2-canvas"><iframe id="builderPreviewFrame" class="eb2-frame" sandbox="allow-same-origin"></iframe><div id="builderPreviewLoading" class="eb2-loading" style="display:none">Rendering&hellip;</div></div>';
   h += '</div>';
-  h += '<div class="email-builder-preview-wrap' + (emailState.previewMode === 'mobile' ? ' is-mobile' : '') + '">';
-  h += '<iframe id="builderPreviewFrame" class="email-builder-preview-frame" sandbox="allow-same-origin"></iframe>';
-  h += '<div id="builderPreviewLoading" class="email-builder-preview-loading" style="display:none">Rendering...</div>';
-  h += '</div>';
-  h += '</div>'; // end right
+  h += '</div>'; // stage
 
-  h += '</div>'; // end panels
+  // ── RIGHT: contextual inspector ──
+  h += '<div class="eb2-inspector">';
+  if (!selectedSection) {
+    h += '<div class="eb2-insp-empty">Select a block on the email &mdash; or in the <b>Layers</b> tab &mdash; to edit its settings here.<br><br>Or just click text on the email to edit it in place.</div>';
+  } else {
+    var im = sectionMeta(selectedSection.type);
+    h += '<div class="eb2-insp-head"><div class="eb2-insp-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><div><div class="eb2-insp-t">' + esc(im.label) + '</div><div class="eb2-insp-s">Block settings</div></div></div>';
+    h += '<div class="eb2-insp-body">' + renderPropertiesForm(selectedSection) + '</div>';
+  }
+  h += '</div>'; // inspector
+
+  h += '</div>'; // body
+  h += '</div>'; // eb2
 
   el.innerHTML = h;
-
-  // Wire up after DOM is in place
   attachBuilderHandlers();
-
-  // Trigger initial preview render
   setTimeout(function() { window.__builderRenderPreview(); }, 50);
 }
 

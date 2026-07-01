@@ -5330,13 +5330,13 @@ function drawComposeForm() {
   ];
     addableTypes.forEach(function(t) {
       var meta = sectionMeta(t.type);
-      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the Layers tab to place it" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
+      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the email to drop it exactly where you want" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
       h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
       h += '<span>' + esc(meta.label) + '</span>';
       h += '</button>';
     });
     h += '</div>';
-    h += '<div class="eb2-hint">Click a block to add it, or drag it onto the <b>Layers</b> tab to drop it in an exact spot. Text edits happen right on the email &mdash; just click it.</div>';
+    h += '<div class="eb2-hint">Click a block to add it, or <b>drag it onto the email</b> to drop it exactly where you want. Text edits happen right on the email &mdash; just click it.</div>';
   }
   h += '</div>'; // rail-body
   h += '</div>'; // rail
@@ -6995,6 +6995,19 @@ window.__builderAddSectionAt = function(type, dstId, dropAfter) {
   drawEmails();
 };
 
+// Insert a new section at an explicit array index (used by canvas
+// drag-and-drop). Explicit placement overrides the auto header/footer
+// positioning; the index is clamped to the current bounds.
+window.__builderAddSectionAtIndex = function(type, index) {
+  var defaults = defaultPropsForType(type);
+  var newSection = { id: genSectionId(), type: type, props: defaults };
+  var arr = emailState.builderSections = emailState.builderSections || [];
+  index = Math.max(0, Math.min(index, arr.length));
+  arr.splice(index, 0, newSection);
+  emailState.selectedSectionId = newSection.id;
+  drawEmails();
+};
+
 window.__builderDeleteSection = function(id) {
   if (!confirm('Remove this section?')) return;
   emailState.builderSections = emailState.builderSections.filter(function(s) { return s.id !== id; });
@@ -7945,6 +7958,7 @@ window.__builderRenderPreview = async function() {
       doc.close();
       window.__builderEnableInlineEdit(doc);
       window.__builderEnableBlockHover(doc);
+      window.__builderEnableCanvasDrop(doc);
     }
   } catch (e) {
     console.error('Preview render failed:', e);
@@ -8000,11 +8014,6 @@ window.__builderEnableInlineEdit = function(doc) {
     });
   }
   doc.addEventListener('selectionchange', __tgOnSelChange);
-  // Block dragging a palette chip onto the canvas from inserting its raw
-  // type string (e.g. "feature-tiles") into an editable text area. Drops
-  // are placed via the Layers tab, not the canvas, so swallow them here.
-  doc.addEventListener('dragover', function(ev) { ev.preventDefault(); });
-  doc.addEventListener('drop', function(ev) { ev.preventDefault(); });
 };
 
 // ── On-canvas block hover controls ───────────────────────────────────
@@ -8126,6 +8135,79 @@ window.__builderEnableBlockHover = function(doc) {
     if (tb) pin(tb); else scheduleHide();
   });
   doc.body.addEventListener('mouseleave', scheduleHide);
+};
+
+// ── Drag a block from the palette onto the canvas ────────────────────
+// The palette chips are draggable and set window.__builderNewDragType on
+// dragstart. This makes the preview iframe a drop target: while a chip is
+// dragged over the email we show a drop-indicator line at the nearest
+// gap between sections; dropping inserts the new block at that position.
+// Non-palette drags (e.g. selecting + dragging text) are swallowed so
+// they can't paste a raw type string into an editable field.
+window.__builderEnableCanvasDrop = function(doc) {
+  if (!doc || !doc.body) return;
+
+  var line = doc.getElementById('tgDropLine');
+  if (!line) {
+    var st = doc.createElement('style');
+    st.textContent = '#tgDropLine{position:absolute;left:0;right:0;height:3px;background:#00B4D8;box-shadow:0 0 0 3px rgba(0,180,216,.18);border-radius:2px;z-index:2147483645;pointer-events:none;display:none}' +
+      '#tgDropLine::before{content:"";position:absolute;left:6px;top:-4px;width:11px;height:11px;border-radius:50%;background:#00B4D8}';
+    (doc.head || doc.body).appendChild(st);
+    line = doc.createElement('div');
+    line.id = 'tgDropLine';
+    doc.body.appendChild(line);
+  }
+
+  // Work out where a drop at pointer-Y (iframe viewport coords) would go.
+  // Returns { index, y } — insertion index in builderSections and the
+  // page-Y for the indicator line.
+  function computeDrop(clientY) {
+    var tbs = doc.querySelectorAll('[data-tg-sec]');
+    var sy = doc.defaultView.pageYOffset || 0;
+    var items = [];
+    for (var i = 0; i < tbs.length; i++) {
+      var idx = parseInt(tbs[i].getAttribute('data-tg-sec'), 10);
+      if (isNaN(idx)) continue;
+      var rows = tbs[i].children, top = Infinity, bottom = -Infinity;
+      for (var j = 0; j < rows.length; j++) {
+        var r = rows[j].getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom);
+      }
+      if (top === Infinity) continue;
+      items.push({ idx: idx, top: top, bottom: bottom });
+    }
+    if (!items.length) return { index: 0, y: sy + 2 };
+    for (var k = 0; k < items.length; k++) {
+      var mid = (items[k].top + items[k].bottom) / 2;
+      if (clientY < mid) return { index: items[k].idx, y: items[k].top + sy };
+    }
+    var last = items[items.length - 1];
+    return { index: last.idx + 1, y: last.bottom + sy };
+  }
+
+  doc.addEventListener('dragover', function(ev) {
+    // Always preventDefault so a stray text-drag can't paste into a field.
+    ev.preventDefault();
+    if (!window.__builderNewDragType) return;
+    try { ev.dataTransfer.dropEffect = 'copy'; } catch (e) {}
+    var d = computeDrop(ev.clientY);
+    line.style.display = 'block';
+    line.style.top = (d.y - 1) + 'px';
+  });
+  doc.addEventListener('dragleave', function(ev) {
+    if (ev.relatedTarget) return; // still inside the document
+    line.style.display = 'none';
+  });
+  doc.addEventListener('drop', function(ev) {
+    ev.preventDefault();
+    line.style.display = 'none';
+    var type = window.__builderNewDragType;
+    if (!type) return; // non-palette drop — swallowed, nothing inserted
+    var d = computeDrop(ev.clientY);
+    window.__builderNewDragType = null;
+    window.__builderAddSectionAtIndex(type, d.index);
+  });
 };
 
 // Write an inline edit back into the section props model (no iframe reload).

@@ -5129,6 +5129,7 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-crumb .eb2-name{font-weight:600;font-size:13px;color:var(--tg-text-primary);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
 '.eb2-crumb .eb2-sub{font-family:var(--tg-font-mono);font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--tg-text-tertiary)}',
 '.eb2-saved{font-size:11px;color:#10B981;font-weight:600}',
+'.eb2-sched{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--tg-accent-dark);background:rgba(0,180,216,.1);border:1px solid var(--tg-accent);border-radius:20px;padding:3px 10px}',
 '.eb2-spacer{flex:1}',
 '.eb2-seg{display:flex;background:var(--tg-bg-tertiary);border-radius:8px;padding:3px;gap:2px}',
 '.eb2-seg button{border:none;background:none;color:var(--tg-text-tertiary);height:28px;padding:0 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}',
@@ -5137,6 +5138,8 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-btn:hover{border-color:var(--tg-accent);color:var(--tg-accent-dark)}',
 '.eb2-btn.primary{background:var(--tg-primary);border-color:var(--tg-primary);color:#fff}',
 '.eb2-btn.primary:hover{color:#fff;opacity:.92}',
+'.eb2-btn.ai{display:inline-flex;align-items:center;gap:6px;background:rgba(0,180,216,.08);border-color:var(--tg-accent);color:var(--tg-accent-dark);font-weight:600}',
+'.eb2-btn.ai:hover{background:var(--tg-accent);border-color:var(--tg-accent);color:#fff}',
 '.eb2-body{flex:1;display:flex;min-height:0}',
 '.eb2-rail{width:268px;flex:0 0 268px;background:var(--tg-bg-primary);border-right:1px solid var(--tg-border);display:flex;flex-direction:column;min-height:0}',
 '.eb2-rail-tabs{display:flex;gap:16px;padding:12px 14px 0;border-bottom:1px solid var(--tg-border)}',
@@ -5153,6 +5156,7 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-chip span{font-size:10.5px;font-weight:600;color:var(--tg-text-secondary);line-height:1.15}',
 '.eb2-hint{font-size:11px;color:var(--tg-text-tertiary);line-height:1.5;background:var(--tg-bg-secondary);border:1px dashed var(--tg-border);border-radius:8px;padding:10px;margin-top:10px}',
 '.eb2-stage{flex:1;min-width:0;overflow-y:auto;background:var(--tg-bg-tertiary);background-image:radial-gradient(circle at 1px 1px,rgba(15,23,42,.05) 1px,transparent 0);background-size:22px 22px;display:flex;flex-direction:column;align-items:center;padding:24px 20px 80px}',
+'[data-theme="dark"] .eb2-stage{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.06) 1px,transparent 0)}',
 '.eb2-canvaswrap{width:600px;max-width:100%;transition:width .3s cubic-bezier(.4,0,.2,1)}',
 '.eb2-canvaswrap.mobile{width:380px}',
 '.eb2-envelope{background:var(--tg-bg-primary);border:1px solid var(--tg-border);border-radius:12px;box-shadow:var(--shadow-sm);padding:4px 14px;margin-bottom:14px}',
@@ -5206,12 +5210,18 @@ function drawComposeForm() {
   // ── TOP BAR ──
   h += '<div class="eb2-top">';
   h += '<div class="eb2-brand"><div class="eb2-logo">L</div><div class="eb2-crumb"><div class="eb2-name">' + esc(d.subject || 'Untitled email') + '</div><div class="eb2-sub">' + esc(d.emailType || 'Email') + '</div></div></div>';
-  h += '<span class="eb2-saved">&#9679; Draft</span>';
+  if (d.scheduledSend) {
+    h += '<span class="eb2-sched" title="Scheduled send time"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' + esc(formatDate(d.scheduledSend)) + '</span>';
+  } else {
+    h += '<span class="eb2-saved">&#9679; Draft</span>';
+  }
   h += '<div class="eb2-spacer"></div>';
   h += '<div class="eb2-seg"><button class="' + (!mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'desktop\';drawEmails()">Desktop</button><button class="' + (mobile ? 'on' : '') + '" onclick="emailState.previewMode=\'mobile\';drawEmails()">Mobile</button></div>';
+  h += '<button class="eb2-btn ai" onclick="window.__emailComposeAiOpen()" title="Draft or rewrite this email with Luna"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>Compose with AI</button>';
   h += '<button class="eb2-btn" onclick="window.__builderOpenInboxPreview()">Preview</button>';
   h += '<button class="eb2-btn" onclick="window.__openSaveAsTemplateModal()">Save as template</button>';
   h += '<button class="eb2-btn" onclick="window.__emailComposeClose()">Cancel</button>';
+  h += '<button class="eb2-btn" onclick="window.__builderOpenScheduleModal()">' + (d.scheduledSend ? 'Reschedule' : 'Schedule') + '</button>';
   h += '<button class="eb2-btn primary" id="composeSaveBtn" onclick="window.__emailComposeSave()">Save as Draft</button>';
   h += '</div>';
 
@@ -5320,13 +5330,13 @@ function drawComposeForm() {
   ];
     addableTypes.forEach(function(t) {
       var meta = sectionMeta(t.type);
-      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the Layers tab to place it" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
+      h += '<button class="eb2-chip" draggable="true" data-label="' + esc(meta.label) + '" title="Click to add, or drag onto the email to drop it exactly where you want" onclick="window.__builderAddSection(\'' + t.type + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + t.type + '\')" ondragend="window.__builderPaletteDragEnd()">';
       h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
       h += '<span>' + esc(meta.label) + '</span>';
       h += '</button>';
     });
     h += '</div>';
-    h += '<div class="eb2-hint">Click a block to add it, or drag it onto the <b>Layers</b> tab to drop it in an exact spot. Text edits happen right on the email &mdash; just click it.</div>';
+    h += '<div class="eb2-hint">Click a block to add it, or <b>drag it onto the email</b> to drop it exactly where you want. Text edits happen right on the email &mdash; just click it.</div>';
   }
   h += '</div>'; // rail-body
   h += '</div>'; // rail
@@ -6985,6 +6995,19 @@ window.__builderAddSectionAt = function(type, dstId, dropAfter) {
   drawEmails();
 };
 
+// Insert a new section at an explicit array index (used by canvas
+// drag-and-drop). Explicit placement overrides the auto header/footer
+// positioning; the index is clamped to the current bounds.
+window.__builderAddSectionAtIndex = function(type, index) {
+  var defaults = defaultPropsForType(type);
+  var newSection = { id: genSectionId(), type: type, props: defaults };
+  var arr = emailState.builderSections = emailState.builderSections || [];
+  index = Math.max(0, Math.min(index, arr.length));
+  arr.splice(index, 0, newSection);
+  emailState.selectedSectionId = newSection.id;
+  drawEmails();
+};
+
 window.__builderDeleteSection = function(id) {
   if (!confirm('Remove this section?')) return;
   emailState.builderSections = emailState.builderSections.filter(function(s) { return s.id !== id; });
@@ -7935,6 +7958,7 @@ window.__builderRenderPreview = async function() {
       doc.close();
       window.__builderEnableInlineEdit(doc);
       window.__builderEnableBlockHover(doc);
+      window.__builderEnableCanvasDrop(doc);
     }
   } catch (e) {
     console.error('Preview render failed:', e);
@@ -7990,11 +8014,6 @@ window.__builderEnableInlineEdit = function(doc) {
     });
   }
   doc.addEventListener('selectionchange', __tgOnSelChange);
-  // Block dragging a palette chip onto the canvas from inserting its raw
-  // type string (e.g. "feature-tiles") into an editable text area. Drops
-  // are placed via the Layers tab, not the canvas, so swallow them here.
-  doc.addEventListener('dragover', function(ev) { ev.preventDefault(); });
-  doc.addEventListener('drop', function(ev) { ev.preventDefault(); });
 };
 
 // ── On-canvas block hover controls ───────────────────────────────────
@@ -8116,6 +8135,79 @@ window.__builderEnableBlockHover = function(doc) {
     if (tb) pin(tb); else scheduleHide();
   });
   doc.body.addEventListener('mouseleave', scheduleHide);
+};
+
+// ── Drag a block from the palette onto the canvas ────────────────────
+// The palette chips are draggable and set window.__builderNewDragType on
+// dragstart. This makes the preview iframe a drop target: while a chip is
+// dragged over the email we show a drop-indicator line at the nearest
+// gap between sections; dropping inserts the new block at that position.
+// Non-palette drags (e.g. selecting + dragging text) are swallowed so
+// they can't paste a raw type string into an editable field.
+window.__builderEnableCanvasDrop = function(doc) {
+  if (!doc || !doc.body) return;
+
+  var line = doc.getElementById('tgDropLine');
+  if (!line) {
+    var st = doc.createElement('style');
+    st.textContent = '#tgDropLine{position:absolute;left:0;right:0;height:3px;background:#00B4D8;box-shadow:0 0 0 3px rgba(0,180,216,.18);border-radius:2px;z-index:2147483645;pointer-events:none;display:none}' +
+      '#tgDropLine::before{content:"";position:absolute;left:6px;top:-4px;width:11px;height:11px;border-radius:50%;background:#00B4D8}';
+    (doc.head || doc.body).appendChild(st);
+    line = doc.createElement('div');
+    line.id = 'tgDropLine';
+    doc.body.appendChild(line);
+  }
+
+  // Work out where a drop at pointer-Y (iframe viewport coords) would go.
+  // Returns { index, y } — insertion index in builderSections and the
+  // page-Y for the indicator line.
+  function computeDrop(clientY) {
+    var tbs = doc.querySelectorAll('[data-tg-sec]');
+    var sy = doc.defaultView.pageYOffset || 0;
+    var items = [];
+    for (var i = 0; i < tbs.length; i++) {
+      var idx = parseInt(tbs[i].getAttribute('data-tg-sec'), 10);
+      if (isNaN(idx)) continue;
+      var rows = tbs[i].children, top = Infinity, bottom = -Infinity;
+      for (var j = 0; j < rows.length; j++) {
+        var r = rows[j].getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom);
+      }
+      if (top === Infinity) continue;
+      items.push({ idx: idx, top: top, bottom: bottom });
+    }
+    if (!items.length) return { index: 0, y: sy + 2 };
+    for (var k = 0; k < items.length; k++) {
+      var mid = (items[k].top + items[k].bottom) / 2;
+      if (clientY < mid) return { index: items[k].idx, y: items[k].top + sy };
+    }
+    var last = items[items.length - 1];
+    return { index: last.idx + 1, y: last.bottom + sy };
+  }
+
+  doc.addEventListener('dragover', function(ev) {
+    // Always preventDefault so a stray text-drag can't paste into a field.
+    ev.preventDefault();
+    if (!window.__builderNewDragType) return;
+    try { ev.dataTransfer.dropEffect = 'copy'; } catch (e) {}
+    var d = computeDrop(ev.clientY);
+    line.style.display = 'block';
+    line.style.top = (d.y - 1) + 'px';
+  });
+  doc.addEventListener('dragleave', function(ev) {
+    if (ev.relatedTarget) return; // still inside the document
+    line.style.display = 'none';
+  });
+  doc.addEventListener('drop', function(ev) {
+    ev.preventDefault();
+    line.style.display = 'none';
+    var type = window.__builderNewDragType;
+    if (!type) return; // non-palette drop — swallowed, nothing inserted
+    var d = computeDrop(ev.clientY);
+    window.__builderNewDragType = null;
+    window.__builderAddSectionAtIndex(type, d.index);
+  });
 };
 
 // Write an inline edit back into the section props model (no iframe reload).
@@ -8752,6 +8844,66 @@ window.__composeBodyMode = function(mode) {
   drawEmails();
 };
 
+// ── Schedule send ────────────────────────────────────────────────────
+// The email-compose API already accepts a `scheduledSend` ISO datetime
+// (it records a future "Scheduled Send" on the record; status still goes
+// through Awaiting Approval). This UI just lets the user pick that time
+// and then runs the normal save, which forwards composeData.scheduledSend.
+function __tgToDatetimeLocal(dt) {
+  var p = function(n) { return (n < 10 ? '0' : '') + n; };
+  return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate()) +
+    'T' + p(dt.getHours()) + ':' + p(dt.getMinutes());
+}
+
+window.__builderOpenScheduleModal = function() {
+  var d = emailState.composeData || {};
+  var base = d.scheduledSend ? new Date(d.scheduledSend) : new Date(Date.now() + 60 * 60 * 1000);
+  if (isNaN(base.getTime())) base = new Date(Date.now() + 60 * 60 * 1000);
+  var localVal = __tgToDatetimeLocal(base);
+  var minVal = __tgToDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000));
+
+  var existing = document.getElementById('eb2-sched-backdrop');
+  if (existing) existing.remove();
+
+  var html = '<div id="eb2-sched-backdrop" style="position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)window.__builderCloseScheduleModal()">';
+  html += '<div style="background:var(--tg-bg-primary);border-radius:var(--radius-xl,14px);box-shadow:var(--shadow-xl);width:100%;max-width:420px;overflow:hidden">';
+  html += '<div style="padding:20px 22px 0"><h3 style="margin:0;font-size:17px;font-weight:700;color:var(--tg-text-primary)">Schedule send</h3>';
+  html += '<p style="margin:6px 0 0;font-size:12.5px;line-height:1.5;color:var(--tg-text-tertiary)">Pick when this email should go out. It still needs approval first &mdash; scheduling just sets the intended send time.</p></div>';
+  html += '<div style="padding:18px 22px 4px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tg-text-tertiary);margin-bottom:7px">Send date &amp; time</label>';
+  html += '<input type="datetime-local" id="eb2-sched-input" value="' + localVal + '" min="' + minVal + '" style="width:100%;box-sizing:border-box;height:40px;padding:0 12px;border:1px solid var(--tg-border);border-radius:9px;font-size:14px;font-family:inherit;background:var(--tg-bg-secondary);color:var(--tg-text-primary)"></div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;padding:16px 22px 20px">';
+  if (d.scheduledSend) html += '<button class="eb2-btn" style="color:var(--tg-error)" onclick="window.__builderClearSchedule()">Clear</button>';
+  html += '<div style="flex:1"></div>';
+  html += '<button class="eb2-btn" onclick="window.__builderCloseScheduleModal()">Cancel</button>';
+  html += '<button class="eb2-btn primary" onclick="window.__builderConfirmSchedule()">Schedule &amp; save</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.__builderCloseScheduleModal = function() {
+  var b = document.getElementById('eb2-sched-backdrop');
+  if (b) b.remove();
+};
+
+window.__builderClearSchedule = function() {
+  if (emailState.composeData) emailState.composeData.scheduledSend = '';
+  window.__builderCloseScheduleModal();
+  drawEmails();
+};
+
+window.__builderConfirmSchedule = function() {
+  var inp = document.getElementById('eb2-sched-input');
+  if (!inp || !inp.value) { alert('Pick a date and time first.'); return; }
+  var dt = new Date(inp.value);
+  if (isNaN(dt.getTime())) { alert('That date/time is not valid.'); return; }
+  if (dt.getTime() <= Date.now()) { alert('Pick a time in the future.'); return; }
+  emailState.composeData = emailState.composeData || {};
+  emailState.composeData.scheduledSend = dt.toISOString();
+  window.__builderCloseScheduleModal();
+  // Persist via the normal save — it forwards scheduledSend to the API.
+  window.__emailComposeSave();
+};
+
 window.__emailComposeSave = async function() {
   var d = emailState.composeData;
   if ($('composeSubject')) d.subject = $('composeSubject').value;
@@ -8818,7 +8970,9 @@ window.__emailComposeSave = async function() {
     var data = await r.json();
     if (!data.success) throw new Error(data.error || 'Save failed');
 
-    showEmailToast('Email saved as Awaiting Approval', 'success');
+    showEmailToast(d.scheduledSend
+      ? ('Scheduled for ' + formatDate(d.scheduledSend) + ' — awaiting approval')
+      : 'Email saved as Awaiting Approval', 'success');
     emailState.composeOpen = false;
     emailState.composeData = {
       subject: '', previewText: '', bodyHTML: '', bodyPlain: '',
@@ -11213,6 +11367,38 @@ window.__emailComposeAiClose = function() {
   if (backdrop) backdrop.remove();
 };
 
+// Bridge the AI composer into the on-canvas builder: take the current AI
+// draft's sections, load them into the builder (fresh ids, internal __
+// keys stripped), carry over the subject/preview/audience, then open the
+// builder so the user can fine-tune each block on the canvas.
+window.__emailComposeAiLoadIntoBuilder = function() {
+  if (!aiCompose.draft || !aiCompose.draft.sections || !aiCompose.draft.sections.length) {
+    if (typeof showEmailToast === 'function') showEmailToast('No draft to load yet.', 'error');
+    return;
+  }
+  var mapped = aiCompose.draft.sections.map(function(s) {
+    var props = {};
+    Object.keys(s.props || {}).forEach(function(k) { if (k.indexOf('__') !== 0) props[k] = s.props[k]; });
+    return { id: genSectionId(), type: s.type, props: props };
+  });
+  emailState.composeData = emailState.composeData || {};
+  if (aiCompose.draft.subject) emailState.composeData.subject = aiCompose.draft.subject;
+  if (aiCompose.draft.previewText) emailState.composeData.previewText = aiCompose.draft.previewText;
+  if (aiCompose.audience) emailState.composeData.audience = aiCompose.audience;
+  if (aiCompose.audienceSegment) emailState.composeData.audienceSegment = aiCompose.audienceSegment;
+  emailState.builderSections = mapped;
+  emailState.builderInitialised = true;
+  emailState.selectedSectionId = mapped[0] ? mapped[0].id : null;
+  emailState.composeOpen = true;
+  emailState.previewHTML = '';
+  // Close the modal directly (skip the discard-confirm — we're keeping it).
+  aiCompose.open = false;
+  var backdrop = document.getElementById('ai-compose-backdrop');
+  if (backdrop) backdrop.remove();
+  drawEmails();
+  if (typeof showEmailToast === 'function') showEmailToast('Draft loaded into the builder', 'success');
+};
+
 async function loadProductsForPicker() {
   if (!state.profile || !state.profile.id) return;
   try {
@@ -11284,6 +11470,7 @@ function renderAiComposeModal() {
     html += '<button class="btn" onclick="window.__emailComposeAiBack()">&larr; Back to brief</button>';
     html += '<div style="display:flex;gap:var(--space-2)">';
     html += '<button class="btn" onclick="window.__emailComposeAiRegenerate()">Generate again</button>';
+    html += '<button class="btn" onclick="window.__emailComposeAiLoadIntoBuilder()" title="Drop this draft onto the canvas to fine-tune it block by block">Edit in builder</button>';
     // Send test — enabled only after Save (we need an emailId to test against).
     // Title hint explains the disabled state to the user.
     var testBtnDisabled = aiCompose.savedEmailId ? '' : ' disabled';

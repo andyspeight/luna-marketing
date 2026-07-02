@@ -3970,7 +3970,7 @@ state.composeDraft=Object.assign({},d.post,{id:d.record_id,image_url:d.image_url
     else if(state.compType==='win')lead='Write a customer win post. [Add the customer’s name and what they achieved here.] The product behind it — ';
     else lead='Write a "why Travelgenix" post focused on '+p.name+'. ';
     var txt=$('promptText');
-    if(txt){txt.value=lead+facts+' Keep it warm, friendly and jargon-free.';txt.focus();}
+    if(txt){txt.value=lead+facts+' Keep it warm, friendly and jargon-free. If any number in the product copy above conflicts with your verified company facts, use the verified facts.';txt.focus();}
   },
   compRenderSparks:function(){
     var area=$('compQuickArea');if(!area)return;

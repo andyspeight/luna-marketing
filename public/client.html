@@ -1874,7 +1874,7 @@ window.addEventListener('tg-auth-ready',async function(){
 function showApp(){$('app').classList.remove('hide');$('clientLabel').textContent=state.profile.trading_name||state.profile.business_name;var isB2B=(state.profile.client_type||'').toLowerCase()==='b2b-saas';if(isB2B){$('dashboardTab').style.display='flex';if($('emailsTab'))$('emailsTab').style.display='flex';if($('contentEngineTab'))$('contentEngineTab').style.display='flex';if(isOwner()&&$('productBrainTab'))$('productBrainTab').style.display='flex';if(isOwner()&&$('promoteTab'))$('promoteTab').style.display='flex';if(isOwner()&&$('campaignsTab'))$('campaignsTab').style.display='flex';document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});$('dashboardTab').classList.add('active');$('view-dashboard').classList.remove('hide');$('view-posts').classList.add('hide');renderDashboard()}else{loadPosts()}loadEventsTicker()}
 
 // Tabs
-document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','promote','campaigns','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar')renderCalendar();if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain();if(v==='promote')renderPromote();if(v==='campaigns')renderCampaigns()};
+document.querySelector('.tabs').onclick=function(e){var t=e.target.closest('.tab');if(!t)return;var v=t.dataset.view;document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});t.classList.add('active');['dashboard','posts','create','events','calendar','emails','content-engine','product-brain','promote','campaigns','platforms','settings'].forEach(function(x){var el=$('view-'+x);if(el){el.classList.toggle('hide',x!==v);if(x===v)el.classList.add('fade-in')}});if(v==='settings')renderSettings();if(v==='calendar'){renderCalendar();loadPosts().then(function(){renderCalendar()});}if(v==='create')renderCreate();if(v==='platforms')renderPlatforms();if(v==='events')renderEventsView();if(v==='posts')loadPosts();if(v==='dashboard')renderDashboard();if(v==='emails')renderEmails();if(v==='content-engine')renderContentEngine();if(v==='product-brain')renderProductBrain();if(v==='promote')renderPromote();if(v==='campaigns')renderCampaigns()};
 
 // Data
 var PLATS=[
@@ -3352,9 +3352,23 @@ async function saveEditedEvent(id){
   }
 }
 function renderCalendar(){
-  var dates=getWeek(state.calOff);var posts=state.allPosts;var totalH=CAL_E-CAL_S;var gh=totalH*CAL_H;
+  var dates=getWeek(state.calOff);var posts=state.allPosts||[];var totalH=CAL_E-CAL_S;var gh=totalH*CAL_H;
   var ml=MONTHS[dates[0].getMonth()];if(dates[0].getMonth()!==dates[6].getMonth())ml=MONTHS[dates[0].getMonth()]+' / '+MONTHS[dates[6].getMonth()];
   var h='<div class="cal-header"><div class="cal-title"><span class="cal-title-month">'+ml+'</span> <span class="cal-title-year">'+dates[0].getFullYear()+'</span></div><div class="cal-nav"><button class="cal-nav-btn" onclick="C.calNav(-1)" aria-label="Previous week">&#8249;</button><button class="cal-today-btn" onclick="C.calNav(0)">Today</button><button class="cal-nav-btn" onclick="C.calNav(1)" aria-label="Next week">&#8250;</button></div></div>';
+  // Visibility banner — the calendar must never look silently empty. Say
+  // how many posts are dated, and when none land in the viewed week, point
+  // at the nearest one so the user knows to navigate rather than assume
+  // their schedule was lost.
+  (function(){
+    var sched=posts.filter(function(p){return p.scheduled_date});
+    var wkIso=dates.map(function(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())});
+    var inWeek=sched.filter(function(p){return wkIso.indexOf(String(p.scheduled_date).slice(0,10))>=0}).length;
+    var note='';
+    if(!posts.length){note='Loading your posts&hellip;';}
+    else if(!sched.length){note='None of your '+posts.length+' posts has a scheduled date yet. Schedule one from Create Post, and it will appear here.';}
+    else if(!inWeek){var ds=sched.map(function(p){return String(p.scheduled_date).slice(0,10)}).sort();note=sched.length+' scheduled post'+(sched.length!==1?'s':'')+' &mdash; none in this week. Nearest: '+esc(ds[0])+' to '+esc(ds[ds.length-1])+'. Use &#8249; &#8250; to navigate.';}
+    if(note)h+='<div style="margin:0 0 10px;padding:9px 14px;background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:8px;font-size:12.5px;color:var(--tg-text-secondary)">'+note+'</div>';
+  })();
   h+='<div class="cal-day-bar"><div class="cal-day-bar-gutter"></div>';
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(dn,i){var td=isToday(dates[i]);h+='<div class="cal-day-hdr'+(td?' today':'')+'"><div class="cal-day-hdr-name">'+dn+'</div><div class="cal-day-hdr-num">'+dates[i].getDate()+'</div></div>'});
   h+='</div><div class="cal-body-scroll" id="calScroll">';
@@ -3932,8 +3946,77 @@ state.composeDraft=Object.assign({},d.post,{id:d.record_id,image_url:d.image_url
   compDiscard:function(){if(!confirm('Discard this draft? It will stay in My Posts as Queued, but this panel will close.'))return;state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';},
   compReset:function(){state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';var t=$('promptText');if(t){t.value='';t.focus();}var fb=$('prompt-fb');if(fb)fb.style.display='none';},
   compToggleSchedule:function(){var s=$('compSchedule');if(!s)return;s.style.display=s.style.display==='none'?'block':'none';},
-  compConfirmSchedule:async function(btn){var p=state.composeDraft;if(!p)return;var dEl=$('compSchedDate'),tEl=$('compSchedTime'),fb=$('compFb');if(!dEl||!dEl.value){fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Pick a date first.';return;}var date=dEl.value,time=(tEl&&tEl.value)||'09:00';btn.disabled=true;btn.textContent='Scheduling…';try{var r=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,scheduledDate:date,scheduledTime:time})});if(!r.ok)throw new Error((await r.json()).error||'Failed');var ar=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});if(!ar.ok)throw new Error((await ar.json()).error||'Approve failed');fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Scheduled</strong> for '+esc(formatDate(date+'T'+time))+'. It’s approved and will go out then. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Confirm schedule';fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Error: '+e.message;}},
-  compPostNow:async function(btn){var p=state.composeDraft;if(!p)return;var fb=$('compFb');btn.disabled=true;btn.textContent='Posting…';fb.style.cssText='display:block;color:var(--tg-text-tertiary)';fb.textContent='Approving and sending to your platforms…';try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:p.id})});var d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');var succ=(d.platforms&&d.platforms.succeeded)||0,fail=(d.platforms&&d.platforms.failed)||0;fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';fb.innerHTML='<strong>Posted</strong> to '+succ+' platform'+(succ!==1?'s':'')+(fail?' &middot; <span style="color:var(--tg-error)">'+fail+' failed</span>':'')+'. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';loadPosts();}catch(e){btn.disabled=false;btn.textContent='Post now';fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error);padding:12px;border-radius:8px';fb.textContent='Couldn’t post: '+e.message+'. You can still find this draft in My Posts.';}},
+  // Schedule = set the exact day/time on OUR record, approve, then hand it
+  // to Metricool immediately — Metricool holds it in its queue and posts at
+  // that time. One set of date fields drives BOTH calendars, so what you
+  // see here matches what Metricool shows.
+  compConfirmSchedule:async function(btn){
+    var p=state.composeDraft;if(!p)return;
+    var dEl=$('compSchedDate'),tEl=$('compSchedTime'),fb=$('compFb');
+    if(!dEl||!dEl.value){fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Pick a date first.';return;}
+    var date=dEl.value,time=(tEl&&tEl.value)||'09:00';
+    btn.disabled=true;btn.textContent='Scheduling…';
+    try{
+      var r=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,scheduledDate:date,scheduledTime:time})});
+      if(!r.ok)throw new Error((await r.json()).error||'Failed');
+      var ar=await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});
+      if(!ar.ok)throw new Error((await ar.json()).error||'Approve failed');
+      // Queue it in Metricool at the chosen time. If this step fails the
+      // post stays approved + dated — say so honestly instead of pretending.
+      var pubOk=false,succ=0,fail=0,pubErr='';
+      try{
+        var pr=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:p.id})});
+        var pd=await pr.json();
+        if(pr.ok&&pd.success){pubOk=true;succ=(pd.platforms&&pd.platforms.succeeded)||0;fail=(pd.platforms&&pd.platforms.failed)||0;}
+        else pubErr=pd.error||('HTTP '+pr.status);
+      }catch(pe){pubErr=pe.message;}
+      fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';
+      if(pubOk){
+        fb.innerHTML='<strong>Scheduled</strong> for '+esc(formatDate(date+'T'+time))+' — queued in Metricool for '+succ+' platform'+(succ!==1?'s':'')+(fail?' (<span style="color:var(--tg-error)">'+fail+' failed</span>)':'')+'. It will show on this Calendar and Metricool’s. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';
+      }else{
+        fb.innerHTML='<strong>Scheduled</strong> for '+esc(formatDate(date+'T'+time))+' and approved, but queueing in Metricool failed ('+esc(pubErr)+'). Use <b>Publish now</b> on it in My Posts &rarr; Approved to retry. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';
+      }
+      var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');
+      if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';
+      loadPosts().then(function(){
+        var fresh=(state.allPosts||[]).find(function(x){return x.id===p.id});
+        if(fresh&&!fresh.scheduled_date){fb.innerHTML+='<div style="color:var(--tg-error);margin-top:6px">Heads up: the date didn’t persist to the queue (the &quot;Scheduled Date&quot; field may be missing in the database) — the calendar won’t show it. Tell Claude.</div>';}
+      });
+    }catch(e){
+      btn.disabled=false;btn.textContent='Confirm schedule';
+      fb.style.cssText='display:block;color:var(--tg-error)';fb.textContent='Error: '+e.message;
+    }
+  },
+  // Post now = stamp today's date and a time a few minutes from now onto
+  // the record, approve, and publish — so Metricool posts it at the next
+  // possible moment (rather than its silent "tomorrow morning" default)
+  // and our Calendar shows exactly the same slot.
+  compPostNow:async function(btn){
+    var p=state.composeDraft;if(!p)return;var fb=$('compFb');
+    btn.disabled=true;btn.textContent='Posting…';
+    fb.style.cssText='display:block;color:var(--tg-text-tertiary)';fb.textContent='Approving and sending to your platforms…';
+    try{
+      var now=new Date();
+      now.setMinutes(now.getMinutes()+10);
+      var date=now.getFullYear()+'-'+pad2(now.getMonth()+1)+'-'+pad2(now.getDate());
+      var time=pad2(now.getHours())+':'+pad2(now.getMinutes());
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,scheduledDate:date,scheduledTime:time})});
+      await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId:p.id,action:'approve'})});
+      var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_post',postId:p.id})});
+      var d=await r.json();
+      if(!r.ok||!d.success)throw new Error(d.error||'Publish failed');
+      var succ=(d.platforms&&d.platforms.succeeded)||0,fail=(d.platforms&&d.platforms.failed)||0;
+      fb.style.cssText='display:block;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);color:var(--tg-success);padding:12px;border-radius:8px';
+      fb.innerHTML='<strong>Posted</strong> to '+succ+' platform'+(succ!==1?'s':'')+(fail?' &middot; <span style="color:var(--tg-error)">'+fail+' failed</span>':'')+' — going live from ~'+esc(time)+' today via Metricool. <a href="#" onclick="C.compReset();return false" style="color:var(--tg-accent-dark);font-weight:600">Create another</a>';
+      var body=$('compBody'),bar=$('compBar'),sch=$('compSchedule');
+      if(body)body.style.opacity='0.5';if(bar)bar.style.display='none';if(sch)sch.style.display='none';
+      loadPosts();
+    }catch(e){
+      btn.disabled=false;btn.textContent='Post now';
+      fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error);padding:12px;border-radius:8px';
+      fb.textContent='Couldn’t post: '+e.message+'. You can still find this draft in My Posts.';
+    }
+  },
   // ── Composer quick-starts: product-backed angles + industry sparks ──
   compSetType:function(key){
     state.compType=state.compType===key?null:key;

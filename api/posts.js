@@ -7,19 +7,33 @@ async function listPosts(status) {
   if (status) {
     formula = "&filterByFormula={Status}='" + status + "'";
   }
-  var url =
+  var base =
     "https://api.airtable.com/v0/" +
     AIRTABLE_BASE +
     "/" +
     QUEUE_TABLE +
-    "?sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc" +
+    "?pageSize=100&sort%5B0%5D%5Bfield%5D=Scheduled%20Date&sort%5B0%5D%5Bdirection%5D=asc" +
     formula;
-  var res = await fetch(url, {
-    headers: { Authorization: "Bearer " + AIRTABLE_KEY },
-  });
-  if (!res.ok) throw new Error("Failed to fetch posts: " + res.statusText);
-  var data = await res.json();
-  return data.records || [];
+  // Airtable returns at most 100 records per request. This previously did a
+  // single fetch, so once the table grew past 100 rows anything sorting late
+  // (ascending by Scheduled Date puts NEWLY SCHEDULED, future-dated posts
+  // LAST) silently vanished from the app — scheduled posts disappeared from
+  // the Calendar and My Posts. Follow the offset cursor until exhausted.
+  var records = [];
+  var offset = null;
+  var pages = 0;
+  do {
+    var url = base + (offset ? "&offset=" + encodeURIComponent(offset) : "");
+    var res = await fetch(url, {
+      headers: { Authorization: "Bearer " + AIRTABLE_KEY },
+    });
+    if (!res.ok) throw new Error("Failed to fetch posts: " + res.statusText);
+    var data = await res.json();
+    records = records.concat(data.records || []);
+    offset = data.offset || null;
+    pages++;
+  } while (offset && pages < 30); // 3000-record safety cap
+  return records;
 }
 
 async function updatePost(recordId, fields) {

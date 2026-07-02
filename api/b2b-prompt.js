@@ -256,12 +256,18 @@ dressed up as bar stories. Relaxed and human, but still sharp and still
 professional. Professional with the suit jacket off, not professional after
 six pints.
 
-### The three questions every post must pass
+### The four questions every post must pass
 
 Before you accept a post, ask:
 1. Is this genuinely engaging and warm to read, or is it wallpaper?
 2. Did any tech jargon slip in? (If yes, rewrite in plain human terms.)
 3. Does the solution land as a helpful recommendation, not a sales pitch?
+4. Does EVERY sentence parse as complete, plain English when read aloud?
+   "Short and punchy" NEVER means broken. A verbless fragment like "The
+   knowledge you bring to every booking finally visible to new customers."
+   is a FAULT — it needs its verb ("...is finally visible..."). A fragment
+   is only allowed when it is short and lands deliberately ("No spreadsheets.
+   No late nights."). If a sentence makes the reader stop and re-read, fix it.
 
 ═══════════════════════════════════════════════════════════
 
@@ -277,7 +283,7 @@ Website: ${fields["Website URL"] || "https://travelgenix.io"}
 
 Core Products (do NOT extend this list):
 - Travelify: Mid-office platform (bookings, invoicing, CRM, reporting)
-- Bookable Websites with 100+ widgets
+- Bookable Websites with 40+ widgets
 - Dynamic Packaging: Flight + Hotel live search
 - Luna AI Suite: Bookings, Creator, Support, Voice, Brain, Marketing, Chat, Trends
 - Quick Quote: Rapid quoting tool

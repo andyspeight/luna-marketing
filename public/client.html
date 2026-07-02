@@ -3367,6 +3367,11 @@ function renderCalendar(){
     if(!posts.length){note='Loading your posts&hellip;';}
     else if(!sched.length){note='None of your '+posts.length+' posts has a scheduled date yet. Schedule one from Create Post, and it will appear here.';}
     else if(!inWeek){var ds=sched.map(function(p){return String(p.scheduled_date).slice(0,10)}).sort();note=sched.length+' scheduled post'+(sched.length!==1?'s':'')+' &mdash; none in this week. Nearest: '+esc(ds[0])+' to '+esc(ds[ds.length-1])+'. Use &#8249; &#8250; to navigate.';}
+    // Published/approved posts with NO recorded date (sent before the
+    // timing fix) exist in Metricool but can't be placed on this grid —
+    // say so rather than letting them look lost.
+    var undated=posts.filter(function(p){return !p.scheduled_date&&(p.status==='Published'||p.status==='Approved')}).length;
+    if(undated){note+=(note?'<br>':'')+undated+' published/approved post'+(undated!==1?'s':'')+' ha'+(undated!==1?'ve':'s')+' no recorded date (sent before the scheduling fix) &mdash; they exist in My Posts and Metricool but can&rsquo;t be placed on this calendar.';}
     if(note)h+='<div style="margin:0 0 10px;padding:9px 14px;background:var(--tg-bg-secondary);border:1px solid var(--tg-border);border-radius:8px;font-size:12.5px;color:var(--tg-text-secondary)">'+note+'</div>';
   })();
   h+='<div class="cal-day-bar"><div class="cal-day-bar-gutter"></div>';

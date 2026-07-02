@@ -139,17 +139,19 @@ async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
     return connectedPlatforms.indexOf(p.network) !== -1;
   });
 
-  // Build dateTime
+  // Build dateTime. When the record has no Scheduled Date, Metricool gets
+  // tomorrow at the record's time — we RETURN the slot we used so the
+  // caller can write it back to the record; otherwise the app's calendar
+  // has no date to place the post on and it silently never appears.
   var schedDate = f["Scheduled Date"];
   var schedTime = f["Scheduled Time"] || "10:00";
-  var dateTime;
-  if (schedDate) {
-    dateTime = schedDate + "T" + schedTime + ":00";
-  } else {
+  var usedDate = schedDate;
+  if (!usedDate) {
     var tmrw = new Date();
     tmrw.setDate(tmrw.getDate() + 1);
-    dateTime = tmrw.getFullYear() + "-" + String(tmrw.getMonth() + 1).padStart(2, "0") + "-" + String(tmrw.getDate()).padStart(2, "0") + "T" + schedTime + ":00";
+    usedDate = tmrw.getFullYear() + "-" + String(tmrw.getMonth() + 1).padStart(2, "0") + "-" + String(tmrw.getDate()).padStart(2, "0");
   }
+  var dateTime = usedDate + "T" + schedTime + ":00";
 
   var results = [];
   for (var i = 0; i < activePlatforms.length; i++) {
@@ -170,7 +172,7 @@ async function schedulePost(blogId, post, imageUrl, connectedPlatforms) {
       results.push({ network: plat.network, status: 0, ok: false, response: e.message });
     }
   }
-  return results;
+  return { results: results, usedDate: usedDate, usedTime: schedTime, hadDate: !!schedDate };
 }
 
 /* ── Handler ── */
@@ -257,7 +259,8 @@ module.exports = async function handler(req, res) {
       var imgUrl = post.fields["Image URL"] || "";
 
       // Schedule across target platforms
-      var results = await schedulePost(target.blogId, post, imgUrl || null, publishNetworks);
+      var sched = await schedulePost(target.blogId, post, imgUrl || null, publishNetworks);
+      var results = sched.results;
       var succeeded = results.filter(function(r) { return r.ok; });
       var failed = results.filter(function(r) { return !r.ok; });
 
@@ -282,12 +285,21 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      await atPatch(QUEUE, postId, { Status: "Published" });
+      // Mark Published — and if the record had no Scheduled Date, write back
+      // the slot Metricool was actually given so the app's calendar can
+      // place the post (previously it stayed dateless and never appeared).
+      var pubPatch = { Status: "Published" };
+      if (!sched.hadDate) {
+        pubPatch["Scheduled Date"] = sched.usedDate;
+        pubPatch["Scheduled Time"] = sched.usedTime;
+      }
+      await atPatch(QUEUE, postId, pubPatch);
 
       return res.status(200).json({
         success: true, postId: postId,
         targetChannel: target.targetChannel || "all",
         blogId: target.blogId,
+        scheduledFor: sched.usedDate + " " + sched.usedTime,
         platforms: { total: results.length, succeeded: succeeded.length, failed: failed.length },
         results: results,
         imageUrl: imgUrl || null
@@ -334,14 +346,22 @@ module.exports = async function handler(req, res) {
           if (!publishNets.length) { errors.push({ postId: p.id, error: "No platforms" }); continue; }
 
           var postImgUrl = p.fields["Image URL"] || null;
-          var rs = await schedulePost(target.blogId, p, postImgUrl, publishNets);
+          var schedB = await schedulePost(target.blogId, p, postImgUrl, publishNets);
+          var rs = schedB.results;
           var okCount = rs.filter(function(r){ return r.ok; }).length;
           if (okCount === 0) {
             var why = rs.map(function(r){ return r.network + ": " + r.status + " " + (r.response || "").slice(0, 150); }).join(" | ");
             try { await atPatch(QUEUE, p.id, { "Error Log": ("Metricool publish failed — " + why).slice(0, 50000) }); } catch (e) {}
             errors.push({ postId: p.id, error: "Metricool rejected: " + why.slice(0, 200) });
           } else {
-            await atPatch(QUEUE, p.id, { Status: "Published" });
+            // Write back the slot Metricool was given when the record had
+            // no date, so the calendar can place the post.
+            var bp = { Status: "Published" };
+            if (!schedB.hadDate) {
+              bp["Scheduled Date"] = schedB.usedDate;
+              bp["Scheduled Time"] = schedB.usedTime;
+            }
+            await atPatch(QUEUE, p.id, bp);
             published++;
           }
           if (i < clientPosts.length - 1) await new Promise(function(r) { setTimeout(r, 2000); });

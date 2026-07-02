@@ -3816,7 +3816,7 @@ window.C={
         outputContext:'social'
       })});
       var d=await r.json();
-      if(!r.ok||!d.ok)throw new Error(d.error||('Generation failed for '+b.bucket));
+      if(!r.ok||!d.ok)throw new Error(b.bucket+': '+(d.error||'generation failed'));
       // Persist this bucket's URL to its Airtable field
       var patchBody={recordId:pid};
       patchBody[b.patch]=d.pngUrl;
@@ -3838,7 +3838,7 @@ window.C={
     if(succeeded.length===0){
       state.postImage[pid].error=(failed[0]&&failed[0].reason&&failed[0].reason.message)||'Generation failed';
     }else if(failed.length){
-      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' image variants failed — others succeeded';
+      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' image variants failed ('+failed.map(function(x){return (x.reason&&x.reason.message)||'unknown'}).join('; ').slice(0,160)+') — others succeeded';
     }else{
       state.postImage[pid].error=null;
     }
@@ -3877,7 +3877,7 @@ window.C={
         outputContext:'social'
       })});
       var d=await r.json();
-      if(!r.ok||!d.url)throw new Error(d.error||('Photo generation failed for '+b.bucket));
+      if(!r.ok||!d.url)throw new Error(b.bucket+': '+(d.error||'photo generation failed'));
       var patchBody={recordId:pid};
       patchBody[b.patch]=d.url;
       await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patchBody)});
@@ -3897,7 +3897,7 @@ window.C={
     if(succeeded.length===0){
       state.postImage[pid].error=(failed[0]&&failed[0].reason&&failed[0].reason.message)||'Photo generation failed';
     }else if(failed.length){
-      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' photo variants failed — others succeeded';
+      state.postImage[pid].error=failed.length+' of '+BUCKETS.length+' photo variants failed ('+failed.map(function(x){return (x.reason&&x.reason.message)||'unknown'}).join('; ').slice(0,160)+') — others succeeded';
     }else{
       state.postImage[pid].error=null;
     }

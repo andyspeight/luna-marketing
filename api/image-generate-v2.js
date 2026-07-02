@@ -57,7 +57,7 @@ const VALID_SECTION_TYPES = [
   "destination-spotlight", "other"
 ];
 const VALID_SLOTS = [
-  "hero", "hero-square", "hero-tall", "feature-story",
+  "hero", "hero-square", "hero-tall", "hero-wide", "feature-story",
   "card", "card-square", "thumbnail", "banner", "wide"
 ];
 const VALID_SOURCES = ["composer", "lab", "manual", "api"];

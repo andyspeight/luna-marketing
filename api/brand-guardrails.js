@@ -184,7 +184,9 @@ These are FACTS you can use safely. Do not invent additional facts.
 - Core platform: Travelify (mid-office)
 - AI suite: Luna (Brain, Chat, Marketing, Trends, Bookings, Creator,
   Support, Voice)
-- Widget Suite: 40 widgets (do NOT inflate the number)
+- 100+ widgets in the platform's library overall
+- Widget Suite (NEW launch): 40 brand-new widgets joining that library —
+  never attribute "100+" to the new suite, never call the platform total 40
 - Bookable websites
 - Premium suppliers via direct API: RateHawk, WebBeds, Hotelbeds, Jet2
   Holidays, TUI, AERTiCKET, Gold Medal, Faremine, Etihad Holidays,

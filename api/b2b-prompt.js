@@ -283,8 +283,11 @@ Website: ${fields["Website URL"] || "https://travelgenix.io"}
 
 Core Products (do NOT extend this list):
 - Travelify: Mid-office platform (bookings, invoicing, CRM, reporting)
-- Bookable Websites
-- Widget Suite: 40 widgets (say "40 widgets" or "the Widget Suite" — do NOT inflate the number)
+- Bookable Websites with a library of 100+ widgets
+- Widget Suite (NEW launch): 40 brand-new widgets joining that library.
+  Get the referent right: the platform has 100+ widgets in total; the NEW
+  Widget Suite launch adds 40 new ones. Never attribute "100+" to the new
+  suite, and never describe the platform total as 40.
 - Dynamic Packaging: Flight + Hotel live search
 - Luna AI Suite: Bookings, Creator, Support, Voice, Brain, Marketing, Chat, Trends
 - Quick Quote: Rapid quoting tool

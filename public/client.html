@@ -12683,7 +12683,7 @@ function aspectRatioForSlot(slot) {
   switch (slot) {
     case 'hero':           return '16:9';  // 1200x630 (1.905:1) → nearest 16:9
     case 'hero-square':    return '1:1';
-    case 'hero-tall':      return '2:3';   // 1200x1500 portrait
+    case 'hero-tall':      return '2:3';   // 1000x1500 portrait (true 2:3)
     case 'hero-wide':      return '16:9';  // 1200x675 — exact 16:9
     case 'feature-story':  return '3:2';   // 1200x500 closest to 3:2
     case 'card':           return '3:2';
@@ -13874,7 +13874,7 @@ var V2_SECTION_TYPES = [
 var V2_SLOTS = [
   { value: 'hero',          label: 'Hero (1200 \u00d7 630) 1.91:1' },
   { value: 'hero-square',   label: 'Hero square (1200 \u00d7 1200) 1:1' },
-  { value: 'hero-tall',     label: 'Hero tall (1200 \u00d7 1500) 2:3' },
+  { value: 'hero-tall',     label: 'Hero tall (1000 \u00d7 1500) 2:3' },
   { value: 'hero-wide',     label: 'Hero wide (1200 \u00d7 675) 16:9' },
   { value: 'feature-story', label: 'Feature story (1200 \u00d7 500)' },
   { value: 'card',          label: 'Card (600 \u00d7 400)' },

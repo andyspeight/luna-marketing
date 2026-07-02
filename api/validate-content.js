@@ -357,23 +357,18 @@ function checkStaleYear(text, opts = {}) {
 // ─────────────────────────────────────────────────
 // CHECK: KNOWN FALSE PRODUCT CLAIMS
 // ─────────────────────────────────────────────────
-// Facts the founder has corrected keep leaking back in via stale copy
-// (old product records, cached drafts) even after the prompt fact sheets
-// were fixed. This is a hard tripwire for claims we KNOW the true value
-// of, so a wrong number can never reach the queue as publishable.
-// Today's list: the Widget Suite has EXACTLY 40 widgets — any other
-// count, or an inflating qualifier ("40+", "over 40"), is false.
+// Widget facts (founder-confirmed): the platform's widget LIBRARY has
+// 100+ widgets in total; the NEW Widget Suite launch adds 40 brand-new
+// widgets. Both numbers are true — the observed failure mode is mixing
+// the referents up. This tripwire catches the specific wrong attribution
+// seen in live drafts: crediting the (40-widget) Widget Suite with the
+// platform-total "100+" in the same sentence.
 function checkKnownFalseClaims(text) {
   const matches = [];
-  const widgetClaim = /\b(over|more than|nearly|almost|some)?\s*(\d+)\s*(\+)?\s*(?:[a-z][a-z-]*\s+){0,2}widgets\b/gi;
+  const suiteInflated = /widget suite[^.!?\n]{0,80}?\b100\+?\s*(?:[a-z][a-z-]*\s+){0,2}widgets|(?:\b100\+?\s*(?:[a-z][a-z-]*\s+){0,2}widgets)[^.!?\n]{0,80}?widget suite/gi;
   let m;
-  while ((m = widgetClaim.exec(text)) !== null) {
-    const qualifier = (m[1] || "").toLowerCase();
-    const n = parseInt(m[2], 10);
-    const plus = !!m[3];
-    if (n !== 40 || plus || qualifier) {
-      matches.push(`"${m[0].trim()}" (the Widget Suite has exactly 40 widgets)`);
-    }
+  while ((m = suiteInflated.exec(text)) !== null) {
+    matches.push(`"${m[0].trim().slice(0, 90)}" (the NEW Widget Suite has 40 widgets; 100+ is the platform's full library)`);
   }
   return matches.length > 0 ? { matches } : null;
 }

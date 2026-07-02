@@ -2295,7 +2295,12 @@ window.__composeSyncImages=function(pid){
   if(!p||p.id!==pid)return;
   var src=(state.posts||[]).find(function(x){return x.id===pid})||(state.allPosts||[]).find(function(x){return x.id===pid});
   if(src){['image_url','image_url_landscape','image_url_square','image_url_wide','image_url_portrait'].forEach(function(k){if(src[k])p[k]=src[k];});}
-  if(document.getElementById('composeCard'))renderComposeDraft();
+  if(!document.getElementById('composeCard'))return;
+  // Never re-render over an OPEN caption editor — that destroys the user's
+  // unsaved edit mid-typing (image generation finishing was doing exactly
+  // that). Defer; compSaveCap/compCancelCap flush the pending render.
+  if(document.querySelector('#composeCard .cap-edit')){window.__compPendingRender=true;return;}
+  renderComposeDraft();
 };
 
 // Render the inline draft returned by /api/prompt-post: per-platform captions
@@ -2326,7 +2331,10 @@ function renderComposeDraft(){
     if(img)h+='<img class="post-img" src="'+img+'" style="aspect-ratio:'+pl.ratio+';object-fit:cover" alt="Post image">';
     else h+='<div style="aspect-ratio:'+pl.ratio+';display:flex;align-items:center;justify-content:center;background:var(--tg-bg-tertiary);color:var(--tg-text-tertiary);font-size:12px">No image yet &mdash; use &ldquo;Generate product image&rdquo; below</div>';
     h+='<div class="post-body"><div class="post-caption" id="comp-cap-'+pl.key+'" onclick="C.compEditCap(\''+pl.key+'\')" title="Click to edit">'+esc(cap)+'</div></div>';
-    h+='<div class="plat-footer">'+pl.actions+'</div>';
+    // The platform action row (Like/Comment/Share, Pinterest's red Save…)
+    // is preview furniture — make it visibly inert so it can't be mistaken
+    // for the editor's own Save button.
+    h+='<div class="plat-footer" style="pointer-events:none;opacity:.45" aria-hidden="true">'+pl.actions+'</div>';
     h+='</div>';
     h+='<div style="text-align:center;font-size:11px;color:var(--tg-text-tertiary);margin-top:8px">Preview of how this will appear on '+pl.name+' &middot; click the text to edit</div>';
     h+='</div>';
@@ -3945,9 +3953,9 @@ window.C={
 state.composeDraft=Object.assign({},d.post,{id:d.record_id,image_url:d.image_url||(d.post&&d.post.image_url)||'',status:d.status,validation:d.validation||null});renderComposeDraft();loadPosts();}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate draft'}},
   // ── Composer: inline draft review + schedule/post, no tab-hopping ──
   compShowPlat:function(btn,key){var wrap=btn.closest('#composeCard');if(!wrap)return;wrap.querySelectorAll('.comp-tab').forEach(function(t){t.classList.remove('active')});btn.classList.add('active');wrap.querySelectorAll('.comp-panel').forEach(function(pn){var on=pn.getAttribute('data-k')===key;pn.classList.toggle('active',on);pn.style.display=on?'block':'none';});},
-  compEditCap:function(key){var p=state.composeDraft;if(!p)return;var el=$('comp-cap-'+key);if(!el||el.querySelector('.cap-edit'))return;var current=p['caption_'+key]||'';el.innerHTML='<textarea class="cap-edit" id="comp-captext-'+key+'" style="min-height:140px">'+esc(current)+'</textarea><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="cap-save" onclick="event.stopPropagation();C.compSaveCap(\''+key+'\')">Save</button><button class="cap-cancel" onclick="event.stopPropagation();C.compCancelCap(\''+key+'\')">Cancel</button></div>';var ta=el.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);ta.onclick=function(ev){ev.stopPropagation()};},
-  compCancelCap:function(key){var p=state.composeDraft;if(!p)return;var el=$('comp-cap-'+key);if(el)el.textContent=p['caption_'+key]||'';},
-  compSaveCap:async function(key){var p=state.composeDraft;if(!p)return;var ta=$('comp-captext-'+key);if(!ta)return;var val=ta.value;p['caption_'+key]=val;var el=$('comp-cap-'+key);if(el)el.textContent=val;var wc=$('comp-wc-'+key);if(wc)wc.textContent=val.split(/\s+/).filter(Boolean).length+' words';if(p.id){var body={recordId:p.id,action:'update_caption'};body[key]=val;try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){}}},
+  compEditCap:function(key){var p=state.composeDraft;if(!p)return;var el=$('comp-cap-'+key);if(!el||el.querySelector('.cap-edit'))return;var current=p['caption_'+key]||'';el.innerHTML='<textarea class="cap-edit" id="comp-captext-'+key+'" style="min-height:140px">'+esc(current)+'</textarea><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2);align-items:center"><button class="btn btn-approve btn-sm" onclick="event.stopPropagation();C.compSaveCap(\''+key+'\')">Save caption</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();C.compCancelCap(\''+key+'\')">Cancel</button><span style="font-size:11px;color:var(--tg-text-tertiary)">(the red/grey icons below are part of the preview)</span></div>';var ta=el.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);ta.onclick=function(ev){ev.stopPropagation()};},
+  compCancelCap:function(key){var p=state.composeDraft;if(!p)return;var el=$('comp-cap-'+key);if(el)el.textContent=p['caption_'+key]||'';if(window.__compPendingRender){window.__compPendingRender=false;renderComposeDraft();}},
+  compSaveCap:async function(key){var p=state.composeDraft;if(!p)return;var ta=$('comp-captext-'+key);if(!ta)return;var val=ta.value;p['caption_'+key]=val;var el=$('comp-cap-'+key);if(el)el.textContent=val;var wc=$('comp-wc-'+key);if(wc)wc.textContent=val.split(/\s+/).filter(Boolean).length+' words';if(window.__compPendingRender){window.__compPendingRender=false;renderComposeDraft();}if(p.id){var body={recordId:p.id,action:'update_caption'};body[key]=val;try{await fetch('/api/posts',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){}}},
   compDiscard:function(){if(!confirm('Discard this draft? It will stay in My Posts as Queued, but this panel will close.'))return;state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';},
   compReset:function(){state.composeDraft=null;var c=$('composeResult');if(c)c.innerHTML='';var ex=$('promptExamples');if(ex)ex.style.display='';var t=$('promptText');if(t){t.value='';t.focus();}var fb=$('prompt-fb');if(fb)fb.style.display='none';},
   compToggleSchedule:function(){var s=$('compSchedule');if(!s)return;s.style.display=s.style.display==='none'?'block':'none';},

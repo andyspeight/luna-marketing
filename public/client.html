@@ -2286,6 +2286,18 @@ function renderCreate(){
 // Programmatically switch top-nav view (reuses the .tabs click handler).
 function goView(v){var t=document.querySelector('.tab[data-view="'+v+'"]');if(t)t.click();}
 
+// Keep the Composer preview in sync with the shared per-post image engine
+// (C.imgGenerate / C.imgPhoto write to state.posts + Airtable and re-render
+// My Posts; if the post being generated is the open Composer draft, mirror
+// the new image URLs into it and refresh the inline preview too).
+window.__composeSyncImages=function(pid){
+  var p=state.composeDraft;
+  if(!p||p.id!==pid)return;
+  var src=(state.posts||[]).find(function(x){return x.id===pid})||(state.allPosts||[]).find(function(x){return x.id===pid});
+  if(src){['image_url','image_url_landscape','image_url_square','image_url_wide','image_url_portrait'].forEach(function(k){if(src[k])p[k]=src[k];});}
+  if(document.getElementById('composeCard'))renderComposeDraft();
+};
+
 // Render the inline draft returned by /api/prompt-post: per-platform captions
 // (editable), image, and one action bar to schedule or post — no tab-hopping.
 function renderComposeDraft(){
@@ -2312,6 +2324,7 @@ function renderComposeDraft(){
     h+='<div class="plat-frame" style="max-width:520px;margin:0 auto">';
     h+='<div class="plat-header" style="background:'+pl.color+'08"><div class="plat-avatar">'+cName.charAt(0)+'</div><div><div class="plat-author">'+cName+'</div><div class="plat-author-sub">'+pl.name+' &middot; Just now</div></div><span class="post-wc" id="comp-wc-'+pl.key+'" style="margin-left:auto">'+wc+' words</span></div>';
     if(img)h+='<img class="post-img" src="'+img+'" style="aspect-ratio:'+pl.ratio+';object-fit:cover" alt="Post image">';
+    else h+='<div style="aspect-ratio:'+pl.ratio+';display:flex;align-items:center;justify-content:center;background:var(--tg-bg-tertiary);color:var(--tg-text-tertiary);font-size:12px">No image yet &mdash; use &ldquo;Generate product image&rdquo; below</div>';
     h+='<div class="post-body"><div class="post-caption" id="comp-cap-'+pl.key+'" onclick="C.compEditCap(\''+pl.key+'\')" title="Click to edit">'+esc(cap)+'</div></div>';
     h+='<div class="plat-footer">'+pl.actions+'</div>';
     h+='</div>';
@@ -2319,6 +2332,23 @@ function renderComposeDraft(){
     h+='</div>';
   });
   h+='</div>';
+  // Image row — reuses the shared per-post image engine. "Generate image"
+  // renders a branded Travelgenix-style graphic per platform ratio (the
+  // Stage-B designs used on the site); "AI photo" is photoreal; both write
+  // to this post's record and the preview refreshes when they finish.
+  if(p.id){
+    var imgSt=state.postImage&&state.postImage[p.id];
+    h+='<div style="padding:10px 16px;border-top:1px solid var(--tg-border);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+    if(imgSt&&imgSt.loading){
+      h+='<span style="font-size:12.5px;color:var(--tg-accent-dark);font-weight:600">Generating '+(imgSt.mode==='photo'?'photoreal images':'branded images')+' for every platform&hellip; '+(imgSt.bucketsDone||0)+'/'+(imgSt.bucketsTotal||4)+' done</span>';
+    }else{
+      h+='<span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tg-text-tertiary)">Image</span>';
+      h+='<button class="btn btn-primary btn-sm" style="font-size:11px;padding:6px 12px" onclick="C.imgGenerate(\''+esc(p.id)+'\')" title="Branded Travelgenix-style graphic, one per platform ratio">Generate product image</button>';
+      h+='<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:6px 10px" onclick="C.imgPhoto(\''+esc(p.id)+'\')" title="Photoreal image, one per platform ratio">AI photo</button>';
+      if(imgSt&&imgSt.error)h+='<span style="font-size:11.5px;color:var(--tg-error)">'+esc(imgSt.error)+'</span>';
+    }
+    h+='</div>';
+  }
   h+='<div id="compBar" style="padding:14px 16px;border-top:1px solid var(--tg-border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
   if(!p.id){
     h+='<div style="color:var(--tg-error);font-size:13px">The draft generated but didn&rsquo;t save to the queue, so it can&rsquo;t be posted from here. Try generating again.</div>';
@@ -3774,6 +3804,7 @@ window.C={
     state.postImage[pid].bucketsTotal=BUCKETS.length;
     state.postImage[pid].bucketsDone=0;
     renderPosts();
+    if(window.__composeSyncImages)window.__composeSyncImages(pid);
     schedulePostImageTickerIfNeeded();
     var results=await Promise.allSettled(BUCKETS.map(async function(b){
       var r=await fetch('/api/image-generate-v2',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -3812,6 +3843,7 @@ window.C={
       state.postImage[pid].error=null;
     }
     renderPosts();
+    if(window.__composeSyncImages)window.__composeSyncImages(pid);
   },
   imgPhoto:async function(pid){
     var post=state.posts.find(function(p){return p.id===pid})||state.allPosts.find(function(p){return p.id===pid});
@@ -3834,6 +3866,7 @@ window.C={
     state.postImage[pid].bucketsTotal=BUCKETS.length;
     state.postImage[pid].bucketsDone=0;
     renderPosts();
+    if(window.__composeSyncImages)window.__composeSyncImages(pid);
     schedulePostImageTickerIfNeeded();
     var results=await Promise.allSettled(BUCKETS.map(async function(b){
       var r=await fetch('/api/replicate-generate',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -3869,6 +3902,7 @@ window.C={
       state.postImage[pid].error=null;
     }
     renderPosts();
+    if(window.__composeSyncImages)window.__composeSyncImages(pid);
   },
   gen:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Generating...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='This may take 30-60 seconds...';try{var r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');var n=d.posts?d.posts.length:0;fb.style.color='var(--tg-success)';fb.textContent=n+' post'+(n!==1?'s':'')+' generated';await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate Posts'}},
   publishAll:async function(btn){var fb=$('genFb');btn.disabled=true;btn.textContent='Publishing...';fb.style.color='var(--tg-text-tertiary)';fb.textContent='Publishing approved posts to Metricool...';try{var r=await fetch('/api/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'publish_client',clientId:state.profile.id})});var d=await r.json();if(!r.ok)throw new Error(d.error||'Failed');fb.style.color='var(--tg-success)';fb.textContent='Published '+d.published+' post'+(d.published!==1?'s':'')+' to Metricool.'+(d.errors&&d.errors.length?' '+d.errors.length+' failed.':'');await loadPosts()}catch(e){fb.style.color='var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Publish All Approved'}},

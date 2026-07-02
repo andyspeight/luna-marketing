@@ -100,7 +100,15 @@ module.exports = async function handler(req, res) {
 
     // Append a single-post override to the system prompt so the model returns
     // ONE object, not an array. Kept short to avoid drowning the guardrails.
-    var singlePostSuffix = "\n\n## SINGLE POST MODE\n\nThis request asks for ONE post, not a weekly batch. The user's specific request is in the user message. Generate exactly ONE post object. Return it as a JSON ARRAY containing that one object — same schema as the weekly batch, just one element. Do NOT return a bare object. The downstream pipeline expects a one-element array.\n";
+    //
+    // MULTI-CHANNEL OVERRIDE: the weekly-batch prompt enforces "one channel,
+    // one caption" because the batch spreads posts across a schedule. A
+    // Composer post is one piece of content the user wants EVERYWHERE, so in
+    // single-post mode we explicitly reverse that rule: write a caption for
+    // every channel, each adapted to that channel's own norms and length
+    // rules, and leave targetChannel empty (so the UI shows all of them and
+    // publish sends each connected platform its own caption).
+    var singlePostSuffix = "\n\n## SINGLE POST MODE\n\nThis request asks for ONE post, not a weekly batch. The user's specific request is in the user message. Generate exactly ONE post object. Return it as a JSON ARRAY containing that one object — same schema as the weekly batch, just one element. Do NOT return a bare object. The downstream pipeline expects a one-element array.\n\nCHANNEL OVERRIDE FOR SINGLE POST MODE — this replaces the 'one channel, one caption' rule for THIS request only: this one post will be published to ALL of the client's connected platforms, so you MUST populate ALL of these caption fields: captionLinkedIn (LinkedIn Company length/style rules apply, plus firstComment), captionFacebook, captionInstagram, captionTwitter, captionPinterest, captionTiktok, captionGBP. Adapt the SAME core message to each channel's norms and length guidance — do not paste the identical text into every field. Set targetChannel to an empty string \"\". Every other rule (voice, anti-fabrication, banned language, lengths) still applies per channel.\n";
 
     var userMessage = "User request: " + String(userPrompt).slice(0, 2000) +
       "\n\nGenerate ONE post matching that request. Return a JSON array containing exactly one post object. " +
@@ -110,7 +118,9 @@ module.exports = async function handler(req, res) {
     var rawText = await callModel({
       systemPrompt: systemPrompt + singlePostSuffix,
       userMessage: userMessage,
-      maxTokens: 2048,
+      // Single-post mode writes a caption for every channel (7 captions,
+      // incl. a 900+ char LinkedIn one) — 2048 tokens truncated that.
+      maxTokens: 4096,
       temperature: 0.7,
     });
 

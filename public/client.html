@@ -2349,14 +2349,25 @@ function renderComposeDraft(){
     }
     h+='</div>';
   }
+  // Quality flags are shown as information, never as a wall: the validator's
+  // findings render in an amber box, but Post now / Schedule stay available —
+  // fix the text right here (captions are editable in the previews above)
+  // and act. Both actions approve the post first, which releases the hold.
+  if(p.id&&isHold){
+    var vRep=(p.validation&&p.validation.report)?String(p.validation.report):'';
+    h+='<div style="margin:12px 16px 0;padding:12px 14px;background:#FFFBEB;border:1px solid #F59E0B;border-radius:8px">';
+    h+='<div style="font-size:12.5px;font-weight:700;color:#92400E;margin-bottom:4px">The quality check flagged this draft</div>';
+    if(vRep)h+='<div style="font-size:12px;color:#92400E;line-height:1.5;white-space:pre-wrap;max-height:130px;overflow-y:auto">'+esc(vRep.slice(0,800))+'</div>';
+    h+='<div style="font-size:12px;color:#92400E;margin-top:6px">Fix the wording right here (click any caption above to edit), then Post or Schedule as normal &mdash; that approves it and clears the hold. Or <a href="#" onclick="goView(\'posts\');return false" style="color:var(--tg-accent-dark);font-weight:600">review it in My Posts</a>.</div>';
+    h+='</div>';
+  }
   h+='<div id="compBar" style="padding:14px 16px;border-top:1px solid var(--tg-border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
   if(!p.id){
     h+='<div style="color:var(--tg-error);font-size:13px">The draft generated but didn&rsquo;t save to the queue, so it can&rsquo;t be posted from here. Try generating again.</div>';
-  }else if(isHold){
-    h+='<div style="color:var(--tg-error);font-size:13px">This draft was flagged by the quality check. <a href="#" onclick="goView(\'posts\');return false" style="color:var(--tg-accent-dark);font-weight:600">Review it in My Posts</a> before posting.</div>';
   }else{
     h+='<button class="btn btn-approve btn-sm" onclick="C.compPostNow(this)">Post now</button>';
     h+='<button class="btn btn-sm" style="background:rgba(0,180,216,0.08);border:1px solid rgba(0,180,216,0.25);color:var(--tg-accent-dark)" onclick="C.compToggleSchedule()">Schedule&hellip;</button>';
+    h+='<span style="font-size:11.5px;color:var(--tg-text-tertiary)">Already saved as a draft in <a href="#" onclick="goView(\'posts\');return false" style="color:var(--tg-accent-dark)">My Posts</a></span>';
     h+='<button class="btn btn-ghost btn-sm" onclick="C.compDiscard()" style="margin-left:auto">Discard</button>';
   }
   h+='</div>';
@@ -3912,7 +3923,7 @@ window.C={
 // The saved record id + chosen image + status come back as siblings of the
 // post object — merge them so the inline actions (edit caption, schedule,
 // post now) can address the Airtable record.
-state.composeDraft=Object.assign({},d.post,{id:d.record_id,image_url:d.image_url||(d.post&&d.post.image_url)||'',status:d.status});renderComposeDraft();loadPosts();}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate draft'}},
+state.composeDraft=Object.assign({},d.post,{id:d.record_id,image_url:d.image_url||(d.post&&d.post.image_url)||'',status:d.status,validation:d.validation||null});renderComposeDraft();loadPosts();}catch(e){fb.style.cssText='display:block;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--tg-error)';fb.textContent='Error: '+e.message}finally{btn.disabled=false;btn.textContent='Generate draft'}},
   // ── Composer: inline draft review + schedule/post, no tab-hopping ──
   compShowPlat:function(btn,key){var wrap=btn.closest('#composeCard');if(!wrap)return;wrap.querySelectorAll('.comp-tab').forEach(function(t){t.classList.remove('active')});btn.classList.add('active');wrap.querySelectorAll('.comp-panel').forEach(function(pn){var on=pn.getAttribute('data-k')===key;pn.classList.toggle('active',on);pn.style.display=on?'block':'none';});},
   compEditCap:function(key){var p=state.composeDraft;if(!p)return;var el=$('comp-cap-'+key);if(!el||el.querySelector('.cap-edit'))return;var current=p['caption_'+key]||'';el.innerHTML='<textarea class="cap-edit" id="comp-captext-'+key+'" style="min-height:140px">'+esc(current)+'</textarea><div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)"><button class="cap-save" onclick="event.stopPropagation();C.compSaveCap(\''+key+'\')">Save</button><button class="cap-cancel" onclick="event.stopPropagation();C.compCancelCap(\''+key+'\')">Cancel</button></div>';var ta=el.querySelector('textarea');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);ta.onclick=function(ev){ev.stopPropagation()};},

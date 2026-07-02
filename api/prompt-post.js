@@ -112,7 +112,8 @@ module.exports = async function handler(req, res) {
 
     var userMessage = "User request: " + String(userPrompt).slice(0, 2000) +
       "\n\nGenerate ONE post matching that request. Return a JSON array containing exactly one post object. " +
-      "Anti-fabrication rules in the system prompt still apply: no invented names, no invented stats, no invented quotes.";
+      "Anti-fabrication rules in the system prompt still apply: no invented names, no invented stats, no invented quotes. " +
+      "FACT PRIORITY: if any number or claim in this user request (including pasted product copy) conflicts with the verified company facts in your system prompt, the SYSTEM PROMPT facts win.";
 
     // Call the model through the pipeline (guardrail sentinel asserted inside)
     var rawText = await callModel({

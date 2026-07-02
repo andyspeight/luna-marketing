@@ -355,6 +355,30 @@ function checkStaleYear(text, opts = {}) {
 }
 
 // ─────────────────────────────────────────────────
+// CHECK: KNOWN FALSE PRODUCT CLAIMS
+// ─────────────────────────────────────────────────
+// Facts the founder has corrected keep leaking back in via stale copy
+// (old product records, cached drafts) even after the prompt fact sheets
+// were fixed. This is a hard tripwire for claims we KNOW the true value
+// of, so a wrong number can never reach the queue as publishable.
+// Today's list: the Widget Suite has EXACTLY 40 widgets — any other
+// count, or an inflating qualifier ("40+", "over 40"), is false.
+function checkKnownFalseClaims(text) {
+  const matches = [];
+  const widgetClaim = /\b(over|more than|nearly|almost|some)?\s*(\d+)\s*(\+)?\s*(?:[a-z][a-z-]*\s+){0,2}widgets\b/gi;
+  let m;
+  while ((m = widgetClaim.exec(text)) !== null) {
+    const qualifier = (m[1] || "").toLowerCase();
+    const n = parseInt(m[2], 10);
+    const plus = !!m[3];
+    if (n !== 40 || plus || qualifier) {
+      matches.push(`"${m[0].trim()}" (the Widget Suite has exactly 40 widgets)`);
+    }
+  }
+  return matches.length > 0 ? { matches } : null;
+}
+
+// ─────────────────────────────────────────────────
 // MAIN VALIDATOR
 // ─────────────────────────────────────────────────
 
@@ -388,6 +412,9 @@ function validateContent(text, opts = {}) {
 
   const partnerships = checkPartnerships(text);
   if (partnerships) issues.push({ severity: "fail", code: "FABRICATED_PARTNERSHIP", detail: `Possible invented partnership: ${partnerships.matches.join(" / ")}` });
+
+  const falseClaims = checkKnownFalseClaims(text);
+  if (falseClaims) issues.push({ severity: "fail", code: "KNOWN_FALSE_CLAIM", detail: `Known-false product claim: ${falseClaims.matches.join(" / ")}` });
 
   const emDashes = checkEmDashes(text);
   if (emDashes) issues.push({ severity: "fail", code: "EM_DASH", detail: `Em/en dashes found (${emDashes.count})` });

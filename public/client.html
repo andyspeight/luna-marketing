@@ -7110,7 +7110,14 @@ function renderField(section, basePath, field, depth) {
         h += '<div class="email-builder-image-preview" style="margin-top:6px"><img src="' + esc(val) + '" alt="Preview" style="max-width:200px;max-height:120px;border-radius:6px;border:1px solid var(--tg-border);display:block;background:var(--tg-bg-secondary)"></div>';
       }
     } else {
-      h += '<input id="' + fid + '" type="' + t + '" value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+      // Link fields (non-image url) render as text with inputmode="url" so the
+      // browser accepts an email address or mailto:/tel: — not just a web URL.
+      // safeUrl() on the backend turns a bare email into a mailto: link.
+      var isLinkField = field.type === 'url';
+      h += '<input id="' + fid + '" type="text"' + (isLinkField ? ' inputmode="url"' : '') + ' value="' + esc(val) + '"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">';
+      if (isLinkField && !field.help) {
+        h += '<div class="email-builder-prop-help" style="font-size:11px;color:var(--tg-text-muted);margin-top:4px;">Web address, or an email to open the reader’s email app — e.g. <code>bookings@travelgenix.io</code>. Also accepts <code>mailto:</code> / <code>tel:</code>.</div>';
+      }
     }
   }
   if (field.help) {

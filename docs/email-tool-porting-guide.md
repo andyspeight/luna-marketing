@@ -13,7 +13,7 @@ otherwise.
 
 ## 1. What the tool is
 
-A section-based email builder. Users assemble an email from ~59 pre-designed
+A section-based email builder. Users assemble an email from ~65 pre-designed
 "sections" (hero, text, CTA, feature list, footer, etc.), edit the text
 directly on a live preview of the email, then save it into an approval queue.
 Approved emails are sent through **Brevo** (ex-Sendinblue) — as a proper
@@ -54,7 +54,7 @@ DB works if you keep the fields in §5.
 | File | Role |
 |---|---|
 | `lib/email-renderer.js` | `renderEmail({sections, unsubUrl, previewText, title, brand, editable})` → `{html, plainText, errors, warnings}`. Builds the full document scaffold (600px table, mobile media queries). |
-| `lib/email-sections/*.js` (~59 files) | One section per file, each exporting `{render(props, brand, editable), schema}`. `schema.fields` drives the editor form. |
+| `lib/email-sections/*.js` (~65 files) | One section per file, each exporting `{render(props, brand, editable), schema}`. `schema.fields` drives the editor form. |
 | `lib/email-sections/_helpers.js` | `escHtml`, `safeUrl`, `safeHex`, `scaleFont` (S→Huge text sizing), `editAttr`/`richAttr`/`richInline` (editor hooks + markdown bold/italic/link). |
 | `lib/email-sections/_outlook-bulletproof.js` | VML bulletproof buttons, image-with-overlay. |
 | `lib/email-brand.js` | Brand tokens (colours, fonts, logo, company block) + `getBrand(clientKit)` for per-client overrides. **Adapt:** replace the Travelgenix defaults with the new project's brand. |

@@ -5496,6 +5496,8 @@ function EB2_STYLES(){ return '<style id="eb2-styles">' + [
 '.eb2-chip:hover{border-color:var(--tg-accent);background:var(--tg-bg-primary);transform:translateY(-1px);box-shadow:var(--shadow-sm)}',
 '.eb2-chip:active{cursor:grabbing}',
 '.eb2-chip span{font-size:10.5px;font-weight:600;color:var(--tg-text-secondary);line-height:1.15}',
+'.eb2-chip{position:relative}',
+'.eb2-chip .eb2-chip-new{position:absolute;top:5px;right:5px;padding:3px 5px;border-radius:999px;background:var(--tg-accent);color:#0F172A;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;line-height:1;pointer-events:none}',
 '.eb2-hint{font-size:11px;color:var(--tg-text-tertiary);line-height:1.5;background:var(--tg-bg-secondary);border:1px dashed var(--tg-border);border-radius:8px;padding:10px;margin-top:10px}',
 '.eb2-stage{flex:1;min-width:0;overflow-y:auto;background:var(--tg-bg-tertiary);background-image:radial-gradient(circle at 1px 1px,rgba(15,23,42,.05) 1px,transparent 0);background-size:22px 22px;display:flex;flex-direction:column;align-items:center;padding:24px 20px 80px}',
 '[data-theme="dark"] .eb2-stage{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.06) 1px,transparent 0)}',
@@ -5601,6 +5603,8 @@ function drawComposeForm() {
   } else {
     h += '<input class="eb2-search" placeholder="Search blocks&hellip;" oninput="window.__builderPaletteFilter(this.value)">';
     h += '<div class="eb2-palette" id="eb2Palette">';
+  // `isNew: true` shows a small "New" badge on the palette chip. Clear the
+  // flags once the blocks have been around a while.
   var addableTypes = [
     { type: 'header', icon: '<rect x="2" y="4" width="20" height="4" rx="1"/>' },
     { type: 'hero', icon: '<rect x="2" y="3" width="20" height="10" rx="1"/><line x1="6" y1="17" x2="18" y2="17"/><line x1="9" y1="20" x2="15" y2="20"/>' },
@@ -5651,13 +5655,21 @@ function drawComposeForm() {
     // palette offers it twice (image left / image right) through presets:
     // `key` is the chip id ("<type>:<preset>", resolved by newSectionFromKey)
     // and `label` overrides the section's meta label on the chip.
-    { type: 'image-text', key: 'image-text:left', label: 'Image left · text', icon: '<rect x="2" y="5" width="9" height="14" rx="1"/><circle cx="5" cy="9" r="1"/><polyline points="11,17 8,13 5,17"/><line x1="14" y1="7" x2="22" y2="7" stroke-width="2.4"/><line x1="14" y1="11" x2="22" y2="11"/><line x1="14" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="19" y2="17"/>' },
-    { type: 'image-text', key: 'image-text:right', label: 'Image right · text', icon: '<rect x="13" y="5" width="9" height="14" rx="1"/><circle cx="16" cy="9" r="1"/><polyline points="22,17 19,13 16,17"/><line x1="2" y1="7" x2="10" y2="7" stroke-width="2.4"/><line x1="2" y1="11" x2="10" y2="11"/><line x1="2" y1="14" x2="9" y2="14"/><line x1="2" y1="17" x2="7" y2="17"/>' },
-    { type: 'button', icon: '<rect x="3" y="8" width="18" height="8" rx="2.5" fill="currentColor" opacity="0.15"/><rect x="3" y="8" width="18" height="8" rx="2.5"/><line x1="8" y1="12" x2="16" y2="12" stroke-width="2.2"/>' },
-    { type: 'spacer', icon: '<line x1="4" y1="5" x2="20" y2="5"/><line x1="4" y1="19" x2="20" y2="19"/><polyline points="9,9.5 12,7 15,9.5"/><polyline points="9,14.5 12,17 15,14.5"/><line x1="12" y1="7" x2="12" y2="17" stroke-dasharray="1.5 2"/>' },
-    { type: 'bullet-list', icon: '<polyline points="3,6.5 4.5,8 7,5"/><line x1="10" y1="6.5" x2="21" y2="6.5"/><polyline points="3,12.5 4.5,14 7,11"/><line x1="10" y1="12.5" x2="21" y2="12.5"/><polyline points="3,18.5 4.5,20 7,17"/><line x1="10" y1="18.5" x2="18" y2="18.5"/>' },
-    { type: 'callout', icon: '<rect x="2" y="5" width="20" height="14" rx="2" fill="currentColor" opacity="0.1"/><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="5" y1="5" x2="5" y2="19" stroke-width="2.4"/><line x1="9" y1="9.5" x2="18" y2="9.5"/><line x1="9" y1="13" x2="19" y2="13"/><line x1="9" y1="16" x2="15" y2="16"/>' },
-    { type: 'signature', icon: '<circle cx="7" cy="9" r="3.2"/><path d="M2.5 19c0-2.8 2-4.6 4.5-4.6S11.5 16.2 11.5 19"/><line x1="14" y1="8" x2="21" y2="8" stroke-width="2.2"/><line x1="14" y1="12" x2="21" y2="12"/><line x1="14" y1="16" x2="19" y2="16"/>' },
+    { type: 'image-text', isNew: true, key: 'image-text:left', label: 'Image left · text', icon: '<rect x="2" y="5" width="9" height="14" rx="1"/><circle cx="5" cy="9" r="1"/><polyline points="11,17 8,13 5,17"/><line x1="14" y1="7" x2="22" y2="7" stroke-width="2.4"/><line x1="14" y1="11" x2="22" y2="11"/><line x1="14" y1="14" x2="21" y2="14"/><line x1="14" y1="17" x2="19" y2="17"/>' },
+    { type: 'image-text', isNew: true, key: 'image-text:right', label: 'Image right · text', icon: '<rect x="13" y="5" width="9" height="14" rx="1"/><circle cx="16" cy="9" r="1"/><polyline points="22,17 19,13 16,17"/><line x1="2" y1="7" x2="10" y2="7" stroke-width="2.4"/><line x1="2" y1="11" x2="10" y2="11"/><line x1="2" y1="14" x2="9" y2="14"/><line x1="2" y1="17" x2="7" y2="17"/>' },
+    { type: 'button', isNew: true, icon: '<rect x="3" y="8" width="18" height="8" rx="2.5" fill="currentColor" opacity="0.15"/><rect x="3" y="8" width="18" height="8" rx="2.5"/><line x1="8" y1="12" x2="16" y2="12" stroke-width="2.2"/>' },
+    { type: 'spacer', isNew: true, icon: '<line x1="4" y1="5" x2="20" y2="5"/><line x1="4" y1="19" x2="20" y2="19"/><polyline points="9,9.5 12,7 15,9.5"/><polyline points="9,14.5 12,17 15,14.5"/><line x1="12" y1="7" x2="12" y2="17" stroke-dasharray="1.5 2"/>' },
+    { type: 'bullet-list', isNew: true, icon: '<polyline points="3,6.5 4.5,8 7,5"/><line x1="10" y1="6.5" x2="21" y2="6.5"/><polyline points="3,12.5 4.5,14 7,11"/><line x1="10" y1="12.5" x2="21" y2="12.5"/><polyline points="3,18.5 4.5,20 7,17"/><line x1="10" y1="18.5" x2="18" y2="18.5"/>' },
+    { type: 'callout', isNew: true, icon: '<rect x="2" y="5" width="20" height="14" rx="2" fill="currentColor" opacity="0.1"/><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="5" y1="5" x2="5" y2="19" stroke-width="2.4"/><line x1="9" y1="9.5" x2="18" y2="9.5"/><line x1="9" y1="13" x2="19" y2="13"/><line x1="9" y1="16" x2="15" y2="16"/>' },
+    { type: 'signature', isNew: true, icon: '<circle cx="7" cy="9" r="3.2"/><path d="M2.5 19c0-2.8 2-4.6 4.5-4.6S11.5 16.2 11.5 19"/><line x1="14" y1="8" x2="21" y2="8" stroke-width="2.2"/><line x1="14" y1="12" x2="21" y2="12"/><line x1="14" y1="16" x2="19" y2="16"/>' },
+
+    // ── B2B SaaS blocks (September 2026) — product & proof ─────────────
+    { type: 'pricing-cards', isNew: true, icon: '<rect x="2" y="5" width="6" height="14" rx="1"/><rect x="9" y="3" width="6" height="16" rx="1" fill="currentColor" opacity="0.2"/><rect x="9" y="3" width="6" height="16" rx="1"/><rect x="16" y="5" width="6" height="14" rx="1"/><line x1="4" y1="9" x2="6" y2="9"/><line x1="11" y1="7" x2="13" y2="7"/><line x1="18" y1="9" x2="20" y2="9"/>' },
+    { type: 'logo-strip', isNew: true, icon: '<circle cx="5" cy="12" r="2.4"/><rect x="9.5" y="9.6" width="5" height="4.8" rx="0.8"/><path d="M19 9.6l2.2 4.8h-4.4z"/><line x1="6" y1="5" x2="18" y2="5" stroke-dasharray="1.5 2"/>' },
+    { type: 'update-list', isNew: true, icon: '<rect x="2" y="4" width="6" height="3.4" rx="1.7" fill="currentColor"/><line x1="10.5" y1="5.7" x2="21" y2="5.7"/><rect x="2" y="10.3" width="6" height="3.4" rx="1.7" fill="currentColor" opacity="0.5"/><line x1="10.5" y1="12" x2="21" y2="12"/><rect x="2" y="16.6" width="6" height="3.4" rx="1.7" fill="currentColor" opacity="0.25"/><line x1="10.5" y1="18.3" x2="18" y2="18.3"/>' },
+    { type: 'customer-story', isNew: true, icon: '<rect x="2" y="3" width="20" height="18" rx="2"/><circle cx="7" cy="8" r="1.8"/><line x1="11" y1="7" x2="18" y2="7"/><line x1="11" y1="9.5" x2="16" y2="9.5"/><line x1="5" y1="14" x2="19" y2="14" stroke-width="2.2"/><line x1="5" y1="17.5" x2="14" y2="17.5"/>' },
+    { type: 'compare-columns', isNew: true, icon: '<rect x="2" y="4" width="9" height="16" rx="1"/><rect x="13" y="4" width="9" height="16" rx="1" fill="currentColor" opacity="0.15"/><rect x="13" y="4" width="9" height="16" rx="1"/><line x1="4.5" y1="9" x2="7.5" y2="12"/><line x1="7.5" y1="9" x2="4.5" y2="12"/><polyline points="15.5,10.5 17,12 20,9"/><line x1="4.5" y1="16" x2="8" y2="16"/><line x1="15.5" y1="16" x2="19.5" y2="16"/>' },
+    { type: 'faq', isNew: true, icon: '<circle cx="5" cy="6" r="2"/><line x1="10" y1="6" x2="21" y2="6" stroke-width="2.2"/><line x1="10" y1="9.5" x2="18" y2="9.5"/><circle cx="5" cy="16" r="2"/><line x1="10" y1="16" x2="21" y2="16" stroke-width="2.2"/><line x1="10" y1="19.5" x2="18" y2="19.5"/>' },
     { type: 'footer-icons', icon: '<circle cx="6" cy="6" r="2.3" fill="currentColor"/><circle cx="12" cy="6" r="2.3" fill="currentColor"/><circle cx="18" cy="6" r="2.3" fill="currentColor"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="20" y2="18" stroke-width="0.8"/><line x1="7" y1="21" x2="17" y2="21" stroke-width="0.8"/>' },
 
     // ── Generated image (Stage C, May 2026) — AI-generated visual block ─
@@ -5695,6 +5707,7 @@ function drawComposeForm() {
     var paletteGroups = [
       { label: 'Basics', types: ['header', 'hero', 'text', 'image', 'image-text:left', 'image-text:right', 'two-column', 'cta', 'button', 'divider', 'spacer'] },
       { label: 'Content', types: ['bullet-list', 'callout', 'signature'] },
+      { label: 'Product & proof', types: ['pricing-cards', 'logo-strip', 'update-list', 'customer-story', 'compare-columns', 'faq'] },
       { label: 'Offers', types: ['offers-hero', 'offers-three-up', 'offers-urgency', 'offers-list', 'offers-two-up', 'offers-editorial'] },
       { label: 'Marketing', types: ['hero-image', 'hero-coloured', 'destination-grid', 'feature-story', 'pull-quote', 'cta-banner', 'story-numbered'] },
       { label: 'Product launch', types: ['hero-dark', 'product-mockup', 'features-section', 'feature-tiles', 'stats-strip', 'testimonial', 'cta-dark'] },
@@ -5719,6 +5732,7 @@ function drawComposeForm() {
         h += '<button class="eb2-chip" draggable="true" data-group="' + esc(g.label) + '" data-label="' + esc(chipLabel) + '" title="Click to add, or drag onto the email to drop it exactly where you want" onclick="window.__builderAddSection(\'' + chipKey + '\')" ondragstart="window.__builderPaletteDragStart(event,\'' + chipKey + '\')" ondragend="window.__builderPaletteDragEnd()">';
         h += '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + t.icon + '</svg>';
         h += '<span>' + esc(chipLabel) + '</span>';
+        if (t.isNew) h += '<span class="eb2-chip-new">New</span>';
         h += '</button>';
       });
     });
@@ -6824,6 +6838,157 @@ var SECTION_META = {
       { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
     ],
   },
+
+  // ════════════════════════════════════════════════════════════════
+  // LEGACY ARTICLE — not in the palette (image-text supersedes it) but
+  // saved emails and the seeded Newsletter template still use it, so the
+  // inspector needs its fields. Mirrors lib/email-sections/article.js.
+  // ════════════════════════════════════════════════════════════════
+  'article': {
+    label: 'Article (legacy)',
+    description: 'Older article row: headline, body, read-more link and an image left or right. For new emails use Image + text.',
+    fields: [
+      { key: 'imageUrl', label: 'Image URL', type: 'url' },
+      { key: 'imageAlt', label: 'Image alt text', type: 'text', maxLength: 120 },
+      { key: 'imagePosition', label: 'Image position', type: 'select', options: ['left', 'right'] },
+      { key: 'headline', label: 'Headline', type: 'text', maxLength: 100 },
+      { key: 'body', label: 'Body', type: 'longText', maxLength: 1200 },
+      { key: 'linkText', label: 'Link text', type: 'text', maxLength: 40 },
+      { key: 'linkUrl', label: 'Link URL', type: 'url' },
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  // B2B SAAS BLOCKS (September 2026). Mirrors of the server schemas in
+  // lib/email-sections/{pricing-cards,logo-strip,update-list,
+  // customer-story,compare-columns,faq}.js — keep in lockstep.
+  // ════════════════════════════════════════════════════════════════
+  'pricing-cards': {
+    label: 'Pricing cards',
+    description: 'Two or three plan cards side by side: name, price, period, note, tick list and CTA. Tick "Recommended plan" on one for the navy highlight.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40 },
+      { key: 'title', label: 'Section title', type: 'text', maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'lede', label: 'Lede (optional)', type: 'text', maxLength: 200 },
+      { key: 'plans', label: 'Plans (up to 3)', type: 'array', required: true, max: 3, itemLabel: 'plan', itemFields: [
+        { key: 'name', label: 'Plan name', type: 'text', required: true, maxLength: 30 },
+        { key: 'price', label: 'Price (e.g. £229)', type: 'text', maxLength: 20 },
+        { key: 'period', label: 'Period (e.g. /month)', type: 'text', maxLength: 20 },
+        { key: 'note', label: 'Note (e.g. £2,995 setup)', type: 'text', maxLength: 60 },
+        { key: 'features', label: "What's included (one per line)", type: 'longText', maxLength: 600 },
+        { key: 'cta_text', label: 'Button text', type: 'text', maxLength: 30 },
+        { key: 'cta_url', label: 'Button link', type: 'url' },
+        { key: 'highlight', label: 'Recommended plan', type: 'boolean', checkboxLabel: 'Highlight this plan (navy card with badge)' },
+        { key: 'badge', label: 'Badge text', type: 'text', maxLength: 20, default: 'Most popular' },
+      ]},
+      { key: 'heading_colour', label: 'Title colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
+      { key: 'cta_colour', label: 'Button colour', type: 'colour', defaultPreview: '#00B4D8', help: 'Leave empty to keep the default.' },
+      { key: 'cta_text_colour', label: 'Button text colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
+    ],
+  },
+  'logo-strip': {
+    label: 'Logo strip',
+    description: 'A row of up to six logos under a small label: "Trusted by", "Works with", "Suppliers on the platform".',
+    fields: [
+      { key: 'label', label: 'Label (e.g. "Trusted by")', type: 'text', maxLength: 40, default: 'Trusted by' },
+      { key: 'logos', label: 'Logos (up to 6)', type: 'array', required: true, max: 6, itemLabel: 'logo', itemFields: [
+        { key: 'image_url', label: 'Logo image URL', type: 'url', required: true },
+        { key: 'alt', label: 'Company name (alt text)', type: 'text', maxLength: 60 },
+        { key: 'link_url', label: 'Link URL (optional)', type: 'url' },
+      ]},
+      { key: 'size', label: 'Logo size', type: 'select', options: ['small', 'medium', 'large'] },
+      { key: 'label_colour', label: 'Label colour', type: 'colour', defaultPreview: '#94A3B8', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
+    ],
+  },
+  'update-list': {
+    label: "What's new (updates)",
+    description: 'Product update / changelog list. Each item has a tag (new, improved, fixed, coming soon), a title, a one-liner and an optional link.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40, default: "What's new" },
+      { key: 'title', label: 'Section title', type: 'text', maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'intro', label: 'Intro line (optional)', type: 'text', maxLength: 200 },
+      { key: 'items', label: 'Updates', type: 'array', required: true, itemLabel: 'update', itemFields: [
+        { key: 'tag', label: 'Tag', type: 'select', options: ['new', 'improved', 'fixed', 'coming-soon'] },
+        { key: 'title', label: 'Update title', type: 'text', required: true, maxLength: 80 },
+        { key: 'text', label: 'One-line description', type: 'longText', maxLength: 240 },
+        { key: 'link_text', label: 'Link text (optional)', type: 'text', maxLength: 30 },
+        { key: 'link_url', label: 'Link URL', type: 'url' },
+      ]},
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
+    ],
+  },
+  'customer-story': {
+    label: 'Customer story',
+    description: 'A case-study card: customer name and meta, the result as a headline, an optional quote with attribution, up to three proof numbers and a link.',
+    fields: [
+      { key: 'eyebrow', label: 'Eyebrow label', type: 'text', maxLength: 40, default: 'Customer story' },
+      { key: 'client_name', label: 'Customer / company name', type: 'text', required: true, maxLength: 80 },
+      { key: 'client_meta', label: 'Meta line (e.g. "Independent agency, Bournemouth")', type: 'text', maxLength: 80 },
+      { key: 'logo_url', label: 'Logo or photo URL (optional, 44px square)', type: 'url' },
+      { key: 'headline', label: 'The result in one line', type: 'text', maxLength: 120 },
+      { key: 'headline_size', label: 'Headline text size', type: 'fontSize' },
+      { key: 'quote', label: 'Quote (optional)', type: 'longText', maxLength: 400 },
+      { key: 'attribution_name', label: 'Quote attribution: name', type: 'text', maxLength: 60 },
+      { key: 'attribution_role', label: 'Quote attribution: role', type: 'text', maxLength: 80 },
+      { key: 'stats', label: 'Proof numbers (up to 3)', type: 'array', max: 3, itemLabel: 'stat', itemFields: [
+        { key: 'number', label: 'Number (e.g. 3x, 40%, £12k)', type: 'text', required: true, maxLength: 12 },
+        { key: 'label', label: 'Label', type: 'text', maxLength: 60 },
+      ]},
+      { key: 'link_text', label: 'Link text (optional)', type: 'text', maxLength: 40 },
+      { key: 'link_url', label: 'Link URL', type: 'url' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Card tint colour', type: 'colour', defaultPreview: '#F8FAFC', placeholder: 'Leave empty for light grey' },
+    ],
+  },
+  'compare-columns': {
+    label: 'Before / after columns',
+    description: "Two contrasting columns: the reader's situation today (cross markers) beside life with the product (tick markers, highlighted). Never name a competitor.",
+    fields: [
+      { key: 'title', label: 'Section title (optional)', type: 'text', maxLength: 80 },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'intro', label: 'Intro line (optional)', type: 'text', maxLength: 200 },
+      { key: 'left_title', label: 'Left column heading', type: 'text', maxLength: 40, default: 'Before' },
+      { key: 'left_items', label: 'Left column items', type: 'array', required: true, itemLabel: 'item', itemFields: [
+        { key: '', label: '', type: 'text', maxLength: 160 },
+      ]},
+      { key: 'left_marker', label: 'Left marker', type: 'select', options: ['cross', 'dash', 'bullet'] },
+      { key: 'right_title', label: 'Right column heading', type: 'text', maxLength: 40, default: 'After' },
+      { key: 'right_items', label: 'Right column items', type: 'array', required: true, itemLabel: 'item', itemFields: [
+        { key: '', label: '', type: 'text', maxLength: 160 },
+      ]},
+      { key: 'right_marker', label: 'Right marker', type: 'select', options: ['tick', 'arrow', 'bullet'] },
+      { key: 'highlight_right', label: 'Highlight right column', type: 'boolean', checkboxLabel: 'Tint the right column and give it an accent border' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
+    ],
+  },
+  'faq': {
+    label: 'FAQ',
+    description: 'Common questions with short answers, one under the other, plus an optional link to the full FAQ.',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', maxLength: 80, default: 'Common questions' },
+      { key: 'title_size', label: 'Title text size', type: 'fontSize' },
+      { key: 'intro', label: 'Intro line (optional)', type: 'text', maxLength: 200 },
+      { key: 'items', label: 'Questions', type: 'array', required: true, itemLabel: 'question', itemFields: [
+        { key: 'question', label: 'Question', type: 'text', required: true, maxLength: 120 },
+        { key: 'answer', label: 'Answer', type: 'longText', maxLength: 600, help: 'Blank line = paragraph. **bold**, *italic* and [text](url) work inline.' },
+      ]},
+      { key: 'link_text', label: 'Link text (optional, e.g. "See all questions")', type: 'text', maxLength: 40 },
+      { key: 'link_url', label: 'Link URL', type: 'url' },
+      { key: 'heading_colour', label: 'Heading colour', type: 'colour', defaultPreview: '#0F172A', help: 'Leave empty to keep the default.' },
+      { key: 'body_colour', label: 'Text colour', type: 'colour', defaultPreview: '#475569', help: 'Leave empty to keep the default.' },
+      { key: 'background_colour', label: 'Section background colour', type: 'colour', defaultPreview: '#FFFFFF', placeholder: 'Leave empty for white' },
+    ],
+  },
 };
 
 function sectionMeta(type) {
@@ -6937,6 +7102,26 @@ function sectionSummary(section) {
       return ((p.title ? p.title + ' · ' : '') + blCount + ' item' + (blCount === 1 ? '' : 's')).slice(0, 50);
     }
     case 'signature': return (p.name || 'Signature').slice(0, 40);
+    case 'article': return ((p.imagePosition === 'right' ? 'Image right · ' : 'Image left · ') + (p.headline || '(no headline)')).slice(0, 60);
+    // ── B2B SaaS blocks ──────────────────────────────────────────────
+    case 'pricing-cards': {
+      var planCount = Array.isArray(p.plans) ? p.plans.length : 0;
+      return ((p.title ? p.title + ' · ' : '') + planCount + ' plan' + (planCount === 1 ? '' : 's')).slice(0, 50);
+    }
+    case 'logo-strip': {
+      var logoCount = Array.isArray(p.logos) ? p.logos.filter(function(l) { return l && l.image_url; }).length : 0;
+      return ((p.label || 'Logos') + ' · ' + logoCount + ' logo' + (logoCount === 1 ? '' : 's')).slice(0, 50);
+    }
+    case 'update-list': {
+      var updCount = Array.isArray(p.items) ? p.items.length : 0;
+      return ((p.title || p.eyebrow || 'Updates') + ' · ' + updCount + ' update' + (updCount === 1 ? '' : 's')).slice(0, 50);
+    }
+    case 'customer-story': return (p.client_name || 'Customer story').slice(0, 50);
+    case 'compare-columns': return ((p.left_title || 'Before') + ' vs ' + (p.right_title || 'After')).slice(0, 50);
+    case 'faq': {
+      var faqCount = Array.isArray(p.items) ? p.items.length : 0;
+      return ((p.title || 'FAQ') + ' · ' + faqCount + ' question' + (faqCount === 1 ? '' : 's')).slice(0, 50);
+    }
     case 'footer-icons': {
       var iconCount = Array.isArray(p.icons) ? p.icons.length : 0;
       return iconCount > 0 ? iconCount + ' icon' + (iconCount === 1 ? '' : 's') : 'Icon footer (auto)';
@@ -9178,6 +9363,27 @@ function defaultPropsForType(type) {
     case 'callout': return { tone: 'teal', icon: '', label: 'Top tip', title: '', body: 'One useful thing worth pulling out of the main copy.', link_text: '', link_url: '', background_colour: '', accent_colour: '' };
     case 'bullet-list': return { title: '', intro: '', items: ['First point', 'Second point', 'Third point'], marker: 'bullet', columns: '1', marker_colour: '', background_colour: '' };
     case 'signature': return { message: '', sign_off: 'Speak soon,', name: 'Your name', role: '', avatar_url: '', link_text: '', link_url: '', show_rule_above: false, background_colour: '' };
+    // ── B2B SaaS blocks ──────────────────────────────────────────────
+    case 'pricing-cards': return {
+      eyebrow: 'Pricing', title: 'Simple plans', lede: '',
+      plans: [
+        { name: 'Plan one', price: '', period: '/month', note: '', features: 'First inclusion\nSecond inclusion', cta_text: 'Get started', cta_url: '', highlight: false, badge: 'Most popular' },
+        { name: 'Plan two', price: '', period: '/month', note: '', features: 'Everything in plan one\nAnother inclusion', cta_text: 'Get started', cta_url: '', highlight: true, badge: 'Most popular' },
+      ],
+      heading_colour: '', body_colour: '', cta_colour: '', cta_text_colour: '', background_colour: '',
+    };
+    case 'logo-strip': return { label: 'Trusted by', logos: [], size: 'medium', label_colour: '', background_colour: '' };
+    case 'update-list': return {
+      eyebrow: "What's new", title: 'This month in the product', intro: '',
+      items: [
+        { tag: 'new', title: 'A new feature', text: 'One line on what it does and why it matters.', link_text: '', link_url: '' },
+        { tag: 'improved', title: 'An improvement', text: 'What changed and who it helps.', link_text: '', link_url: '' },
+      ],
+      heading_colour: '', body_colour: '', background_colour: '',
+    };
+    case 'customer-story': return { eyebrow: 'Customer story', client_name: 'Customer name', client_meta: '', logo_url: '', headline: 'The result in one line', quote: '', attribution_name: '', attribution_role: '', stats: [], link_text: '', link_url: '', heading_colour: '', body_colour: '', background_colour: '' };
+    case 'compare-columns': return { title: '', intro: '', left_title: 'Before', left_items: ['Manual step one', 'Manual step two'], left_marker: 'cross', right_title: 'After', right_items: ['Done for you', 'Done for you'], right_marker: 'tick', highlight_right: true, heading_colour: '', body_colour: '', background_colour: '' };
+    case 'faq': return { title: 'Common questions', intro: '', items: [{ question: 'A question people ask?', answer: 'A short, direct answer.' }], link_text: '', link_url: '', heading_colour: '', body_colour: '', background_colour: '' };
     case 'cta': return { headline: 'Ready to get started?', ctaText: 'Get in touch', ctaUrl: 'https://travelgenix.io', variant: 'tint' };
     case 'divider': return { style: 'thin' };
     case 'footer': return { showUnsub: true };
@@ -14098,6 +14304,8 @@ function pickDefaultSlot(sectionType, fieldPath) {
     case 'two-column': return 'card-square';
     case 'image-text': return 'card';
     case 'signature': return 'thumbnail';
+    case 'logo-strip': return 'thumbnail';
+    case 'customer-story': return 'thumbnail';
     default: return 'hero';
   }
 }

@@ -13,7 +13,7 @@ otherwise.
 
 ## 1. What the tool is
 
-A section-based email builder. Users assemble an email from ~53 pre-designed
+A section-based email builder. Users assemble an email from ~59 pre-designed
 "sections" (hero, text, CTA, feature list, footer, etc.), edit the text
 directly on a live preview of the email, then save it into an approval queue.
 Approved emails are sent through **Brevo** (ex-Sendinblue) — as a proper
@@ -54,7 +54,7 @@ DB works if you keep the fields in §5.
 | File | Role |
 |---|---|
 | `lib/email-renderer.js` | `renderEmail({sections, unsubUrl, previewText, title, brand, editable})` → `{html, plainText, errors, warnings}`. Builds the full document scaffold (600px table, mobile media queries). |
-| `lib/email-sections/*.js` (~53 files) | One section per file, each exporting `{render(props, brand, editable), schema}`. `schema.fields` drives the editor form. |
+| `lib/email-sections/*.js` (~59 files) | One section per file, each exporting `{render(props, brand, editable), schema}`. `schema.fields` drives the editor form. |
 | `lib/email-sections/_helpers.js` | `escHtml`, `safeUrl`, `safeHex`, `scaleFont` (S→Huge text sizing), `editAttr`/`richAttr`/`richInline` (editor hooks + markdown bold/italic/link). |
 | `lib/email-sections/_outlook-bulletproof.js` | VML bulletproof buttons, image-with-overlay. |
 | `lib/email-brand.js` | Brand tokens (colours, fonts, logo, company block) + `getBrand(clientKit)` for per-client overrides. **Adapt:** replace the Travelgenix defaults with the new project's brand. |
@@ -79,7 +79,7 @@ and marked. Search for these anchors and copy each region:
 
 1. `EB2_STYLES` — all builder CSS (scoped `.eb2-*`, uses `--tg-*` design tokens; bring the tokens or remap).
 2. `function drawComposeForm` — the three-zone layout: top bar (Desktop/Mobile toggle, Preview, Schedule, Save), left rail (Blocks palette in labelled groups + Layers list), centre (inbox "envelope" + preview iframe `#builderPreviewFrame`), right (inspector driven by `renderPropertiesForm`).
-3. `SECTION_META = {` — the client-side mirror of every section's `schema`. **Keep this in lockstep with the server schemas** (it drives the inspector form).
+3. `SECTION_META = {` — the client-side mirror of every section's `schema`. **Keep this in lockstep with the server schemas** (it drives the inspector form). `PALETTE_PRESETS` + `newSectionFromKey` let one section type appear as several palette chips with preset props (e.g. `image-text:left` / `image-text:right`); the stored section always carries the plain type.
 4. `__builderRenderPreview` → POSTs to `/api/email-render` with `editable:true`, writes the iframe (`sandbox="allow-same-origin"`), then calls the three enablers below.
 5. `__builderEnableInlineEdit` + `__tgInlineCommit` + `__tgEnsureRichBar`/`__tgHtmlToMd` — contenteditable on `[data-tg-edit]` elements, commits keystrokes back into the sections model without reloading the iframe (preserves the caret), floating bold/italic/link toolbar for `[data-tg-rich]` fields, HTML↔markdown round-trip.
 6. `__builderEnableBlockHover` — per-block hover toolbar (drag grip, move ↑↓, duplicate, delete) pinned INSIDE the block's top-right corner (pinning it above causes a hover-tunnel bug).

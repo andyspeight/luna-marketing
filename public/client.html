@@ -1168,6 +1168,7 @@ select.email-builder-input { cursor: pointer; }
   color: var(--tg-text-primary);
   transition: border-color var(--duration-fast);
 }
+.email-builder-code{font-family:var(--tg-font-mono,ui-monospace,Menlo,monospace);font-size:11px;line-height:1.45;white-space:pre;overflow:auto;min-height:240px;resize:vertical;tab-size:2}
 .email-builder-prop-input:focus { border-color: var(--tg-accent); outline: none; box-shadow: 0 0 0 3px rgba(0,180,216,0.12); }
 textarea.email-builder-prop-input { padding: 8px 10px; height: auto; line-height: 1.5; resize: vertical; min-height: 70px; }
 select.email-builder-prop-input { cursor: pointer; height: 34px; }
@@ -5676,7 +5677,7 @@ function drawComposeForm() {
     { type: 'generated-image', icon: '<rect x="2" y="3" width="20" height="18" rx="1"/><path d="M4 16l4-4 3 3 4-5 5 7" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.4"/>' },
 
     // ── Raw HTML (admin-only, manual paste) ────────────────────────────
-    { type: 'html', icon: '<polyline points="8 6 3 12 8 18"/><polyline points="16 6 21 12 16 18"/><line x1="13" y1="4" x2="11" y2="20"/>' },
+    { type: 'html', isNew: true, label: 'Paste HTML', icon: '<polyline points="8 6 3 12 8 18"/><polyline points="16 6 21 12 16 18"/><line x1="13" y1="4" x2="11" y2="20"/>' },
 
     // ── B2B Weekly sections (Archetype A, May 2026) ────────────────────
     { type: 'masthead', icon: '<line x1="2" y1="6" x2="22" y2="6"/><line x1="2" y1="20" x2="22" y2="20" stroke-width="2.4"/><line x1="6" y1="13" x2="18" y2="13" stroke-width="2.4"/>' },
@@ -5705,7 +5706,7 @@ function drawComposeForm() {
     var byType = {};
     addableTypes.forEach(function(t) { byType[t.key || t.type] = t; });
     var paletteGroups = [
-      { label: 'Basics', types: ['header', 'hero', 'text', 'image', 'image-text:left', 'image-text:right', 'two-column', 'cta', 'button', 'divider', 'spacer'] },
+      { label: 'Basics', types: ['header', 'hero', 'text', 'image', 'image-text:left', 'image-text:right', 'two-column', 'cta', 'button', 'divider', 'spacer', 'html'] },
       { label: 'Content', types: ['bullet-list', 'callout', 'signature'] },
       { label: 'Product & proof', types: ['pricing-cards', 'logo-strip', 'update-list', 'customer-story', 'compare-columns', 'faq'] },
       { label: 'Offers', types: ['offers-hero', 'offers-three-up', 'offers-urgency', 'offers-list', 'offers-two-up', 'offers-editorial'] },
@@ -5714,7 +5715,7 @@ function drawComposeForm() {
       { label: 'Editorial', types: ['masthead', 'masthead-bar', 'headline-duotone', 'toc', 'lead-story', 'duo-grid', 'image-duo', 'product-cards-3up', 'pulse-stats', 'numbered-list', 'cta-pill', 'image-full-bleed'] },
       { label: 'Transactional', types: ['top-bar', 'confirmation-block', 'trip-card', 'cost-summary', 'next-steps', 'help-block', 'calendar-grid'] },
       { label: 'Footers', types: ['footer', 'footer-light', 'footer-dark', 'footer-meta', 'footer-icons'] },
-      { label: 'Advanced', types: ['generated-image', 'html'] },
+      { label: 'Advanced', types: ['generated-image'] },
     ];
     var placed = {};
     paletteGroups.forEach(function(g) { g.types.forEach(function(tp) { placed[tp] = true; }); });
@@ -5812,10 +5813,10 @@ function defaultStarterSections() {
 // Section type metadata (label, description, fields)
 var SECTION_META = {
   html: {
-    label: 'HTML (raw)',
-    description: 'Admin only. Paste raw HTML — it renders exactly as pasted, with no validation. Use for custom blocks.',
+    label: 'HTML (paste)',
+    description: 'Paste a complete HTML email and it becomes the whole email (the other blocks are ignored). Paste an HTML fragment and it slots in as a block. Rendered exactly as pasted, apart from the unsubscribe placeholder.',
     fields: [
-      { key: 'html', label: 'Raw HTML (renders verbatim — admin use only)', type: 'longText' },
+      { key: 'html', label: 'HTML', type: 'code', placeholder: 'Paste a complete HTML email (<!doctype html>…) or a block such as a <table> or <tr>.', help: 'A full email should carry its own unsubscribe link, or the Brevo tag {{ unsubscribe }} (added automatically on an audience send if missing). Styles inside <style> are kept.' },
     ],
   },
   header: {
@@ -6998,7 +6999,11 @@ function sectionMeta(type) {
 function sectionSummary(section) {
   var p = section.props || {};
   switch (section.type) {
-    case 'html': return (p.html && p.html.trim()) ? 'Custom HTML (' + p.html.trim().length + ' chars)' : '(empty — paste HTML)';
+    case 'html': {
+      var rawHtml = (p.html || '').trim();
+      if (!rawHtml) return '(empty — paste HTML)';
+      return (/<\s*(html|body)\b/i.test(rawHtml) ? 'Full email' : 'HTML block') + ' · ' + (Math.round(rawHtml.length / 102.4) / 10) + ' KB';
+    }
     case 'header': return p.logoAlt || 'Travelgenix logo';
     case 'hero': return p.headline || '(no headline)';
     case 'text': return (p.headline || p.body || '(empty)').slice(0, 50);
@@ -7362,6 +7367,18 @@ function renderField(section, basePath, field, depth) {
   }
   if (field.type === 'longText') {
     h += '<textarea id="' + fid + '" rows="3"' + (field.maxLength ? ' maxlength="' + field.maxLength + '"' : '') + ' class="email-builder-prop-input" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value)">' + esc(val) + '</textarea>';
+  } else if (field.type === 'code') {
+    // Pasted-HTML editor: tall monospace textarea, a readout of what the
+    // renderer will do with the paste (whole email vs block) and its size,
+    // and an Upload .html button that reads a local file into the field.
+    var codeVal = (typeof val === 'string') ? val : '';
+    h += '<textarea id="' + fid + '" rows="16" spellcheck="false" wrap="off" class="email-builder-prop-input email-builder-code" placeholder="' + esc(field.placeholder || '') + '" oninput="window.__builderUpdateField(\'' + sidAttr + '\',\'' + pathAttr + '\',this.value);window.__builderCodeHint(this)">' + esc(codeVal) + '</textarea>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;">';
+    h += '<span id="' + fid + '-hint" style="font-size:11px;color:var(--tg-text-muted);line-height:1.4;">' + esc(window.__builderCodeSummary(codeVal)) + '</span>';
+    h += '<button type="button" class="email-builder-img-gen-btn" style="flex:0 0 auto" onclick="window.__builderHtmlUploadOpen(\'' + sidAttr + '\',\'' + pathAttr + '\',\'' + fid + '\')" title="Upload a .html file into this block">';
+    h += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+    h += '<span class="email-builder-img-gen-label">Upload .html</span></button>';
+    h += '</div>';
   } else if (field.type === 'offer-filter') {
     h += renderOfferFilter(section, field, val);
   } else if (field.type === 'select') {
@@ -13305,6 +13322,50 @@ var photoModal = {
 // Vercel Blob, and returns the persistent URL. URL is then written
 // into the field via __builderUpdateField so it saves with the section.
 // ─────────────────────────────────────────────────────────────────────
+// ── Pasted HTML block helpers ────────────────────────────────────────
+// What the renderer will do with a paste (mirrors isFullDocument in
+// lib/email-renderer.js) plus its size, for the readout under the editor.
+window.__builderCodeSummary = function(val) {
+  var raw = (val || '').trim();
+  if (!raw) return 'Empty. Paste a complete HTML email, or an HTML block.';
+  var kb = Math.round(raw.length / 102.4) / 10;
+  if (/<\s*(html|body)\b/i.test(raw)) return 'Full email \u00b7 ' + kb + ' KB. This becomes the whole email; other blocks are ignored.';
+  return 'HTML block \u00b7 ' + kb + ' KB. Slots in as a section of the email.';
+};
+window.__builderCodeHint = function(textarea) {
+  if (!textarea || !textarea.id) return;
+  var hint = document.getElementById(textarea.id + '-hint');
+  if (hint) hint.textContent = window.__builderCodeSummary(textarea.value);
+};
+// Read a local .html file into the block. Same single-use hidden input
+// pattern as __imageUploadOpen; the file never leaves the browser here, it
+// is saved with the email like any other typed content.
+window.__builderHtmlUploadOpen = function(sectionId, fieldPath, fieldId) {
+  var MAX_BYTES = 900 * 1024;  // the render API accepts 1MB request bodies
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.html,.htm,text/html';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function() {
+    var file = input.files && input.files[0];
+    document.body.removeChild(input);
+    if (!file) return;
+    if (file.size > MAX_BYTES) { toast('File too large (max 900KB).'); return; }
+    var reader = new FileReader();
+    reader.onload = function() {
+      var text = String(reader.result || '');
+      window.__builderUpdateField(sectionId, fieldPath, text);
+      var ta = document.getElementById(fieldId);
+      if (ta) { ta.value = text; window.__builderCodeHint(ta); }
+      toast('Loaded ' + file.name);
+    };
+    reader.onerror = function() { toast('Could not read that file.'); };
+    reader.readAsText(file);
+  });
+  input.click();
+};
+
 window.__imageUploadOpen = function(sectionId, fieldPath, fieldId) {
   // Client-side limits — mirror server. Server enforces final auth, but
   // catching bad files here saves the user a round-trip on obvious mistakes.

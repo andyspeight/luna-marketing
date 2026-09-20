@@ -84,12 +84,19 @@ async function writeAuditLog({ actor, action, subjectId, details, ip }) {
   }
 }
 
-// Sanitise HTML. Very simple approach: strip script/style/iframe tags.
+// Sanitise HTML. Very simple approach: strip script/iframe/object/embed/
+// form tags, javascript: URLs and inline event handlers.
 // Full sanitisation is Day D's compliance work.
+//
+// <style> is deliberately kept (September 2026). It used to be stripped
+// along with the dangerous tags, which removed the renderer's <style> block
+// (the mobile media queries: column stacking, padding, image sizing) from
+// every newly composed email, and would strip the styles from any pasted
+// full HTML email. A stylesheet cannot execute anything, so it stays.
 function sanitiseHTML(html) {
   if (!html || typeof html !== "string") return "";
   // Remove dangerous tags entirely (with content)
-  let clean = html.replace(/<(script|style|iframe|object|embed|form)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, "");
+  let clean = html.replace(/<(script|iframe|object|embed|form)\b[^<]*(?:(?!<\/\1>)<[^<]*)*<\/\1>/gi, "");
   // Remove javascript: URLs
   clean = clean.replace(/javascript:/gi, "blocked:");
   // Remove on* event handlers
